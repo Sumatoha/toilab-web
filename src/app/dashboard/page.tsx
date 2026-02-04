@@ -2,17 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Plus,
-  Calendar,
-  Users,
-  Wallet,
-  CheckSquare,
-  ChevronRight,
-} from "lucide-react";
+import { Plus, Calendar, Users, ArrowRight } from "lucide-react";
 import { events } from "@/lib/api";
 import { Event, EventStats } from "@/lib/types";
-import { formatDate, getDaysUntil, eventTypeLabels } from "@/lib/utils";
+import { formatDate, getDaysUntil, eventTypeLabels, formatDaysCount } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   const [eventList, setEventList] = useState<Event[]>([]);
@@ -29,11 +23,10 @@ export default function DashboardPage() {
       const eventData = data || [];
       setEventList(eventData);
 
-      // Load stats for each event
       const statsMap = new Map<string, EventStats>();
       if (eventData.length > 0) {
         await Promise.all(
-          eventData.slice(0, 3).map(async (event) => {
+          eventData.slice(0, 5).map(async (event) => {
             try {
               const eventStats = await events.getStats(event.id);
               statsMap.set(event.id, eventStats);
@@ -54,32 +47,34 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-display font-bold">Главная</h1>
-          <p className="text-muted-foreground">
-            Управляйте своими мероприятиями
+          <h1 className="text-xl font-semibold text-foreground">Мероприятия</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {eventList.length > 0
+              ? `${eventList.length} ${eventList.length === 1 ? "мероприятие" : "мероприятий"}`
+              : "Начните планирование"}
           </p>
         </div>
-        <Link href="/dashboard/events/new" className="btn-primary btn-md">
-          <Plus className="w-5 h-5 mr-2" />
-          Создать мероприятие
+        <Link href="/dashboard/events/new" className="btn-primary btn-sm">
+          <Plus className="w-4 h-4" />
+          Создать
         </Link>
       </div>
 
-      {/* Events grid */}
+      {/* Events list */}
       {eventList.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-3">
           {eventList.map((event) => (
             <EventCard key={event.id} event={event} stats={stats.get(event.id)} />
           ))}
@@ -91,16 +86,16 @@ export default function DashboardPage() {
 
 function EmptyState() {
   return (
-    <div className="card text-center py-16">
-      <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-        <Calendar className="w-8 h-8 text-primary" />
+    <div className="text-center py-20">
+      <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
+        <Calendar className="w-7 h-7 text-primary" />
       </div>
-      <h2 className="text-lg font-semibold mb-2">Нет мероприятий</h2>
-      <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-        Создайте первое мероприятие и начните планирование
+      <h2 className="text-base font-medium mb-1.5">Нет мероприятий</h2>
+      <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">
+        Создайте первое мероприятие и начните планирование вашего торжества
       </p>
       <Link href="/dashboard/events/new" className="btn-primary btn-md">
-        <Plus className="w-5 h-5 mr-2" />
+        <Plus className="w-4 h-4" />
         Создать мероприятие
       </Link>
     </div>
@@ -112,93 +107,80 @@ function EventCard({ event, stats }: { event: Event; stats?: EventStats }) {
   const typeLabel = eventTypeLabels[event.type]?.ru || event.type;
 
   return (
-    <Link href={`/dashboard/events/${event.id}`} className="card-hover group">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <span className="inline-block px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded mb-2">
-            {typeLabel}
-          </span>
-          <h3 className="text-lg font-semibold group-hover:text-primary transition-colors">
-            {event.title}
-          </h3>
-          {event.person1 && event.person2 && (
-            <p className="text-sm text-muted-foreground">
-              {event.person1} & {event.person2}
-            </p>
-          )}
-        </div>
-        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+    <Link
+      href={`/dashboard/events/${event.id}`}
+      className={cn(
+        "group flex items-center gap-4 p-4 rounded-2xl border border-border/60 bg-card",
+        "hover:border-primary/20 hover:shadow-sm transition-all"
+      )}
+    >
+      {/* Date badge */}
+      <div className="hidden sm:flex flex-col items-center justify-center w-14 h-14 rounded-xl bg-primary/5 text-primary">
+        {event.date ? (
+          <>
+            <span className="text-lg font-semibold leading-none">
+              {new Date(event.date).getDate()}
+            </span>
+            <span className="text-[10px] font-medium uppercase mt-0.5">
+              {new Date(event.date).toLocaleDateString("ru", { month: "short" })}
+            </span>
+          </>
+        ) : (
+          <Calendar className="w-5 h-5" />
+        )}
       </div>
 
-      {/* Date */}
-      {event.date && (
-        <div className="flex items-center gap-2 text-sm mb-4">
-          <Calendar className="w-4 h-4 text-muted-foreground" />
-          <span>{formatDate(event.date)}</span>
-          {daysUntil !== null && daysUntil > 0 && (
-            <span className="text-muted-foreground">
-              (через {daysUntil} дн.)
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-medium truncate group-hover:text-primary transition-colors">
+            {event.title}
+          </h3>
+          <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+            {typeLabel}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          {event.person1 && event.person2 && (
+            <span>{event.person1} & {event.person2}</span>
+          )}
+          {event.date && (
+            <span className="flex items-center gap-1">
+              {daysUntil !== null && daysUntil > 0 ? (
+                `через ${formatDaysCount(daysUntil)}`
+              ) : daysUntil === 0 ? (
+                <span className="text-primary font-medium">Сегодня</span>
+              ) : (
+                formatDate(event.date)
+              )}
             </span>
           )}
         </div>
-      )}
+      </div>
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-sm font-medium">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              {stats.totalGuests}
-            </div>
-            <p className="text-xs text-muted-foreground">Гостей</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-sm font-medium">
-              <Wallet className="w-4 h-4 text-muted-foreground" />
-              {Math.round((stats.paidAmount / (event.totalBudget || 1)) * 100)}%
-            </div>
-            <p className="text-xs text-muted-foreground">Бюджет</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-sm font-medium">
-              <CheckSquare className="w-4 h-4 text-muted-foreground" />
-              {stats.checklistDone}/{stats.checklistTotal}
-            </div>
-            <p className="text-xs text-muted-foreground">Задач</p>
+        <div className="hidden md:flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Users className="w-3.5 h-3.5" />
+            <span className="font-medium text-foreground">{stats.confirmedGuests}</span>
+            <span className="text-xs">/ {stats.totalGuests}</span>
           </div>
         </div>
       )}
 
-      {/* Status */}
-      <div className="mt-4 pt-4 border-t border-border">
+      {/* Status & arrow */}
+      <div className="flex items-center gap-3">
         <span
-          className={`inline-flex items-center gap-1.5 text-xs font-medium ${
-            event.status === "active"
-              ? "text-green-600"
-              : event.status === "draft"
-              ? "text-yellow-600"
-              : "text-muted-foreground"
-          }`}
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              event.status === "active"
-                ? "bg-green-600"
-                : event.status === "draft"
-                ? "bg-yellow-600"
-                : "bg-muted-foreground"
-            }`}
-          />
-          {event.status === "active"
-            ? "Активно"
-            : event.status === "draft"
-            ? "Черновик"
-            : event.status === "completed"
-            ? "Завершено"
-            : "В архиве"}
-        </span>
+          className={cn(
+            "w-2 h-2 rounded-full",
+            event.status === "active" && "bg-emerald-500",
+            event.status === "draft" && "bg-amber-500",
+            event.status === "completed" && "bg-muted-foreground"
+          )}
+        />
+        <ArrowRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
       </div>
     </Link>
   );
