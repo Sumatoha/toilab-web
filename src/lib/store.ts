@@ -10,6 +10,7 @@ interface AuthState {
   isLoading: boolean;
   isAuthenticated: boolean;
 
+  setAuth: (user: User, accessToken: string, refreshToken: string) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
   setUser: (user: User) => void;
   logout: () => void;
@@ -25,6 +26,12 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       isLoading: true,
       isAuthenticated: false,
+
+      setAuth: (user, accessToken, refreshToken) => {
+        localStorage.setItem("accessToken", accessToken);
+        localStorage.setItem("refreshToken", refreshToken);
+        set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false });
+      },
 
       setTokens: (accessToken, refreshToken) => {
         localStorage.setItem("accessToken", accessToken);
@@ -74,12 +81,13 @@ export const useAuthStore = create<AuthState>()(
         }
 
         try {
-          const tokens = await auth.refresh(refreshToken);
-          get().setTokens(tokens.accessToken, tokens.refreshToken);
+          const result = await auth.refresh(refreshToken);
+          localStorage.setItem("accessToken", result.accessToken);
+          set({ accessToken: result.accessToken });
 
           // Fetch user after refreshing tokens
           const user = await auth.me();
-          set({ user, isLoading: false });
+          set({ user, isLoading: false, isAuthenticated: true });
           return true;
         } catch {
           return false;

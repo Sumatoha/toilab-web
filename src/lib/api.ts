@@ -77,7 +77,23 @@ async function fetchApi<T>(
 
 // Auth
 export const auth = {
-  getGoogleAuthUrl: () => `${API_URL}/auth/google`,
+  login: (email: string, password: string) =>
+    fetchApi<{ user: User; accessToken: string; refreshToken: string }>(
+      "/auth/login",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      }
+    ),
+
+  register: (email: string, password: string, name: string) =>
+    fetchApi<{ user: User; accessToken: string; refreshToken: string }>(
+      "/auth/register",
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password, name }),
+      }
+    ),
 
   me: () => fetchApi<User>("/auth/me"),
 
@@ -88,7 +104,7 @@ export const auth = {
     }),
 
   refresh: (refreshToken: string) =>
-    fetchApi<{ accessToken: string; refreshToken: string }>("/auth/refresh", {
+    fetchApi<{ accessToken: string }>("/auth/refresh", {
       method: "POST",
       body: JSON.stringify({ refreshToken }),
     }),
