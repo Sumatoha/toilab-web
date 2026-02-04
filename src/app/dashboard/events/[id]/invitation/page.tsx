@@ -14,6 +14,16 @@ import { Event, TemplatePreview, InvitationData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
+// Default templates when API doesn't return any
+const defaultTemplates: TemplatePreview[] = [
+  { slug: "classic", name: "Классика", nameKz: "Классика", previewUrl: "", isPremium: false },
+  { slug: "romantic", name: "Романтика", nameKz: "Романтика", previewUrl: "", isPremium: false },
+  { slug: "minimal", name: "Минимализм", nameKz: "Минимализм", previewUrl: "", isPremium: false },
+  { slug: "elegant", name: "Элегантный", nameKz: "Сәнді", previewUrl: "", isPremium: true },
+  { slug: "modern", name: "Современный", nameKz: "Заманауи", previewUrl: "", isPremium: false },
+  { slug: "traditional", name: "Традиционный", nameKz: "Дәстүрлі", previewUrl: "", isPremium: false },
+];
+
 export default function InvitationPage() {
   const params = useParams();
   const eventId = params.id as string;
@@ -36,7 +46,7 @@ export default function InvitationPage() {
         invitation.getPreview(eventId).catch(() => null),
       ]);
       setEvent(eventData);
-      setTemplatesList(templatesData || []);
+      setTemplatesList(templatesData?.length ? templatesData : defaultTemplates);
       setPreview(previewData);
     } catch (error) {
       console.error("Failed to load invitation data:", error);
