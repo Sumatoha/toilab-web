@@ -67,13 +67,10 @@ export default function NewEventPage() {
   const [formData, setFormData] = useState<CreateEventRequest>({
     type: "wedding",
     title: "",
-    person1: "",
-    person2: "",
     totalBudget: 0,
   });
 
   const selectedType = eventTypes.find((t) => t.type === formData.type);
-  const needsTwoPersons = ["wedding", "anniversary"].includes(formData.type);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,55 +180,11 @@ export default function NewEventPage() {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, title: e.target.value }))
                 }
-                placeholder={
-                  needsTwoPersons
-                    ? "Например: Свадьба Айдара и Даны"
-                    : "Например: День рождения Алмаса"
-                }
+                placeholder="Например: Свадьба Айдара и Даны"
                 className="input"
                 required
               />
             </div>
-
-            {/* Person 1 */}
-            {needsTwoPersons && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Имя жениха
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.person1}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        person1: e.target.value,
-                      }))
-                    }
-                    placeholder="Айдар"
-                    className="input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Имя невесты
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.person2}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        person2: e.target.value,
-                      }))
-                    }
-                    placeholder="Дана"
-                    className="input"
-                  />
-                </div>
-              </div>
-            )}
 
             {/* Date and Time */}
             <div className="grid grid-cols-2 gap-4">
