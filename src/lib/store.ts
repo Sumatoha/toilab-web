@@ -100,6 +100,7 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
       }),
+      skipHydration: true,
     }
   )
 );

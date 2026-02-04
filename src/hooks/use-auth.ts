@@ -9,6 +9,10 @@ export function useAuth(requireAuth = true) {
   const { user, isLoading, isAuthenticated, fetchUser, logout } = useAuthStore();
 
   useEffect(() => {
+    useAuthStore.persist.rehydrate();
+  }, []);
+
+  useEffect(() => {
     fetchUser();
   }, [fetchUser]);
 

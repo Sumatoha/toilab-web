@@ -17,6 +17,10 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    useAuthStore.persist.rehydrate();
+  }, []);
+
+  useEffect(() => {
     fetchUser();
   }, [fetchUser]);
 
