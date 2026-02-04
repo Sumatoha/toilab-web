@@ -17,7 +17,7 @@ import {
 import { guests } from "@/lib/api";
 import { Guest, GuestStats } from "@/lib/types";
 import { cn, rsvpStatusLabels } from "@/lib/utils";
-import { PageLoader, StatCard, Modal, ModalFooter, EmptyState } from "@/components/ui";
+import { PageLoader, StatCard, Modal, ModalFooter, EmptyState, ConfirmDialog } from "@/components/ui";
 import toast from "react-hot-toast";
 
 export default function GuestsPage() {
@@ -31,6 +31,8 @@ export default function GuestsPage() {
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [deleteGuestId, setDeleteGuestId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -84,17 +86,19 @@ export default function GuestsPage() {
     }
   };
 
-  const handleDeleteGuest = async (guestId: string) => {
-    if (!confirm("Удалить гостя?")) return;
-
+  const handleDeleteGuest = async () => {
+    if (!deleteGuestId) return;
+    setIsDeleting(true);
     try {
-      await guests.delete(eventId, guestId);
-      setGuestList((prev) => prev.filter((g) => g.id !== guestId));
-      toast.success("Гость удален");
+      await guests.delete(eventId, deleteGuestId);
+      setGuestList((prev) => prev.filter((g) => g.id !== deleteGuestId));
+      setDeleteGuestId(null);
       loadData(); // Reload stats
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось удалить гостя");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -212,7 +216,7 @@ export default function GuestsPage() {
               <GuestRow
                 key={guest.id}
                 guest={guest}
-                onDelete={() => handleDeleteGuest(guest.id)}
+                onDelete={() => setDeleteGuestId(guest.id)}
               />
             ))}
           </div>
@@ -234,6 +238,19 @@ export default function GuestsPage() {
           onImport={handleImportGuests}
         />
       )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!deleteGuestId}
+        onClose={() => setDeleteGuestId(null)}
+        onConfirm={handleDeleteGuest}
+        title="Удалить гостя?"
+        description="Гость будет удалён из списка"
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

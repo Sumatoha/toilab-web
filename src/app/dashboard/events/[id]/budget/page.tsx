@@ -8,10 +8,12 @@ import {
   TrendingUp,
   TrendingDown,
   PieChart,
+  Trash2,
 } from "lucide-react";
 import { expenses as expensesApi } from "@/lib/api";
 import { Expense, BudgetSummary, ExpenseCategory } from "@/lib/types";
 import { cn, formatCurrency, expenseCategoryLabels } from "@/lib/utils";
+import { PageLoader, ConfirmDialog, Modal, ModalFooter } from "@/components/ui";
 import toast from "react-hot-toast";
 
 export default function BudgetPage() {
@@ -23,6 +25,8 @@ export default function BudgetPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory | null>(null);
+  const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -61,17 +65,19 @@ export default function BudgetPage() {
     }
   };
 
-  const handleDeleteExpense = async (expenseId: string) => {
-    if (!confirm("Удалить расход?")) return;
-
+  const handleDeleteExpense = async () => {
+    if (!deleteExpenseId) return;
+    setIsDeleting(true);
     try {
-      await expensesApi.delete(eventId, expenseId);
-      setExpensesList((prev) => prev.filter((e) => e.id !== expenseId));
-      toast.success("Расход удален");
+      await expensesApi.delete(eventId, deleteExpenseId);
+      setExpensesList((prev) => prev.filter((e) => e.id !== deleteExpenseId));
+      setDeleteExpenseId(null);
       loadData(); // Reload summary
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось удалить расход");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -80,11 +86,7 @@ export default function BudgetPage() {
     : expensesList;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -201,7 +203,7 @@ export default function BudgetPage() {
               <ExpenseRow
                 key={expense.id}
                 expense={expense}
-                onDelete={() => handleDeleteExpense(expense.id)}
+                onDelete={() => setDeleteExpenseId(expense.id)}
               />
             ))}
           </div>
@@ -215,6 +217,19 @@ export default function BudgetPage() {
           onAdd={handleAddExpense}
         />
       )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!deleteExpenseId}
+        onClose={() => setDeleteExpenseId(null)}
+        onConfirm={handleDeleteExpense}
+        title="Удалить расход?"
+        description="Расход будет удалён из бюджета"
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
@@ -233,7 +248,7 @@ function ExpenseRow({
       : 0;
 
   return (
-    <div className="flex items-center gap-4 py-3">
+    <div className="flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors">
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{expense.title}</p>
         <p className="text-sm text-muted-foreground">
@@ -248,9 +263,10 @@ function ExpenseRow({
       </div>
       <button
         onClick={onDelete}
-        className="p-2 text-muted-foreground hover:text-red-600 transition-colors"
+        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+        title="Удалить"
       >
-        ×
+        <Trash2 className="w-4 h-4" />
       </button>
     </div>
   );
@@ -293,55 +309,52 @@ function AddExpenseModal({
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="card w-full max-w-md mx-4">
-        <h2 className="text-lg font-semibold mb-4">Добавить расход</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Категория</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-              className="input"
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {expenseCategoryLabels[cat]?.ru || cat}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Название *</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="input"
-              placeholder="Например: Зал на 200 человек"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Сумма (тенге)</label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="input"
-              placeholder="500000"
-            />
-          </div>
-          <div className="flex gap-3 pt-4">
-            <button type="button" onClick={onClose} className="btn-outline btn-md flex-1">
-              Отмена
-            </button>
-            <button type="submit" className="btn-primary btn-md flex-1">
-              Добавить
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal isOpen onClose={onClose} title="Добавить расход">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Категория</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+            className="input"
+          >
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {expenseCategoryLabels[cat]?.ru || cat}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Название *</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="input"
+            placeholder="Например: Зал на 200 человек"
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Сумма (тенге)</label>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="input"
+            placeholder="500000"
+          />
+        </div>
+        <ModalFooter>
+          <button type="button" onClick={onClose} className="btn-outline btn-md">
+            Отмена
+          </button>
+          <button type="submit" className="btn-primary btn-md">
+            Добавить
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }

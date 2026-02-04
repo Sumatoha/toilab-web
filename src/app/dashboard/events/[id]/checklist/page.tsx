@@ -6,10 +6,12 @@ import {
   Plus,
   Check,
   CheckSquare,
+  Trash2,
 } from "lucide-react";
 import { checklist as checklistApi } from "@/lib/api";
 import { ChecklistItem, ChecklistProgress, ChecklistCategory } from "@/lib/types";
 import { cn, formatShortDate, checklistCategoryLabels } from "@/lib/utils";
+import { PageLoader, ConfirmDialog, Modal, ModalFooter } from "@/components/ui";
 import toast from "react-hot-toast";
 
 export default function ChecklistPage() {
@@ -21,6 +23,8 @@ export default function ChecklistPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filter, setFilter] = useState<"all" | "pending" | "completed">("all");
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -74,17 +78,19 @@ export default function ChecklistPage() {
     }
   };
 
-  const handleDelete = async (itemId: string) => {
-    if (!confirm("Удалить задачу?")) return;
-
+  const handleDelete = async () => {
+    if (!deleteItemId) return;
+    setIsDeleting(true);
     try {
-      await checklistApi.delete(eventId, itemId);
-      setItems((prev) => prev.filter((i) => i.id !== itemId));
-      toast.success("Задача удалена");
+      await checklistApi.delete(eventId, deleteItemId);
+      setItems((prev) => prev.filter((i) => i.id !== deleteItemId));
+      setDeleteItemId(null);
       loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось удалить задачу");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -107,11 +113,7 @@ export default function ChecklistPage() {
     .sort((a, b) => b - a);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -208,7 +210,7 @@ export default function ChecklistPage() {
                     key={item.id}
                     item={item}
                     onToggle={() => handleToggle(item)}
-                    onDelete={() => handleDelete(item.id)}
+                    onDelete={() => setDeleteItemId(item.id)}
                   />
                 ))}
               </div>
@@ -221,6 +223,19 @@ export default function ChecklistPage() {
       {showAddModal && (
         <AddTaskModal onClose={() => setShowAddModal(false)} onAdd={handleAdd} />
       )}
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={!!deleteItemId}
+        onClose={() => setDeleteItemId(null)}
+        onConfirm={handleDelete}
+        title="Удалить задачу?"
+        description="Задача будет удалена из чек-листа"
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
@@ -272,9 +287,10 @@ function ChecklistRow({
       </div>
       <button
         onClick={onDelete}
-        className="p-1 text-muted-foreground hover:text-red-600 transition-colors"
+        className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+        title="Удалить"
       >
-        ×
+        <Trash2 className="w-4 h-4" />
       </button>
     </div>
   );
@@ -312,54 +328,51 @@ function AddTaskModal({
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="card w-full max-w-md mx-4">
-        <h2 className="text-lg font-semibold mb-4">Добавить задачу</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Задача *</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="input"
-              placeholder="Что нужно сделать?"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Категория</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ChecklistCategory)}
-              className="input"
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {checklistCategoryLabels[cat]?.ru || cat}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Срок</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="input"
-            />
-          </div>
-          <div className="flex gap-3 pt-4">
-            <button type="button" onClick={onClose} className="btn-outline btn-md flex-1">
-              Отмена
-            </button>
-            <button type="submit" className="btn-primary btn-md flex-1">
-              Добавить
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal isOpen onClose={onClose} title="Добавить задачу">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Задача *</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="input"
+            placeholder="Что нужно сделать?"
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Категория</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value as ChecklistCategory)}
+            className="input"
+          >
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {checklistCategoryLabels[cat]?.ru || cat}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Срок</label>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="input"
+          />
+        </div>
+        <ModalFooter>
+          <button type="button" onClick={onClose} className="btn-outline btn-md">
+            Отмена
+          </button>
+          <button type="submit" className="btn-primary btn-md">
+            Добавить
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Trash2, Check } from "lucide-react";
 import { events } from "@/lib/api";
 import { Event, UpdateEventRequest } from "@/lib/types";
-import { PageLoader } from "@/components/ui";
+import { PageLoader, ConfirmDialog, SuccessDialog } from "@/components/ui";
 import toast from "react-hot-toast";
 
 export default function EventSettingsPage() {
@@ -17,6 +17,9 @@ export default function EventSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<UpdateEventRequest>({});
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     async function loadEvent() {
@@ -48,7 +51,7 @@ export default function EventSettingsPage() {
     setIsSaving(true);
     try {
       await events.update(eventId, formData);
-      toast.success("Сохранено");
+      setShowSuccessModal(true);
     } catch {
       toast.error("Не удалось сохранить");
     } finally {
@@ -57,13 +60,15 @@ export default function EventSettingsPage() {
   }
 
   async function handleDelete() {
-    if (!confirm("Удалить мероприятие? Это действие нельзя отменить.")) return;
+    setIsDeleting(true);
     try {
       await events.delete(eventId);
-      toast.success("Удалено");
       router.push("/dashboard");
     } catch {
       toast.error("Не удалось удалить");
+      setShowDeleteModal(false);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -235,7 +240,7 @@ export default function EventSettingsPage() {
 
       {/* Actions */}
       <div className="flex items-center justify-between pt-4 border-t border-border">
-        <button onClick={handleDelete} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
+        <button onClick={() => setShowDeleteModal(true)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
           <Trash2 className="w-4 h-4" />
           Удалить
         </button>
@@ -243,6 +248,29 @@ export default function EventSettingsPage() {
           {isSaving ? "Сохранение..." : "Сохранить"}
         </button>
       </div>
+
+      {/* Success Modal */}
+      <SuccessDialog
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Сохранено"
+        description="Настройки мероприятия успешно обновлены"
+        buttonText="К мероприятию"
+        onButtonClick={() => router.push(`/dashboard/events/${eventId}`)}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title="Удалить мероприятие?"
+        description="Это действие нельзя отменить. Все данные мероприятия будут удалены."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
