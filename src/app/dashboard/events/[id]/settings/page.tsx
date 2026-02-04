@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Trash2, Check } from "lucide-react";
 import { events } from "@/lib/api";
 import { Event, UpdateEventRequest } from "@/lib/types";
+import { PageLoader } from "@/components/ui";
 import toast from "react-hot-toast";
 
 export default function EventSettingsPage() {
@@ -78,11 +79,7 @@ export default function EventSettingsPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-foreground border-t-transparent"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!event) return null;

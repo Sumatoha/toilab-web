@@ -6,7 +6,7 @@ import {
   Plus,
   Upload,
   Search,
-  MoreHorizontal,
+  Trash2,
   Check,
   X,
   Clock,
@@ -17,6 +17,7 @@ import {
 import { guests } from "@/lib/api";
 import { Guest, GuestStats } from "@/lib/types";
 import { cn, rsvpStatusLabels } from "@/lib/utils";
+import { PageLoader, StatCard, Modal, ModalFooter, EmptyState } from "@/components/ui";
 import toast from "react-hot-toast";
 
 export default function GuestsPage() {
@@ -98,11 +99,7 @@ export default function GuestsPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -129,31 +126,31 @@ export default function GuestsPage() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             icon={Users}
             label="Всего"
             value={stats.total}
-            color="gray"
+            iconColor="default"
           />
           <StatCard
             icon={UserCheck}
             label="Придут"
             value={stats.accepted}
-            subtext={stats.plusOnes > 0 ? `+${stats.plusOnes} сопровождающих` : undefined}
-            color="green"
+            sublabel={stats.plusOnes > 0 ? `+${stats.plusOnes} сопровождающих` : undefined}
+            iconColor="success"
           />
           <StatCard
             icon={UserX}
             label="Не придут"
             value={stats.declined}
-            color="red"
+            iconColor="error"
           />
           <StatCard
             icon={Clock}
             label="Ожидание"
             value={stats.pending}
-            color="yellow"
+            iconColor="warning"
           />
         </div>
       )}
@@ -194,16 +191,21 @@ export default function GuestsPage() {
       </div>
 
       {/* Guest list */}
-      <div className="card">
+      <div className="card p-0">
         {filteredGuests.length === 0 ? (
-          <div className="text-center py-12">
-            <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              {guestList.length === 0
-                ? "Список гостей пуст"
-                : "Нет гостей по заданным фильтрам"}
-            </p>
-          </div>
+          <EmptyState
+            icon={Users}
+            title={guestList.length === 0 ? "Список гостей пуст" : "Нет гостей по заданным фильтрам"}
+            description={guestList.length === 0 ? "Добавьте первого гостя" : "Попробуйте изменить фильтры"}
+            action={
+              guestList.length === 0 ? (
+                <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
+                  <Plus className="w-4 h-4" />
+                  Добавить гостя
+                </button>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="divide-y divide-border">
             {filteredGuests.map((guest) => (
@@ -236,47 +238,11 @@ export default function GuestsPage() {
   );
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  subtext,
-  color,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: number;
-  subtext?: string;
-  color: "gray" | "green" | "red" | "yellow";
-}) {
-  const colorClasses = {
-    gray: "bg-gray-100 text-gray-600",
-    green: "bg-green-100 text-green-600",
-    red: "bg-red-100 text-red-600",
-    yellow: "bg-yellow-100 text-yellow-600",
-  };
-
-  return (
-    <div className="card">
-      <div className="flex items-center gap-3">
-        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center", colorClasses[color])}>
-          <Icon className="w-5 h-5" />
-        </div>
-        <div>
-          <p className="text-2xl font-bold">{value}</p>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          {subtext && <p className="text-xs text-muted-foreground">{subtext}</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function GuestRow({ guest, onDelete }: { guest: Guest; onDelete: () => void }) {
   const statusConfig = rsvpStatusLabels[guest.rsvpStatus] || { ru: "Неизвестно", color: "gray" };
 
   return (
-    <div className="flex items-center gap-4 py-3">
+    <div className="flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors">
       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
         <span className="text-primary font-medium">
           {guest.name.charAt(0).toUpperCase()}
@@ -292,22 +258,22 @@ function GuestRow({ guest, onDelete }: { guest: Guest; onDelete: () => void }) {
       </div>
       <span
         className={cn(
-          "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
-          statusConfig.color === "green" && "bg-green-100 text-green-700",
-          statusConfig.color === "red" && "bg-red-100 text-red-700",
-          statusConfig.color === "gray" && "bg-gray-100 text-gray-700"
+          statusConfig.color === "green" && "badge-success",
+          statusConfig.color === "red" && "badge-error",
+          statusConfig.color === "gray" && "badge-warning"
         )}
       >
-        {statusConfig.color === "green" && <Check className="w-3 h-3" />}
-        {statusConfig.color === "red" && <X className="w-3 h-3" />}
-        {statusConfig.color === "gray" && <Clock className="w-3 h-3" />}
+        {statusConfig.color === "green" && <Check className="w-3 h-3 mr-1" />}
+        {statusConfig.color === "red" && <X className="w-3 h-3 mr-1" />}
+        {statusConfig.color === "gray" && <Clock className="w-3 h-3 mr-1" />}
         {statusConfig.ru}
       </span>
       <button
         onClick={onDelete}
-        className="p-2 text-muted-foreground hover:text-red-600 transition-colors"
+        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+        title="Удалить"
       >
-        <MoreHorizontal className="w-4 h-4" />
+        <Trash2 className="w-4 h-4" />
       </button>
     </div>
   );
@@ -331,52 +297,49 @@ function AddGuestModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="card w-full max-w-md mx-4">
-        <h2 className="text-lg font-semibold mb-4">Добавить гостя</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Имя *</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="input"
-              placeholder="Имя гостя"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Телефон</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="input"
-              placeholder="+7 777 123 4567"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="input"
-              placeholder="email@example.com"
-            />
-          </div>
-          <div className="flex gap-3 pt-4">
-            <button type="button" onClick={onClose} className="btn-outline btn-md flex-1">
-              Отмена
-            </button>
-            <button type="submit" className="btn-primary btn-md flex-1">
-              Добавить
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal isOpen onClose={onClose} title="Добавить гостя">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Имя *</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="input"
+            placeholder="Имя гостя"
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Телефон</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="input"
+            placeholder="+7 777 123 4567"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input"
+            placeholder="email@example.com"
+          />
+        </div>
+        <ModalFooter>
+          <button type="button" onClick={onClose} className="btn-outline btn-md">
+            Отмена
+          </button>
+          <button type="submit" className="btn-primary btn-md">
+            Добавить
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }
 
@@ -405,36 +368,31 @@ function ImportModal({
     .filter((n) => n.length > 0).length;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="card w-full max-w-md mx-4">
-        <h2 className="text-lg font-semibold mb-4">Импорт гостей</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Список имён (по одному на строку)
-            </label>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              className="input min-h-[200px]"
-              placeholder="Айдар Сериков&#10;Дана Касымова&#10;Алмас Нурланов"
-            />
-            {previewCount > 0 && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Будет добавлено: {previewCount} гостей
-              </p>
-            )}
-          </div>
-          <div className="flex gap-3 pt-4">
-            <button type="button" onClick={onClose} className="btn-outline btn-md flex-1">
-              Отмена
-            </button>
-            <button type="submit" className="btn-primary btn-md flex-1">
-              Импортировать
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal isOpen onClose={onClose} title="Импорт гостей" description="Добавьте имена гостей, по одному на строку">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="input min-h-[200px]"
+            placeholder="Айдар Сериков&#10;Дана Касымова&#10;Алмас Нурланов"
+            autoFocus
+          />
+          {previewCount > 0 && (
+            <p className="text-sm text-muted-foreground mt-2">
+              Будет добавлено: <span className="font-medium text-foreground">{previewCount}</span> гостей
+            </p>
+          )}
+        </div>
+        <ModalFooter>
+          <button type="button" onClick={onClose} className="btn-outline btn-md">
+            Отмена
+          </button>
+          <button type="submit" className="btn-primary btn-md">
+            Импортировать
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }

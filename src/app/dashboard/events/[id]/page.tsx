@@ -7,6 +7,7 @@ import { Calendar, MapPin, Clock, Users, Wallet, CheckSquare, Copy, ExternalLink
 import { events } from "@/lib/api";
 import { Event, EventStats } from "@/lib/types";
 import { formatDate, formatCurrency, getDaysUntil, eventTypeLabels } from "@/lib/utils";
+import { PageLoader } from "@/components/ui";
 import toast from "react-hot-toast";
 
 export default function EventDetailPage() {
@@ -43,11 +44,7 @@ export default function EventDetailPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-foreground border-t-transparent"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!event) {

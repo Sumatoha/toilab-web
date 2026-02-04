@@ -6,6 +6,7 @@ import { Plus, Calendar, MoreHorizontal } from "lucide-react";
 import { events } from "@/lib/api";
 import { Event } from "@/lib/types";
 import { formatDate, eventTypeLabels } from "@/lib/utils";
+import { PageLoader, EmptyState } from "@/components/ui";
 
 export default function DashboardPage() {
   const [eventList, setEventList] = useState<Event[]>([]);
@@ -26,11 +27,7 @@ export default function DashboardPage() {
   }, []);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-foreground border-t-transparent"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
@@ -46,7 +43,7 @@ export default function DashboardPage() {
 
       {/* Content */}
       {eventList.length === 0 ? (
-        <EmptyState />
+        <EventsEmptyState />
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full">
@@ -71,18 +68,20 @@ export default function DashboardPage() {
   );
 }
 
-function EmptyState() {
+function EventsEmptyState() {
   return (
-    <div className="text-center py-16 border border-dashed border-border rounded-lg">
-      <Calendar className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
-      <h2 className="text-lg font-medium mb-2">Нет мероприятий</h2>
-      <p className="text-sm text-muted-foreground mb-6">
-        Создайте первое мероприятие
-      </p>
-      <Link href="/dashboard/events/new" className="btn-primary btn-md">
-        <Plus className="w-4 h-4" />
-        Создать мероприятие
-      </Link>
+    <div className="border border-dashed border-border rounded-lg">
+      <EmptyState
+        icon={Calendar}
+        title="Нет мероприятий"
+        description="Создайте первое мероприятие, чтобы начать планирование"
+        action={
+          <Link href="/dashboard/events/new" className="btn-primary btn-md">
+            <Plus className="w-4 h-4" />
+            Создать мероприятие
+          </Link>
+        }
+      />
     </div>
   );
 }
