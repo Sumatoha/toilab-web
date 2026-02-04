@@ -40,8 +40,8 @@ export default function VendorsPage() {
         vendorsApi.list(eventId),
         vendorsApi.getSummary(eventId),
       ]);
-      setVendorsList(vendorsData);
-      setSummary(summaryData);
+      setVendorsList(vendorsData || []);
+      setSummary(summaryData || { totalVendors: 0, totalCost: 0, totalPaid: 0, totalPending: 0, byStatus: {} as Record<string, number> });
     } catch (error) {
       console.error("Failed to load vendors:", error);
       toast.error("Не удалось загрузить подрядчиков");

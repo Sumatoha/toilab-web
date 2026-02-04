@@ -32,8 +32,8 @@ export default function ChecklistPage() {
         checklistApi.list(eventId),
         checklistApi.getProgress(eventId),
       ]);
-      setItems(itemsData);
-      setProgress(progressData);
+      setItems(itemsData || []);
+      setProgress(progressData || { total: 0, completed: 0, percent: 0 });
     } catch (error) {
       console.error("Failed to load checklist:", error);
       toast.error("Не удалось загрузить чек-лист");

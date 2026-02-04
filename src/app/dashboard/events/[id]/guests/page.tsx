@@ -41,8 +41,8 @@ export default function GuestsPage() {
         guests.list(eventId),
         guests.getStats(eventId),
       ]);
-      setGuestList(guestsData);
-      setStats(statsData);
+      setGuestList(guestsData || []);
+      setStats(statsData || { total: 0, accepted: 0, declined: 0, pending: 0, plusOnes: 0 });
     } catch (error) {
       console.error("Failed to load guests:", error);
       toast.error("Не удалось загрузить гостей");
@@ -273,7 +273,7 @@ function StatCard({
 }
 
 function GuestRow({ guest, onDelete }: { guest: Guest; onDelete: () => void }) {
-  const statusConfig = rsvpStatusLabels[guest.rsvpStatus];
+  const statusConfig = rsvpStatusLabels[guest.rsvpStatus] || { ru: "Неизвестно", color: "gray" };
 
   return (
     <div className="flex items-center gap-4 py-3">

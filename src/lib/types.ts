@@ -283,6 +283,9 @@ export interface CreateEventRequest {
   title: string;
   person1?: string;
   person2?: string;
+  date?: string;
+  time?: string;
+  guestLimit?: number;
   totalBudget?: number;
 }
 

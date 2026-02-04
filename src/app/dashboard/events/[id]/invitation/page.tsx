@@ -33,10 +33,10 @@ export default function InvitationPage() {
       const [eventData, templatesData, previewData] = await Promise.all([
         events.get(eventId),
         templatesApi.listPreviews(),
-        invitation.getPreview(eventId),
+        invitation.getPreview(eventId).catch(() => null),
       ]);
       setEvent(eventData);
-      setTemplatesList(templatesData);
+      setTemplatesList(templatesData || []);
       setPreview(previewData);
     } catch (error) {
       console.error("Failed to load invitation data:", error);

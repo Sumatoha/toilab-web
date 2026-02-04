@@ -42,10 +42,21 @@ export default function EventDetailPage() {
     try {
       const [eventData, statsData] = await Promise.all([
         events.get(eventId),
-        events.getStats(eventId),
+        events.getStats(eventId).catch(() => null),
       ]);
       setEvent(eventData);
-      setStats(statsData);
+      setStats(statsData || {
+        totalGuests: 0,
+        confirmedGuests: 0,
+        declinedGuests: 0,
+        pendingGuests: 0,
+        totalPlusOnes: 0,
+        plannedBudget: 0,
+        actualBudget: 0,
+        paidAmount: 0,
+        checklistTotal: 0,
+        checklistDone: 0,
+      });
     } catch (error) {
       console.error("Failed to load event:", error);
     } finally {

@@ -233,6 +233,61 @@ export default function NewEventPage() {
               </div>
             )}
 
+            {/* Date and Time */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Дата мероприятия
+                </label>
+                <input
+                  type="date"
+                  value={formData.date || ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      date: e.target.value,
+                    }))
+                  }
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Время начала
+                </label>
+                <input
+                  type="time"
+                  value={formData.time || ""}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      time: e.target.value,
+                    }))
+                  }
+                  className="input"
+                />
+              </div>
+            </div>
+
+            {/* Guest limit */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Ожидаемое количество гостей
+              </label>
+              <input
+                type="number"
+                value={formData.guestLimit || ""}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    guestLimit: parseInt(e.target.value) || 0,
+                  }))
+                }
+                placeholder="100"
+                className="input"
+              />
+            </div>
+
             {/* Budget */}
             <div>
               <label className="block text-sm font-medium mb-2">

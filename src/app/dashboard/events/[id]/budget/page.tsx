@@ -34,8 +34,8 @@ export default function BudgetPage() {
         expensesApi.list(eventId),
         expensesApi.getBudgetSummary(eventId),
       ]);
-      setExpensesList(expensesData);
-      setSummary(summaryData);
+      setExpensesList(expensesData || []);
+      setSummary(summaryData || { totalPlanned: 0, totalActual: 0, totalPaid: 0, byCategory: [] });
     } catch (error) {
       console.error("Failed to load budget:", error);
       toast.error("Не удалось загрузить бюджет");
