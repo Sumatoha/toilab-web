@@ -20,7 +20,7 @@ export default function EventsPage() {
   async function loadEvents() {
     try {
       const data = await eventsApi.list();
-      setEventsList(data);
+      setEventsList(data || []);
     } catch (error) {
       console.error("Failed to load events:", error);
       toast.error("Не удалось загрузить мероприятия");

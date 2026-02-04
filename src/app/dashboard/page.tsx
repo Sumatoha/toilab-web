@@ -26,20 +26,23 @@ export default function DashboardPage() {
   async function loadData() {
     try {
       const data = await events.list();
-      setEventList(data);
+      const eventData = data || [];
+      setEventList(eventData);
 
       // Load stats for each event
       const statsMap = new Map<string, EventStats>();
-      await Promise.all(
-        data.slice(0, 3).map(async (event) => {
-          try {
-            const eventStats = await events.getStats(event.id);
-            statsMap.set(event.id, eventStats);
-          } catch {
-            // Ignore stats errors
-          }
-        })
-      );
+      if (eventData.length > 0) {
+        await Promise.all(
+          eventData.slice(0, 3).map(async (event) => {
+            try {
+              const eventStats = await events.getStats(event.id);
+              statsMap.set(event.id, eventStats);
+            } catch {
+              // Ignore stats errors
+            }
+          })
+        );
+      }
       setStats(statsMap);
     } catch (error) {
       console.error("Failed to load events:", error);
