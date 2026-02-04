@@ -10,7 +10,7 @@ export function Header() {
   const { user, logout } = useAuthStore();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
       <div className="flex h-14 items-center px-6">
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2 mr-8">
