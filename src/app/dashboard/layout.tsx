@@ -1,19 +1,25 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useRequireAuth } from "@/hooks/use-auth";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { Header } from "@/components/layout/Header";
+import { EventSidebar } from "@/components/layout/EventSidebar";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const { isLoading, isAuthenticated } = useRequireAuth();
+
+  // Check if we're inside an event page (but not /new)
+  const isEventPage = pathname.match(/\/dashboard\/events\/[^/]+/) && !pathname.includes("/new");
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-foreground border-t-transparent"></div>
       </div>
     );
   }
@@ -24,10 +30,13 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
-      <main className="pl-64">
-        <div className="p-8">{children}</div>
-      </main>
+      <Header />
+      <div className="flex">
+        {isEventPage && <EventSidebar />}
+        <main className="flex-1 p-6 max-w-5xl mx-auto w-full">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

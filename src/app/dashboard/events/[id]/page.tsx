@@ -3,26 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  Calendar,
-  MapPin,
-  Users,
-  Wallet,
-  CheckSquare,
-  Mail,
-  Settings,
-  Copy,
-  Clock,
-} from "lucide-react";
+import { Calendar, MapPin, Clock, Users, Wallet, CheckSquare, Copy, ExternalLink } from "lucide-react";
 import { events } from "@/lib/api";
 import { Event, EventStats } from "@/lib/types";
-import {
-  formatDate,
-  getDaysUntil,
-  formatDaysCount,
-  eventTypeLabels,
-  cn,
-} from "@/lib/utils";
+import { formatDate, formatCurrency, getDaysUntil, eventTypeLabels } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 export default function EventDetailPage() {
@@ -34,47 +18,34 @@ export default function EventDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    async function loadData() {
+      try {
+        const [eventData, statsData] = await Promise.all([
+          events.get(eventId),
+          events.getStats(eventId).catch(() => null),
+        ]);
+        setEvent(eventData);
+        setStats(statsData);
+      } catch (error) {
+        console.error("Failed to load event:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
     loadData();
   }, [eventId]);
 
-  async function loadData() {
-    try {
-      const [eventData, statsData] = await Promise.all([
-        events.get(eventId),
-        events.getStats(eventId).catch(() => null),
-      ]);
-      setEvent(eventData);
-      setStats(statsData || {
-        totalGuests: 0,
-        confirmedGuests: 0,
-        declinedGuests: 0,
-        pendingGuests: 0,
-        totalPlusOnes: 0,
-        plannedBudget: 0,
-        actualBudget: 0,
-        paidAmount: 0,
-        checklistTotal: 0,
-        checklistDone: 0,
-      });
-    } catch (error) {
-      console.error("Failed to load event:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  const copyInvitationLink = () => {
+  const copyLink = () => {
     if (event) {
-      const link = `${window.location.origin}/i/${event.slug}`;
-      navigator.clipboard.writeText(link);
-      toast.success("Ссылка скопирована!");
+      navigator.clipboard.writeText(`${window.location.origin}/i/${event.slug}`);
+      toast.success("Ссылка скопирована");
     }
   };
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-foreground border-t-transparent"></div>
       </div>
     );
   }
@@ -82,9 +53,9 @@ export default function EventDetailPage() {
   if (!event) {
     return (
       <div className="text-center py-16">
-        <h2 className="text-base font-medium mb-2">Мероприятие не найдено</h2>
-        <Link href="/dashboard" className="text-sm text-primary hover:underline">
-          Вернуться на главную
+        <p className="text-muted-foreground">Мероприятие не найдено</p>
+        <Link href="/dashboard" className="text-sm underline mt-2 inline-block">
+          Назад
         </Link>
       </div>
     );
@@ -94,147 +65,99 @@ export default function EventDetailPage() {
   const typeLabel = eventTypeLabels[event.type]?.ru || event.type;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-              {typeLabel}
-            </span>
-            <span
-              className={cn(
-                "flex items-center gap-1.5 text-xs font-medium",
-                event.status === "active" && "text-emerald-600",
-                event.status === "draft" && "text-amber-600",
-                event.status === "completed" && "text-muted-foreground"
-              )}
-            >
-              <span
-                className={cn(
-                  "w-1.5 h-1.5 rounded-full",
-                  event.status === "active" && "bg-emerald-500",
-                  event.status === "draft" && "bg-amber-500",
-                  event.status === "completed" && "bg-muted-foreground"
-                )}
-              />
-              {event.status === "active" ? "Активно" : event.status === "draft" ? "Черновик" : "Завершено"}
-            </span>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="badge-default">{typeLabel}</span>
+            <StatusBadge status={event.status} />
           </div>
-          <h1 className="text-xl font-semibold">{event.title}</h1>
+          <h1 className="text-2xl font-semibold">{event.title}</h1>
           {event.person1 && event.person2 && (
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {event.person1} & {event.person2}
-            </p>
+            <p className="text-muted-foreground mt-1">{event.person1} & {event.person2}</p>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {event.status === "active" && (
-            <button onClick={copyInvitationLink} className="btn-outline btn-sm">
-              <Copy className="w-3.5 h-3.5" />
+        {event.status === "active" && (
+          <div className="flex gap-2">
+            <button onClick={copyLink} className="btn-outline btn-sm">
+              <Copy className="w-4 h-4" />
               Ссылка
             </button>
-          )}
-          <Link href={`/dashboard/events/${eventId}/settings`} className="btn-ghost btn-sm">
-            <Settings className="w-4 h-4" />
-          </Link>
-        </div>
+            <Link
+              href={`/i/${event.slug}`}
+              target="_blank"
+              className="btn-outline btn-sm"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Открыть
+            </Link>
+          </div>
+        )}
       </div>
 
-      {/* Event info */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="p-4 rounded-xl bg-muted/30 border border-border/40">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <Calendar className="w-4 h-4" />
-            <span className="text-xs font-medium">Дата</span>
-          </div>
-          <p className="font-medium text-sm">{event.date ? formatDate(event.date) : "Не указана"}</p>
+      {/* Info */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="card">
+          <Calendar className="w-4 h-4 text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground">Дата</p>
+          <p className="font-medium">{event.date ? formatDate(event.date) : "Не указана"}</p>
           {daysUntil !== null && daysUntil > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">через {formatDaysCount(daysUntil)}</p>
+            <p className="text-xs text-muted-foreground mt-1">через {daysUntil} дн.</p>
           )}
         </div>
 
-        <div className="p-4 rounded-xl bg-muted/30 border border-border/40">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <Clock className="w-4 h-4" />
-            <span className="text-xs font-medium">Время</span>
-          </div>
-          <p className="font-medium text-sm">{event.time || "Не указано"}</p>
+        <div className="card">
+          <Clock className="w-4 h-4 text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground">Время</p>
+          <p className="font-medium">{event.time || "Не указано"}</p>
         </div>
 
-        <div className="p-4 rounded-xl bg-muted/30 border border-border/40 col-span-2">
-          <div className="flex items-center gap-2 text-muted-foreground mb-2">
-            <MapPin className="w-4 h-4" />
-            <span className="text-xs font-medium">Место</span>
-          </div>
-          <p className="font-medium text-sm">{event.venue?.name || "Не указано"}</p>
+        <div className="card col-span-2">
+          <MapPin className="w-4 h-4 text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground">Место</p>
+          <p className="font-medium">{event.venue?.name || "Не указано"}</p>
           {event.venue?.address && (
-            <p className="text-xs text-muted-foreground mt-0.5">{event.venue.address}</p>
+            <p className="text-xs text-muted-foreground mt-1">{event.venue.address}</p>
           )}
         </div>
       </div>
 
-      {/* Quick stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Link
-          href={`/dashboard/events/${eventId}/guests`}
-          className="group p-4 rounded-xl border border-border/60 bg-card hover:border-primary/20 hover:shadow-sm transition-all"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <Users className="w-5 h-5 text-primary" />
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <Link href={`/dashboard/events/${eventId}/guests`} className="card hover:border-foreground/20 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <Users className="w-4 h-4 text-muted-foreground" />
             <span className="text-2xl font-semibold">{stats?.confirmedGuests || 0}</span>
           </div>
-          <p className="text-xs text-muted-foreground">подтвердили из {stats?.totalGuests || 0}</p>
+          <p className="text-sm text-muted-foreground">гостей подтвердили</p>
+          <p className="text-xs text-muted-foreground">из {stats?.totalGuests || 0}</p>
         </Link>
 
-        <Link
-          href={`/dashboard/events/${eventId}/budget`}
-          className="group p-4 rounded-xl border border-border/60 bg-card hover:border-primary/20 hover:shadow-sm transition-all"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <Wallet className="w-5 h-5 text-primary" />
-            <span className="text-2xl font-semibold">
-              {event.totalBudget > 0
-                ? Math.round(((stats?.paidAmount || 0) / event.totalBudget) * 100)
-                : 0}%
-            </span>
+        <Link href={`/dashboard/events/${eventId}/budget`} className="card hover:border-foreground/20 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <Wallet className="w-4 h-4 text-muted-foreground" />
+            <span className="text-2xl font-semibold">{formatCurrency(stats?.paidAmount || 0)}</span>
           </div>
-          <p className="text-xs text-muted-foreground">бюджета использовано</p>
+          <p className="text-sm text-muted-foreground">потрачено</p>
+          <p className="text-xs text-muted-foreground">из {formatCurrency(event.totalBudget)}</p>
         </Link>
 
-        <Link
-          href={`/dashboard/events/${eventId}/checklist`}
-          className="group p-4 rounded-xl border border-border/60 bg-card hover:border-primary/20 hover:shadow-sm transition-all"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <CheckSquare className="w-5 h-5 text-primary" />
-            <span className="text-2xl font-semibold">
-              {stats?.checklistDone || 0}/{stats?.checklistTotal || 0}
-            </span>
+        <Link href={`/dashboard/events/${eventId}/checklist`} className="card hover:border-foreground/20 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <CheckSquare className="w-4 h-4 text-muted-foreground" />
+            <span className="text-2xl font-semibold">{stats?.checklistDone || 0}/{stats?.checklistTotal || 0}</span>
           </div>
-          <p className="text-xs text-muted-foreground">задач выполнено</p>
+          <p className="text-sm text-muted-foreground">задач выполнено</p>
         </Link>
       </div>
-
-      {/* Invitation */}
-      <Link
-        href={`/dashboard/events/${eventId}/invitation`}
-        className="flex items-center justify-between p-4 rounded-xl border border-border/60 bg-card hover:border-primary/20 hover:shadow-sm transition-all group"
-      >
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Mail className="w-5 h-5 text-primary" />
-          </div>
-          <div>
-            <p className="font-medium group-hover:text-primary transition-colors">Приглашение</p>
-            <p className="text-xs text-muted-foreground">
-              {event.status === "active" ? "Активно — гости могут отвечать" : "Настройте и опубликуйте"}
-            </p>
-          </div>
-        </div>
-        <span className="text-xs text-muted-foreground">Открыть →</span>
-      </Link>
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === "active") return <span className="badge-success">Активно</span>;
+  if (status === "draft") return <span className="badge-warning">Черновик</span>;
+  return <span className="badge-default">Завершено</span>;
 }
