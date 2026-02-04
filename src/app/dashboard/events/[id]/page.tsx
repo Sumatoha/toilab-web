@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Calendar, MapPin, Clock, Users, Wallet, CheckSquare, Copy, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, Clock, Users, Wallet, CheckSquare, Copy, ExternalLink, Pencil } from "lucide-react";
 import { events } from "@/lib/api";
 import { Event, EventStats } from "@/lib/types";
 import { formatDate, formatCurrency, getDaysUntil, eventTypeLabels } from "@/lib/utils";
@@ -97,31 +97,40 @@ export default function EventDetailPage() {
         )}
       </div>
 
-      {/* Info */}
+      {/* Info - clickable to edit */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card">
-          <Calendar className="w-4 h-4 text-muted-foreground mb-2" />
+        <Link href={`/dashboard/events/${eventId}/settings`} className="card group hover:border-foreground/20 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
           <p className="text-sm text-muted-foreground">Дата</p>
           <p className="font-medium">{event.date ? formatDate(event.date) : "Не указана"}</p>
           {daysUntil !== null && daysUntil > 0 && (
             <p className="text-xs text-muted-foreground mt-1">через {daysUntil} дн.</p>
           )}
-        </div>
+        </Link>
 
-        <div className="card">
-          <Clock className="w-4 h-4 text-muted-foreground mb-2" />
+        <Link href={`/dashboard/events/${eventId}/settings`} className="card group hover:border-foreground/20 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
           <p className="text-sm text-muted-foreground">Время</p>
           <p className="font-medium">{event.time || "Не указано"}</p>
-        </div>
+        </Link>
 
-        <div className="card col-span-2">
-          <MapPin className="w-4 h-4 text-muted-foreground mb-2" />
+        <Link href={`/dashboard/events/${eventId}/settings`} className="card group hover:border-foreground/20 transition-colors col-span-2">
+          <div className="flex items-center justify-between mb-2">
+            <MapPin className="w-4 h-4 text-muted-foreground" />
+            <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
           <p className="text-sm text-muted-foreground">Место</p>
           <p className="font-medium">{event.venue?.name || "Не указано"}</p>
           {event.venue?.address && (
             <p className="text-xs text-muted-foreground mt-1">{event.venue.address}</p>
           )}
-        </div>
+        </Link>
       </div>
 
       {/* Stats */}
