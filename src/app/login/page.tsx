@@ -9,26 +9,24 @@ import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading, fetchUser, setAuth } = useAuthStore();
+  const { isAuthenticated, isHydrated, hydrate, setAuth } = useAuthStore();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    useAuthStore.persist.rehydrate();
-  }, []);
+    setMounted(true);
+    hydrate();
+  }, [hydrate]);
 
   useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (isHydrated && isAuthenticated) {
       router.push("/dashboard");
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isHydrated, isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +39,11 @@ export default function LoginPage() {
         toast.success("Добро пожаловать!");
         router.push("/dashboard");
       } else {
+        if (!name.trim()) {
+          toast.error("Введите имя");
+          setSubmitting(false);
+          return;
+        }
         const result = await auth.register(email, password, name);
         setAuth(result.user, result.accessToken, result.refreshToken);
         toast.success("Регистрация успешна!");
@@ -54,7 +57,7 @@ export default function LoginPage() {
     }
   };
 
-  if (isLoading) {
+  if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -64,7 +67,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header */}
       <header className="border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -78,7 +80,6 @@ export default function LoginPage() {
         </div>
       </header>
 
-      {/* Main */}
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="card p-8">
@@ -106,7 +107,6 @@ export default function LoginPage() {
                     onChange={(e) => setName(e.target.value)}
                     className="input w-full"
                     placeholder="Ваше имя"
-                    required
                   />
                 </div>
               )}
@@ -148,7 +148,7 @@ export default function LoginPage() {
                 className="btn-primary w-full h-12"
               >
                 {submitting ? (
-                  <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                  <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white inline-block"></span>
                 ) : mode === "login" ? (
                   "Войти"
                 ) : (
@@ -159,6 +159,7 @@ export default function LoginPage() {
 
             <div className="mt-6 text-center">
               <button
+                type="button"
                 onClick={() => setMode(mode === "login" ? "register" : "login")}
                 className="text-sm text-primary hover:underline"
               >
