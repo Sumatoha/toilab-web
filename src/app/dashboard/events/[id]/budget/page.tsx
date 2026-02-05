@@ -9,9 +9,11 @@ import {
   TrendingDown,
   PieChart,
   Trash2,
+  Pencil,
+  Check,
 } from "lucide-react";
 import { expenses as expensesApi } from "@/lib/api";
-import { Expense, BudgetSummary, ExpenseCategory } from "@/lib/types";
+import { Expense, BudgetSummary, ExpenseCategory, ExpenseStatus, UpdateExpenseRequest } from "@/lib/types";
 import { cn, formatCurrency, expenseCategoryLabels } from "@/lib/utils";
 import { PageLoader, ConfirmDialog, Modal, ModalFooter } from "@/components/ui";
 import toast from "react-hot-toast";
@@ -24,6 +26,7 @@ export default function BudgetPage() {
   const [summary, setSummary] = useState<BudgetSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ExpenseCategory | null>(null);
   const [deleteExpenseId, setDeleteExpenseId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -78,6 +81,22 @@ export default function BudgetPage() {
       toast.error(err.message || "Не удалось удалить расход");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleUpdateExpense = async (data: UpdateExpenseRequest) => {
+    if (!editingExpense) return;
+    try {
+      const updated = await expensesApi.update(eventId, editingExpense.id, data);
+      setExpensesList((prev) =>
+        prev.map((e) => (e.id === editingExpense.id ? updated : e))
+      );
+      setEditingExpense(null);
+      toast.success("Расход обновлён");
+      loadData(); // Reload summary
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "Не удалось обновить расход");
     }
   };
 
@@ -203,6 +222,7 @@ export default function BudgetPage() {
               <ExpenseRow
                 key={expense.id}
                 expense={expense}
+                onEdit={() => setEditingExpense(expense)}
                 onDelete={() => setDeleteExpenseId(expense.id)}
               />
             ))}
@@ -215,6 +235,15 @@ export default function BudgetPage() {
         <AddExpenseModal
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddExpense}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingExpense && (
+        <EditExpenseModal
+          expense={editingExpense}
+          onClose={() => setEditingExpense(null)}
+          onSave={handleUpdateExpense}
         />
       )}
 
@@ -236,9 +265,11 @@ export default function BudgetPage() {
 
 function ExpenseRow({
   expense,
+  onEdit,
   onDelete,
 }: {
   expense: Expense;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const label = expenseCategoryLabels[expense.category];
@@ -247,27 +278,57 @@ function ExpenseRow({
       ? Math.round((expense.paidAmount / expense.plannedAmount) * 100)
       : 0;
 
+  const statusLabels: Record<ExpenseStatus, { text: string; class: string }> = {
+    planned: { text: "Запланировано", class: "badge-default" },
+    booked: { text: "Забронировано", class: "badge-info" },
+    paid: { text: "Оплачено", class: "badge-success" },
+  };
+
+  const status = statusLabels[expense.status] || statusLabels.planned;
+
   return (
-    <div className="flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors">
+    <div
+      className="flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors cursor-pointer group"
+      onClick={onEdit}
+    >
       <div className="flex-1 min-w-0">
-        <p className="font-medium truncate">{expense.title}</p>
+        <div className="flex items-center gap-2">
+          <p className="font-medium truncate">{expense.title}</p>
+          <span className={status.class}>{status.text}</span>
+        </div>
         <p className="text-sm text-muted-foreground">
           {label?.ru || expense.category}
         </p>
       </div>
       <div className="text-right">
         <p className="font-medium">{formatCurrency(expense.plannedAmount)}</p>
-        <p className="text-sm text-muted-foreground">
-          {paidPercent}% оплачено
-        </p>
+        {expense.paidAmount > 0 && (
+          <p className="text-sm text-emerald-600">
+            Оплачено: {formatCurrency(expense.paidAmount)}
+          </p>
+        )}
+        {expense.paidAmount === 0 && (
+          <p className="text-sm text-muted-foreground">
+            {paidPercent}% оплачено
+          </p>
+        )}
       </div>
-      <button
-        onClick={onDelete}
-        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-        title="Удалить"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+          title="Редактировать"
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+          title="Удалить"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -352,6 +413,157 @@ function AddExpenseModal({
           </button>
           <button type="submit" className="btn-primary btn-md">
             Добавить
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
+}
+
+function EditExpenseModal({
+  expense,
+  onClose,
+  onSave,
+}: {
+  expense: Expense;
+  onClose: () => void;
+  onSave: (data: UpdateExpenseRequest) => void;
+}) {
+  const [title, setTitle] = useState(expense.title);
+  const [category, setCategory] = useState<ExpenseCategory>(expense.category);
+  const [plannedAmount, setPlannedAmount] = useState(expense.plannedAmount.toString());
+  const [actualAmount, setActualAmount] = useState(expense.actualAmount.toString());
+  const [paidAmount, setPaidAmount] = useState(expense.paidAmount.toString());
+  const [status, setStatus] = useState<ExpenseStatus>(expense.status);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      title: title.trim(),
+      category,
+      plannedAmount: parseInt(plannedAmount) || 0,
+      actualAmount: parseInt(actualAmount) || 0,
+      paidAmount: parseInt(paidAmount) || 0,
+      status,
+    });
+  };
+
+  const handleMarkPaid = () => {
+    const amount = parseInt(plannedAmount) || 0;
+    setPaidAmount(amount.toString());
+    setActualAmount(amount.toString());
+    setStatus("paid");
+  };
+
+  const categories: ExpenseCategory[] = [
+    "venue", "catering", "decoration", "photo", "video",
+    "music", "attire", "transport", "invitation", "gift", "beauty", "other",
+  ];
+
+  return (
+    <Modal isOpen onClose={onClose} title="Редактировать расход" size="md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <label className="block text-sm font-medium mb-1.5">Название</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="input"
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="block text-sm font-medium mb-1.5">Категория</label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+              className="input"
+            >
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {expenseCategoryLabels[cat]?.ru || cat}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <h4 className="text-sm font-medium mb-3">Суммы (тенге)</h4>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Планировали</label>
+              <input
+                type="number"
+                value={plannedAmount}
+                onChange={(e) => setPlannedAmount(e.target.value)}
+                className="input"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Фактически</label>
+              <input
+                type="number"
+                value={actualAmount}
+                onChange={(e) => setActualAmount(e.target.value)}
+                className="input"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1">Оплачено</label>
+              <input
+                type="number"
+                value={paidAmount}
+                onChange={(e) => setPaidAmount(e.target.value)}
+                className="input"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <label className="block text-sm font-medium mb-2">Статус</label>
+          <div className="flex gap-2">
+            {[
+              { value: "planned", label: "Запланировано" },
+              { value: "booked", label: "Забронировано" },
+              { value: "paid", label: "Оплачено" },
+            ].map((s) => (
+              <button
+                key={s.value}
+                type="button"
+                onClick={() => setStatus(s.value as ExpenseStatus)}
+                className={cn(
+                  "px-3 py-1.5 text-sm rounded-md border transition-colors",
+                  status === s.value
+                    ? "bg-primary text-white border-primary"
+                    : "border-border hover:border-primary/50"
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <button
+            type="button"
+            onClick={handleMarkPaid}
+            className="btn-outline btn-sm w-full"
+          >
+            <Check className="w-4 h-4" />
+            Отметить как полностью оплачено
+          </button>
+        </div>
+
+        <ModalFooter>
+          <button type="button" onClick={onClose} className="btn-outline btn-md">
+            Отмена
+          </button>
+          <button type="submit" className="btn-primary btn-md">
+            Сохранить
           </button>
         </ModalFooter>
       </form>
