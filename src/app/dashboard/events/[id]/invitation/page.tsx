@@ -60,12 +60,9 @@ export default function InvitationPage() {
     if (!event) return;
 
     try {
-      await events.update(eventId, {});
-      setEvent((prev) =>
-        prev ? { ...prev, invitation: { ...prev.invitation, templateId: templateSlug } } : null
-      );
+      const updated = await invitation.updateConfig(eventId, { templateId: templateSlug });
+      setEvent(updated);
       toast.success("Шаблон выбран");
-      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось выбрать шаблон");
@@ -165,8 +162,8 @@ export default function InvitationPage() {
             </div>
           </div>
           {event.status === "active" && (
-            <div className="text-sm text-muted-foreground">
-              <span className="font-mono">{invitationLink}</span>
+            <div className="text-sm text-muted-foreground max-w-xs sm:max-w-md truncate">
+              <span className="font-mono text-xs">{invitationLink}</span>
             </div>
           )}
         </div>
@@ -283,6 +280,14 @@ export default function InvitationPage() {
   );
 }
 
+// Template color schemes for preview
+const templateColors: Record<string, { bg: string; accent: string; text: string }> = {
+  "light-elegant": { bg: "#fdfbfb", accent: "#c9b5a7", text: "#3d3d3d" },
+  "dark-cinematic": { bg: "#0d0d0d", accent: "#c9a962", text: "#f5f5f5" },
+  "modern-minimal": { bg: "#ffffff", accent: "#111111", text: "#111111" },
+  "kazakh-national": { bg: "#fffef7", accent: "#c4956a", text: "#1e3a5f" },
+};
+
 function TemplateCard({
   template,
   isSelected,
@@ -292,31 +297,53 @@ function TemplateCard({
   isSelected: boolean;
   onSelect: () => void;
 }) {
+  const colors = templateColors[template.slug] || { bg: "#f5f5f5", accent: "#666", text: "#333" };
+
   return (
     <button
       onClick={onSelect}
       className={cn(
-        "card text-left transition-all hover:shadow-md",
+        "card text-left transition-all hover:shadow-md p-3",
         isSelected && "ring-2 ring-primary"
       )}
     >
-      <div className="aspect-[3/4] bg-secondary rounded-lg mb-3 overflow-hidden">
-        {template.previewUrl && (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5" />
-        )}
+      <div
+        className="aspect-[3/4] rounded-lg mb-3 overflow-hidden flex flex-col items-center justify-center p-4"
+        style={{ backgroundColor: colors.bg }}
+      >
+        <div
+          className="text-[10px] tracking-widest uppercase mb-2"
+          style={{ color: colors.accent }}
+        >
+          Свадьба
+        </div>
+        <div
+          className="text-lg font-serif text-center leading-tight"
+          style={{ color: colors.text }}
+        >
+          Алина
+          <span style={{ color: colors.accent }} className="block text-sm my-1">&</span>
+          Данияр
+        </div>
+        <div
+          className="text-[9px] mt-3 tracking-wide"
+          style={{ color: colors.accent }}
+        >
+          15.06.2025
+        </div>
       </div>
       <div className="flex items-center justify-between">
         <div>
-          <p className="font-medium">{template.name}</p>
+          <p className="font-medium text-sm">{template.name}</p>
           <p className="text-xs text-muted-foreground">{template.nameKz}</p>
         </div>
         {isSelected && (
-          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
             <Check className="w-4 h-4 text-white" />
           </div>
         )}
-        {template.isPremium && (
-          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">
+        {template.isPremium && !isSelected && (
+          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded flex-shrink-0">
             Premium
           </span>
         )}

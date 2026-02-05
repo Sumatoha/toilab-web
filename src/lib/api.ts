@@ -42,12 +42,57 @@ class ApiError extends Error {
   }
 }
 
+// Flag to prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+
+async function tryRefreshToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+
+  const refreshToken = localStorage.getItem("refreshToken");
+  if (!refreshToken) return null;
+
+  try {
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+      // Refresh failed - clear tokens
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      return null;
+    }
+
+    const data = await response.json();
+    localStorage.setItem("accessToken", data.accessToken);
+    return data.accessToken;
+  } catch {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    return null;
+  }
+}
+
+async function getValidToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+
+  // If already refreshing, wait for that to complete
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  return localStorage.getItem("accessToken");
+}
+
 async function fetchApi<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  isRetry = false
 ): Promise<T> {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+  const token = await getValidToken();
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -62,6 +107,30 @@ async function fetchApi<T>(
     ...options,
     headers,
   });
+
+  // Handle 401 - try to refresh token
+  if (response.status === 401 && !isRetry && !endpoint.includes("/auth/")) {
+    // Avoid multiple simultaneous refreshes
+    if (!isRefreshing) {
+      isRefreshing = true;
+      refreshPromise = tryRefreshToken();
+    }
+
+    const newToken = await refreshPromise;
+    isRefreshing = false;
+    refreshPromise = null;
+
+    if (newToken) {
+      // Retry the request with new token
+      return fetchApi<T>(endpoint, options, true);
+    } else {
+      // Refresh failed - redirect to login
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+      throw new ApiError(401, "Session expired");
+    }
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -305,6 +374,12 @@ export const invitation = {
 
   getPreview: (eventId: string) =>
     fetchApi<InvitationData>(`/events/${eventId}/invitation/preview`),
+
+  updateConfig: (eventId: string, data: { templateId?: string; rsvpEnabled?: boolean }) =>
+    fetchApi<Event>(`/events/${eventId}/invitation`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 };
 
 export { ApiError };
