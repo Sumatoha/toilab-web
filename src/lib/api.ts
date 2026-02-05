@@ -31,6 +31,7 @@ import {
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const FUNCTION_URL = process.env.NEXT_PUBLIC_FUNCTION_URL || API_URL;
 
 class ApiError extends Error {
   constructor(
@@ -400,9 +401,41 @@ export interface GenerationsRemaining {
   total: number;
 }
 
+// Fetch with Function URL (for long-running operations like AI generation)
+async function fetchFunctionApi<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const token = await getValidToken();
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${FUNCTION_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new ApiError(
+      response.status,
+      errorData.error || `Request failed: ${response.status}`
+    );
+  }
+
+  return response.json();
+}
+
 export const ai = {
   generate: (eventId: string, data: GenerateInvitationRequest) =>
-    fetchApi<GenerateInvitationResponse>(`/events/${eventId}/ai/generate`, {
+    fetchFunctionApi<GenerateInvitationResponse>(`/events/${eventId}/ai/generate`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
