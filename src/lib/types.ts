@@ -56,6 +56,7 @@ export interface InvitationConfig {
   rsvpEnabled: boolean;
   config?: Record<string, string>;
   customHtml?: string;
+  styleDescription?: string;
 }
 
 export interface EventStats {

@@ -375,11 +375,40 @@ export const invitation = {
   getPreview: (eventId: string) =>
     fetchApi<InvitationData>(`/events/${eventId}/invitation/preview`),
 
-  updateConfig: (eventId: string, data: { templateId?: string; rsvpEnabled?: boolean }) =>
+  updateConfig: (eventId: string, data: { templateId?: string; rsvpEnabled?: boolean; customHtml?: string; styleDescription?: string }) =>
     fetchApi<Event>(`/events/${eventId}/invitation`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
+};
+
+// AI Generation
+export interface GenerateInvitationRequest {
+  greetingRu: string;
+  greetingKz: string;
+  styleDescription: string;
+}
+
+export interface GenerateInvitationResponse {
+  html: string;
+  generationsLeft: number;
+  generationsTotal: number;
+}
+
+export interface GenerationsRemaining {
+  remaining: number;
+  total: number;
+}
+
+export const ai = {
+  generate: (eventId: string, data: GenerateInvitationRequest) =>
+    fetchApi<GenerateInvitationResponse>(`/events/${eventId}/ai/generate`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getGenerationsRemaining: () =>
+    fetchApi<GenerationsRemaining>("/ai/generations"),
 };
 
 export { ApiError };
