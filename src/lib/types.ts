@@ -273,6 +273,7 @@ export interface GuestPublicData {
 export interface TemplatePublicData {
   slug: string;
   name: string;
+  htmlTemplate?: string;
   cssVariables: CSSVariables;
   blocks: string[];
 }

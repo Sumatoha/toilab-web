@@ -10,19 +10,31 @@ import {
   Palette,
 } from "lucide-react";
 import { events, templates as templatesApi, invitation } from "@/lib/api";
-import { Event, TemplatePreview, InvitationData } from "@/lib/types";
+import { Event, TemplatePreview, InvitationData, EventPublicData } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 // Default templates when API doesn't return any
 const defaultTemplates: TemplatePreview[] = [
-  { slug: "classic", name: "Классика", nameKz: "Классика", previewUrl: "", isPremium: false },
-  { slug: "romantic", name: "Романтика", nameKz: "Романтика", previewUrl: "", isPremium: false },
-  { slug: "minimal", name: "Минимализм", nameKz: "Минимализм", previewUrl: "", isPremium: false },
-  { slug: "elegant", name: "Элегантный", nameKz: "Сәнді", previewUrl: "", isPremium: true },
-  { slug: "modern", name: "Современный", nameKz: "Заманауи", previewUrl: "", isPremium: false },
-  { slug: "traditional", name: "Традиционный", nameKz: "Дәстүрлі", previewUrl: "", isPremium: false },
+  { slug: "light-elegant", name: "Элегантный светлый", nameKz: "Нәзік жарық", previewUrl: "", isPremium: false },
+  { slug: "dark-cinematic", name: "Тёмный кинематографичный", nameKz: "Қараңғы кинематографиялық", previewUrl: "", isPremium: false },
+  { slug: "modern-minimal", name: "Современный минимализм", nameKz: "Заманауи минимализм", previewUrl: "", isPremium: false },
+  { slug: "kazakh-national", name: "Казахский национальный", nameKz: "Қазақ ұлттық", previewUrl: "", isPremium: false },
 ];
+
+// Function to render template with actual data
+function renderTemplate(html: string, eventData: EventPublicData): string {
+  return html
+    .replace(/\{\{person1\}\}/g, eventData.person1 || "Имя 1")
+    .replace(/\{\{person2\}\}/g, eventData.person2 || "Имя 2")
+    .replace(/\{\{date\}\}/g, eventData.date || "Дата")
+    .replace(/\{\{time\}\}/g, eventData.time || "Время")
+    .replace(/\{\{venue\}\}/g, eventData.venue?.name || "Место")
+    .replace(/\{\{address\}\}/g, eventData.venue?.address || "Адрес")
+    .replace(/\{\{greeting\}\}/g, eventData.greetingRu || "Приглашаем вас на наше торжество!")
+    .replace(/\{\{greetingKz\}\}/g, eventData.greetingKz || "")
+    .replace(/\{\{hashtag\}\}/g, eventData.hashtag || "");
+}
 
 export default function InvitationPage() {
   const params = useParams();
@@ -62,6 +74,9 @@ export default function InvitationPage() {
     try {
       const updated = await invitation.updateConfig(eventId, { templateId: templateSlug });
       setEvent(updated);
+      // Reload preview with new template
+      const previewData = await invitation.getPreview(eventId).catch(() => null);
+      setPreview(previewData);
       toast.success("Шаблон выбран");
     } catch (error) {
       const err = error as Error;
@@ -235,44 +250,16 @@ export default function InvitationPage() {
       )}
 
       {/* Preview */}
-      {preview && (
+      {preview && preview.template?.htmlTemplate && (
         <div className="card">
           <h3 className="text-lg font-semibold mb-4">Предпросмотр</h3>
-          <div className="aspect-[9/16] max-w-sm mx-auto bg-secondary rounded-lg overflow-hidden">
-            <div
-              className="w-full h-full p-4 flex flex-col items-center justify-center text-center"
-              style={{
-                backgroundColor: preview.template?.cssVariables.bgColor || "#fff",
-                color: preview.template?.cssVariables.textColor || "#000",
-              }}
-            >
-              <p
-                className="text-3xl font-bold mb-2"
-                style={{
-                  fontFamily: preview.template?.cssVariables.fontDisplay,
-                }}
-              >
-                {preview.event.person1}
-              </p>
-              <p
-                className="text-lg mb-2"
-                style={{
-                  color: preview.template?.cssVariables.accentColor,
-                }}
-              >
-                &
-              </p>
-              <p
-                className="text-3xl font-bold mb-6"
-                style={{
-                  fontFamily: preview.template?.cssVariables.fontDisplay,
-                }}
-              >
-                {preview.event.person2}
-              </p>
-              <p className="text-sm opacity-70">{preview.event.date}</p>
-              <p className="text-sm opacity-70">{preview.event.venue.name}</p>
-            </div>
+          <div className="aspect-[9/16] max-w-sm mx-auto bg-secondary rounded-lg overflow-hidden border">
+            <iframe
+              srcDoc={renderTemplate(preview.template.htmlTemplate, preview.event)}
+              className="w-full h-full border-0"
+              title="Предпросмотр приглашения"
+              sandbox="allow-scripts"
+            />
           </div>
         </div>
       )}
