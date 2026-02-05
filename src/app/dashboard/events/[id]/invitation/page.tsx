@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import {
   Check,
@@ -47,8 +47,78 @@ export default function InvitationPage() {
   const [greetingRu, setGreetingRu] = useState("");
   const [greetingKz, setGreetingKz] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState<string>("");
   const [generationsRemaining, setGenerationsRemaining] = useState<number | null>(null);
   const [generationsTotal, setGenerationsTotal] = useState<number | null>(null);
+
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, []);
+
+  const checkGenerationStatus = useCallback(async () => {
+    try {
+      const status = await ai.getStatus(eventId);
+      setGenerationStatus(status.status);
+      setGenerationsRemaining(status.generationsLeft);
+      setGenerationsTotal(status.generationsTotal);
+
+      if (status.status === "completed") {
+        // Stop polling
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+        setIsGenerating(false);
+
+        // Update preview
+        if (status.html) {
+          setPreview((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  template: {
+                    slug: "ai-generated",
+                    name: "AI Generated",
+                    htmlTemplate: status.html,
+                    cssVariables: {
+                      accentColor: "",
+                      bgColor: "",
+                      textColor: "",
+                      fontDisplay: "",
+                      fontBody: "",
+                    },
+                    blocks: [],
+                  },
+                }
+              : null
+          );
+        }
+
+        // Reload event data
+        const updatedEvent = await events.get(eventId);
+        setEvent(updatedEvent);
+
+        toast.success("Приглашение готово!");
+      } else if (status.status === "failed") {
+        // Stop polling
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+        setIsGenerating(false);
+        toast.error(status.error || "Ошибка генерации");
+      }
+    } catch (error) {
+      console.error("Failed to check status:", error);
+    }
+  }, [eventId]);
 
   useEffect(() => {
     loadData();
@@ -73,6 +143,15 @@ export default function InvitationPage() {
         setGenerationsRemaining(generationsData.remaining);
         setGenerationsTotal(generationsData.total);
       }
+
+      // Check if generation is in progress
+      const invConfig = eventData.invitation as { generationStatus?: string };
+      if (invConfig.generationStatus === "generating") {
+        setIsGenerating(true);
+        setGenerationStatus("generating");
+        // Start polling
+        pollingRef.current = setInterval(checkGenerationStatus, 3000);
+      }
     } catch (error) {
       console.error("Failed to load invitation data:", error);
       toast.error("Не удалось загрузить данные");
@@ -90,6 +169,8 @@ export default function InvitationPage() {
     }
 
     setIsGenerating(true);
+    setGenerationStatus("generating");
+
     try {
       const result = await ai.generate(eventId, {
         greetingRu: greetingRu.trim() || "Приглашаем вас разделить с нами радость нашего торжества!",
@@ -97,41 +178,43 @@ export default function InvitationPage() {
         styleDescription: styleDescription.trim(),
       });
 
-      // Update preview with generated HTML
-      setPreview((prev) =>
-        prev
-          ? {
-              ...prev,
-              template: {
-                slug: "ai-generated",
-                name: "AI Generated",
-                htmlTemplate: result.html,
-                cssVariables: {
-                  accentColor: "",
-                  bgColor: "",
-                  textColor: "",
-                  fontDisplay: "",
-                  fontBody: "",
-                },
-                blocks: [],
-              },
-            }
-          : null
-      );
-
       setGenerationsRemaining(result.generationsLeft);
       setGenerationsTotal(result.generationsTotal);
 
-      // Reload event data
-      const updatedEvent = await events.get(eventId);
-      setEvent(updatedEvent);
-
-      toast.success("Приглашение сгенерировано!");
+      if (result.status === "generating") {
+        // Start polling for status
+        toast.success("Генерация запущена! Это может занять до минуты...");
+        pollingRef.current = setInterval(checkGenerationStatus, 3000);
+      } else if (result.status === "completed" && result.html) {
+        // Immediate result (unlikely with Opus)
+        setPreview((prev) =>
+          prev
+            ? {
+                ...prev,
+                template: {
+                  slug: "ai-generated",
+                  name: "AI Generated",
+                  htmlTemplate: result.html,
+                  cssVariables: {
+                    accentColor: "",
+                    bgColor: "",
+                    textColor: "",
+                    fontDisplay: "",
+                    fontBody: "",
+                  },
+                  blocks: [],
+                },
+              }
+            : null
+        );
+        setIsGenerating(false);
+        toast.success("Приглашение готово!");
+      }
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось сгенерировать приглашение");
-    } finally {
+      toast.error(err.message || "Не удалось запустить генерацию");
       setIsGenerating(false);
+      setGenerationStatus("");
     }
   };
 
@@ -278,7 +361,7 @@ export default function InvitationPage() {
             <div className="card">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
-                AI Генерация
+                AI Генерация (Claude Opus 4.5)
               </h3>
 
               {/* Style description */}
@@ -292,6 +375,7 @@ export default function InvitationPage() {
                     onChange={(e) => setStyleDescription(e.target.value)}
                     placeholder="Опишите желаемый стиль: цвета, настроение, элементы...&#10;&#10;Примеры:&#10;• Минималистичный, белый фон, золотые акценты&#10;• Казахский национальный стиль с орнаментами&#10;• Романтический, пастельные тона, цветы"
                     className="w-full h-32 px-4 py-3 rounded-lg border border-border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={isGenerating}
                   />
                 </div>
 
@@ -304,6 +388,7 @@ export default function InvitationPage() {
                     onChange={(e) => setGreetingRu(e.target.value)}
                     placeholder="Дорогие друзья! Приглашаем вас разделить с нами радость нашего торжества..."
                     className="w-full h-24 px-4 py-3 rounded-lg border border-border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={isGenerating}
                   />
                 </div>
 
@@ -319,6 +404,7 @@ export default function InvitationPage() {
                     onChange={(e) => setGreetingKz(e.target.value)}
                     placeholder="Құрметті қонақтар! Сіздерді біздің тойымызға шақырамыз..."
                     className="w-full h-24 px-4 py-3 rounded-lg border border-border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={isGenerating}
                   />
                 </div>
 
@@ -331,7 +417,7 @@ export default function InvitationPage() {
                   {isGenerating ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Генерация...
+                      Генерация... (до 1 мин)
                     </>
                   ) : (
                     <>
@@ -366,7 +452,17 @@ export default function InvitationPage() {
                       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-black rounded-b-2xl z-10" />
 
                       {/* Content */}
-                      {preview?.template?.htmlTemplate ? (
+                      {isGenerating ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-center p-6 bg-gradient-to-b from-secondary to-background">
+                          <Loader2 className="w-12 h-12 text-primary mb-4 animate-spin" />
+                          <p className="text-muted-foreground font-medium">
+                            AI создаёт приглашение...
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Это может занять до минуты
+                          </p>
+                        </div>
+                      ) : preview?.template?.htmlTemplate ? (
                         <iframe
                           srcDoc={renderTemplate(
                             preview.template.htmlTemplate,
