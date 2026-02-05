@@ -435,13 +435,10 @@ async function fetchFunctionApi<T>(
 
 export const ai = {
   generate: (eventId: string, data: GenerateInvitationRequest) =>
-    fetchApi<GenerateInvitationResponse>(`/events/${eventId}/ai/generate`, {
+    fetchFunctionApi<GenerateInvitationResponse>(`/events/${eventId}/ai/generate`, {
       method: "POST",
       body: JSON.stringify(data),
     }),
-
-  getStatus: (eventId: string) =>
-    fetchApi<GenerateInvitationResponse>(`/events/${eventId}/ai/status`),
 
   getGenerationsRemaining: () =>
     fetchApi<GenerationsRemaining>("/ai/generations"),

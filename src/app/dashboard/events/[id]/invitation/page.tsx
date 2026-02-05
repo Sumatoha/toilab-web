@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   Check,
@@ -47,78 +47,8 @@ export default function InvitationPage() {
   const [greetingRu, setGreetingRu] = useState("");
   const [greetingKz, setGreetingKz] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationStatus, setGenerationStatus] = useState<string>("");
   const [generationsRemaining, setGenerationsRemaining] = useState<number | null>(null);
   const [generationsTotal, setGenerationsTotal] = useState<number | null>(null);
-
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
-    };
-  }, []);
-
-  const checkGenerationStatus = useCallback(async () => {
-    try {
-      const status = await ai.getStatus(eventId);
-      setGenerationStatus(status.status);
-      setGenerationsRemaining(status.generationsLeft);
-      setGenerationsTotal(status.generationsTotal);
-
-      if (status.status === "completed") {
-        // Stop polling
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-        }
-        setIsGenerating(false);
-
-        // Update preview
-        if (status.html) {
-          setPreview((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  template: {
-                    slug: "ai-generated",
-                    name: "AI Generated",
-                    htmlTemplate: status.html,
-                    cssVariables: {
-                      accentColor: "",
-                      bgColor: "",
-                      textColor: "",
-                      fontDisplay: "",
-                      fontBody: "",
-                    },
-                    blocks: [],
-                  },
-                }
-              : null
-          );
-        }
-
-        // Reload event data
-        const updatedEvent = await events.get(eventId);
-        setEvent(updatedEvent);
-
-        toast.success("Приглашение готово!");
-      } else if (status.status === "failed") {
-        // Stop polling
-        if (pollingRef.current) {
-          clearInterval(pollingRef.current);
-          pollingRef.current = null;
-        }
-        setIsGenerating(false);
-        toast.error(status.error || "Ошибка генерации");
-      }
-    } catch (error) {
-      console.error("Failed to check status:", error);
-    }
-  }, [eventId]);
 
   useEffect(() => {
     loadData();
@@ -143,15 +73,6 @@ export default function InvitationPage() {
         setGenerationsRemaining(generationsData.remaining);
         setGenerationsTotal(generationsData.total);
       }
-
-      // Check if generation is in progress
-      const invConfig = eventData.invitation as { generationStatus?: string };
-      if (invConfig.generationStatus === "generating") {
-        setIsGenerating(true);
-        setGenerationStatus("generating");
-        // Start polling
-        pollingRef.current = setInterval(checkGenerationStatus, 3000);
-      }
     } catch (error) {
       console.error("Failed to load invitation data:", error);
       toast.error("Не удалось загрузить данные");
@@ -169,7 +90,6 @@ export default function InvitationPage() {
     }
 
     setIsGenerating(true);
-    setGenerationStatus("generating");
 
     try {
       const result = await ai.generate(eventId, {
@@ -181,12 +101,8 @@ export default function InvitationPage() {
       setGenerationsRemaining(result.generationsLeft);
       setGenerationsTotal(result.generationsTotal);
 
-      if (result.status === "generating") {
-        // Start polling for status
-        toast.success("Генерация запущена! Это может занять до минуты...");
-        pollingRef.current = setInterval(checkGenerationStatus, 3000);
-      } else if (result.status === "completed" && result.html) {
-        // Immediate result (unlikely with Opus)
+      // Update preview with generated HTML
+      if (result.html) {
         setPreview((prev) =>
           prev
             ? {
@@ -207,14 +123,18 @@ export default function InvitationPage() {
               }
             : null
         );
-        setIsGenerating(false);
+
+        // Reload event data to get updated customHtml
+        const updatedEvent = await events.get(eventId);
+        setEvent(updatedEvent);
+
         toast.success("Приглашение готово!");
       }
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось запустить генерацию");
+      toast.error(err.message || "Не удалось сгенерировать приглашение");
+    } finally {
       setIsGenerating(false);
-      setGenerationStatus("");
     }
   };
 
