@@ -2,10 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Calendar, Clock, MapPin, Heart, ExternalLink } from "lucide-react";
+import { Heart } from "lucide-react";
 import { invitation } from "@/lib/api";
 import { InvitationData } from "@/lib/types";
-import { formatDate, formatTime } from "@/lib/utils";
+
+// Replace placeholders with actual event data
+function renderTemplate(html: string, event: InvitationData["event"]): string {
+  return html
+    .replace(/\{\{person1\}\}/g, event.person1 || "")
+    .replace(/\{\{person2\}\}/g, event.person2 || "")
+    .replace(/\{\{date\}\}/g, event.date || "")
+    .replace(/\{\{time\}\}/g, event.time || "")
+    .replace(/\{\{venue\}\}/g, event.venue?.name || "")
+    .replace(/\{\{address\}\}/g, event.venue?.address || "")
+    .replace(/\{\{greeting\}\}/g, event.greetingRu || "")
+    .replace(/\{\{greetingKz\}\}/g, event.greetingKz || "")
+    .replace(/\{\{hashtag\}\}/g, event.hashtag || "");
+}
 
 export default function InvitationPage() {
   const params = useParams();
@@ -55,104 +68,32 @@ export default function InvitationPage() {
     );
   }
 
-  const { event } = data;
+  const { event, template } = data;
 
+  // If there's a custom HTML template, render it full-page
+  if (template?.htmlTemplate) {
+    const renderedHtml = renderTemplate(template.htmlTemplate, event);
+    return (
+      <iframe
+        srcDoc={renderedHtml}
+        className="w-full h-screen border-0"
+        title="Приглашение"
+        sandbox="allow-scripts allow-same-origin"
+      />
+    );
+  }
+
+  // Fallback: simple default template
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-amber-50">
-      {/* Hero */}
-      <div className="relative h-[60vh] min-h-[400px] flex items-center justify-center overflow-hidden">
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-64 h-64 bg-rose-300 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-10 right-10 w-96 h-96 bg-amber-300 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="relative z-10 text-center px-4">
-          <p className="text-rose-500 font-medium mb-4 tracking-widest uppercase text-sm">
-            Приглашение
-          </p>
-          <h1 className="text-4xl md:text-6xl font-display font-bold text-gray-900 mb-6">
-            {event.person1} <span className="text-rose-500">&</span> {event.person2}
-          </h1>
-          <p className="text-xl text-gray-600 max-w-lg mx-auto">
-            {event.greetingRu || "Мы приглашаем вас разделить с нами этот особенный день"}
-          </p>
-        </div>
-      </div>
-
-      {/* Details */}
-      <div className="max-w-2xl mx-auto px-4 py-16">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Date */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="w-12 h-12 bg-rose-100 rounded-xl flex items-center justify-center mb-4">
-              <Calendar className="w-6 h-6 text-rose-500" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-1">Когда</h3>
-            <p className="text-gray-600">
-              {event.date ? formatDate(event.date) : "Дата будет объявлена"}
-            </p>
-            {event.time && (
-              <p className="text-gray-500 text-sm mt-1 flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {formatTime(event.time)}
-              </p>
-            )}
-          </div>
-
-          {/* Location */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mb-4">
-              <MapPin className="w-6 h-6 text-amber-500" />
-            </div>
-            <h3 className="font-semibold text-gray-900 mb-1">Где</h3>
-            <p className="text-gray-600">
-              {event.venue?.name || "Место будет объявлено"}
-            </p>
-            {event.venue?.address && (
-              <p className="text-gray-500 text-sm mt-1">{event.venue.address}</p>
-            )}
-            {event.venue?.city && (
-              <p className="text-gray-500 text-sm">{event.venue.city}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Greeting in Kazakh */}
-        {event.greetingKz && (
-          <div className="mt-12 text-center">
-            <p className="text-gray-600 italic">{event.greetingKz}</p>
-          </div>
-        )}
-
-        {/* Hashtag */}
-        {event.hashtag && (
-          <div className="mt-12 text-center">
-            <span className="inline-block px-6 py-3 bg-gray-100 rounded-full text-gray-700 font-medium">
-              {event.hashtag}
-            </span>
-          </div>
-        )}
-
-        {/* 2GIS link */}
-        {event.venue?.twoGisId && (
-          <div className="mt-8 text-center">
-            <a
-              href={`https://2gis.kz/almaty/firm/${event.venue.twoGisId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-rose-500 hover:text-rose-600"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Открыть в 2ГИС
-            </a>
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="py-8 text-center text-gray-400 text-sm">
-        <p>Создано с помощью Toilab</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-rose-50 to-amber-50">
+      <div className="text-center px-4">
+        <h1 className="text-4xl md:text-6xl font-display font-bold text-gray-900 mb-6">
+          {event.person1} <span className="text-rose-500">&</span> {event.person2}
+        </h1>
+        <p className="text-xl text-gray-600">
+          {event.greetingRu || "Приглашаем вас на наше торжество"}
+        </p>
+        {event.date && <p className="mt-4 text-gray-500">{event.date}</p>}
       </div>
     </div>
   );

@@ -8,6 +8,21 @@ import { InvitationData, RSVPStatus } from "@/lib/types";
 import { formatDate, formatTime, cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
+// Replace placeholders with actual event data
+function renderTemplate(html: string, event: InvitationData["event"], guestName?: string): string {
+  return html
+    .replace(/\{\{person1\}\}/g, event.person1 || "")
+    .replace(/\{\{person2\}\}/g, event.person2 || "")
+    .replace(/\{\{date\}\}/g, event.date || "")
+    .replace(/\{\{time\}\}/g, event.time || "")
+    .replace(/\{\{venue\}\}/g, event.venue?.name || "")
+    .replace(/\{\{address\}\}/g, event.venue?.address || "")
+    .replace(/\{\{greeting\}\}/g, event.greetingRu || "")
+    .replace(/\{\{greetingKz\}\}/g, event.greetingKz || "")
+    .replace(/\{\{hashtag\}\}/g, event.hashtag || "")
+    .replace(/\{\{guestName\}\}/g, guestName || "Дорогой гость");
+}
+
 export default function PersonalInvitationPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -88,7 +103,20 @@ export default function PersonalInvitationPage() {
     );
   }
 
-  const { event, guest } = data;
+  const { event, guest, template } = data;
+
+  // If there's a custom HTML template, render it full-page
+  if (template?.htmlTemplate) {
+    const renderedHtml = renderTemplate(template.htmlTemplate, event, guest?.name);
+    return (
+      <iframe
+        srcDoc={renderedHtml}
+        className="w-full h-screen border-0"
+        title="Приглашение"
+        sandbox="allow-scripts allow-same-origin"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-amber-50">
