@@ -101,32 +101,14 @@ export default function InvitationPage() {
       setGenerationsRemaining(result.generationsLeft);
       setGenerationsTotal(result.generationsTotal);
 
-      // Update preview with generated HTML
       if (result.html) {
-        setPreview((prev) =>
-          prev
-            ? {
-                ...prev,
-                template: {
-                  slug: "ai-generated",
-                  name: "AI Generated",
-                  htmlTemplate: result.html,
-                  cssVariables: {
-                    accentColor: "",
-                    bgColor: "",
-                    textColor: "",
-                    fontDisplay: "",
-                    fontBody: "",
-                  },
-                  blocks: [],
-                },
-              }
-            : null
-        );
-
-        // Reload event data to get updated customHtml
-        const updatedEvent = await events.get(eventId);
+        // Reload both event and preview from server
+        const [updatedEvent, updatedPreview] = await Promise.all([
+          events.get(eventId),
+          invitation.getPreview(eventId),
+        ]);
         setEvent(updatedEvent);
+        setPreview(updatedPreview);
 
         toast.success("Приглашение готово!");
       }
