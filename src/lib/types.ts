@@ -52,11 +52,7 @@ export interface Event {
 }
 
 export interface InvitationConfig {
-  templateId?: string;
-  rsvpEnabled: boolean;
-  config?: Record<string, string>;
-  customHtml?: string;
-  styleDescription?: string;
+  externalUrl?: string;
 }
 
 export interface EventStats {
@@ -211,73 +207,6 @@ export interface ChecklistProgress {
   percent: number;
 }
 
-// Template
-export interface InvitationTemplate {
-  id: string;
-  slug: string;
-  name: string;
-  nameKz: string;
-  previewUrl: string;
-  htmlTemplate: string;
-  cssVariables: CSSVariables;
-  blocks: string[];
-  isPremium: boolean;
-  isAiGenerated: boolean;
-}
-
-export interface CSSVariables {
-  accentColor: string;
-  bgColor: string;
-  textColor: string;
-  fontDisplay: string;
-  fontBody: string;
-}
-
-export interface TemplatePreview {
-  slug: string;
-  name: string;
-  nameKz: string;
-  previewUrl: string;
-  isPremium: boolean;
-}
-
-// Invitation Data (public)
-export interface InvitationData {
-  event: EventPublicData;
-  guest?: GuestPublicData;
-  template: TemplatePublicData;
-}
-
-export interface EventPublicData {
-  type: EventType;
-  title: string;
-  person1: string;
-  person2: string;
-  date?: string;
-  time?: string;
-  venue: Venue;
-  greetingKz: string;
-  greetingRu: string;
-  hashtag?: string;
-  coverImage?: string;
-  rsvpOpen: boolean;
-}
-
-export interface GuestPublicData {
-  id: string;
-  name: string;
-  status: RSVPStatus;
-  plusCount: number;
-  note?: string;
-}
-
-export interface TemplatePublicData {
-  slug: string;
-  name: string;
-  htmlTemplate?: string;
-  cssVariables: CSSVariables;
-  blocks: string[];
-}
 
 // API Request types
 export interface CreateEventRequest {

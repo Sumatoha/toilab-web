@@ -10,15 +10,11 @@ import {
   VendorSummary,
   ChecklistItem,
   ChecklistProgress,
-  InvitationTemplate,
-  TemplatePreview,
-  InvitationData,
   CreateEventRequest,
   UpdateEventRequest,
   CreateGuestRequest,
   UpdateGuestRequest,
   ImportGuestsRequest,
-  RSVPRequest,
   CreateExpenseRequest,
   UpdateExpenseRequest,
   CreateVendorRequest,
@@ -31,7 +27,6 @@ import {
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-const FUNCTION_URL = process.env.NEXT_PUBLIC_FUNCTION_URL || API_URL;
 
 class ApiError extends Error {
   constructor(
@@ -209,6 +204,12 @@ export const events = {
     fetchApi<Event>(`/events/${id}/activate`, {
       method: "PUT",
     }),
+
+  updateInvitation: (id: string, data: { externalUrl: string }) =>
+    fetchApi<Event>(`/events/${id}/invitation`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
 };
 
 // Guests
@@ -349,99 +350,6 @@ export const checklist = {
     fetchApi<ChecklistProgress>(`/events/${eventId}/checklist/progress`),
 
   getCategories: () => fetchApi<ChecklistCategory[]>("/checklist-categories"),
-};
-
-// Templates
-export const templates = {
-  list: () => fetchApi<InvitationTemplate[]>("/templates"),
-
-  get: (slug: string) => fetchApi<InvitationTemplate>(`/templates/${slug}`),
-
-  listPreviews: () => fetchApi<TemplatePreview[]>("/templates/previews"),
-};
-
-// Invitation (public)
-export const invitation = {
-  get: (slug: string) => fetchApi<InvitationData>(`/i/${slug}`),
-
-  getPersonalized: (slug: string, link: string) =>
-    fetchApi<InvitationData>(`/i/${slug}/${link}`),
-
-  submitRSVP: (slug: string, link: string, data: RSVPRequest) =>
-    fetchApi<{ message: string }>(`/i/${slug}/${link}/rsvp`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  getPreview: (eventId: string) =>
-    fetchApi<InvitationData>(`/events/${eventId}/invitation/preview`),
-
-  updateConfig: (eventId: string, data: { templateId?: string; rsvpEnabled?: boolean; customHtml?: string; styleDescription?: string }) =>
-    fetchApi<Event>(`/events/${eventId}/invitation`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
-};
-
-// AI Generation
-export interface GenerateInvitationRequest {
-  greetingRu: string;
-  greetingKz: string;
-  styleDescription: string;
-}
-
-export interface GenerateInvitationResponse {
-  html: string;
-  generationsLeft: number;
-  generationsTotal: number;
-}
-
-export interface GenerationsRemaining {
-  remaining: number;
-  total: number;
-}
-
-// Fetch with Function URL (for long-running operations like AI generation)
-async function fetchFunctionApi<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const token = await getValidToken();
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${FUNCTION_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new ApiError(
-      response.status,
-      errorData.error || `Request failed: ${response.status}`
-    );
-  }
-
-  return response.json();
-}
-
-export const ai = {
-  generate: (eventId: string, data: GenerateInvitationRequest) =>
-    fetchFunctionApi<GenerateInvitationResponse>(`/events/${eventId}/ai/generate`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  getGenerationsRemaining: () =>
-    fetchApi<GenerationsRemaining>("/ai/generations"),
 };
 
 export { ApiError };
