@@ -11,12 +11,29 @@ import {
   Trash2,
   Pencil,
   Check,
+  Target,
+  CreditCard,
 } from "lucide-react";
 import { expenses as expensesApi } from "@/lib/api";
 import { Expense, BudgetSummary, ExpenseCategory, ExpenseStatus, UpdateExpenseRequest } from "@/lib/types";
 import { cn, formatCurrency, expenseCategoryLabels } from "@/lib/utils";
-import { PageLoader, ConfirmDialog, Modal, ModalFooter } from "@/components/ui";
+import { PageLoader, ConfirmDialog, Modal, ModalFooter, ProgressBar, CircularProgress } from "@/components/ui";
 import toast from "react-hot-toast";
+
+const categoryColors: Record<ExpenseCategory, { bg: string; text: string; accent: string }> = {
+  venue: { bg: "bg-blue-100", text: "text-blue-700", accent: "bg-blue-500" },
+  catering: { bg: "bg-orange-100", text: "text-orange-700", accent: "bg-orange-500" },
+  decoration: { bg: "bg-pink-100", text: "text-pink-700", accent: "bg-pink-500" },
+  photo: { bg: "bg-purple-100", text: "text-purple-700", accent: "bg-purple-500" },
+  video: { bg: "bg-indigo-100", text: "text-indigo-700", accent: "bg-indigo-500" },
+  music: { bg: "bg-cyan-100", text: "text-cyan-700", accent: "bg-cyan-500" },
+  attire: { bg: "bg-rose-100", text: "text-rose-700", accent: "bg-rose-500" },
+  transport: { bg: "bg-slate-100", text: "text-slate-700", accent: "bg-slate-500" },
+  invitation: { bg: "bg-teal-100", text: "text-teal-700", accent: "bg-teal-500" },
+  gift: { bg: "bg-amber-100", text: "text-amber-700", accent: "bg-amber-500" },
+  beauty: { bg: "bg-fuchsia-100", text: "text-fuchsia-700", accent: "bg-fuchsia-500" },
+  other: { bg: "bg-gray-100", text: "text-gray-700", accent: "bg-gray-500" },
+};
 
 export default function BudgetPage() {
   const params = useParams();
@@ -61,7 +78,7 @@ export default function BudgetPage() {
       setExpensesList((prev) => [...prev, newExpense]);
       setShowAddModal(false);
       toast.success("Расход добавлен");
-      loadData(); // Reload summary
+      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось добавить расход");
@@ -75,7 +92,7 @@ export default function BudgetPage() {
       await expensesApi.delete(eventId, deleteExpenseId);
       setExpensesList((prev) => prev.filter((e) => e.id !== deleteExpenseId));
       setDeleteExpenseId(null);
-      loadData(); // Reload summary
+      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось удалить расход");
@@ -93,7 +110,7 @@ export default function BudgetPage() {
       );
       setEditingExpense(null);
       toast.success("Расход обновлён");
-      loadData(); // Reload summary
+      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось обновить расход");
@@ -108,55 +125,119 @@ export default function BudgetPage() {
     return <PageLoader />;
   }
 
+  const budgetProgress = summary && summary.totalPlanned > 0
+    ? (summary.totalPaid / summary.totalPlanned) * 100
+    : 0;
+  const remaining = (summary?.totalPlanned || 0) - (summary?.totalPaid || 0);
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold">Бюджет</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-h1">Бюджет</h1>
+          <p className="text-caption mt-1">
             Отслеживайте расходы по категориям
           </p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="w-4 h-4" />
           Добавить расход
         </button>
       </div>
 
-      {/* Summary cards */}
+      {/* Budget Overview */}
       {summary && (
-        <div className="grid grid-cols-3 gap-4">
-          <div className="card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <Wallet className="w-5 h-5 text-blue-600" />
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Main Budget Card */}
+          <div className="lg:col-span-2 card p-6">
+            <div className="flex items-start justify-between mb-6">
               <div>
-                <p className="text-sm text-muted-foreground">Запланировано</p>
-                <p className="text-xl font-bold">{formatCurrency(summary.totalPlanned)}</p>
+                <h2 className="text-lg font-semibold mb-1">Обзор бюджета</h2>
+                <p className="text-sm text-muted-foreground">
+                  {Math.round(budgetProgress)}% от запланированного бюджета использовано
+                </p>
+              </div>
+              <CircularProgress
+                value={summary.totalPaid}
+                max={summary.totalPlanned || 1}
+                size={80}
+                color={budgetProgress > 90 ? "warning" : "success"}
+              />
+            </div>
+
+            <ProgressBar
+              value={summary.totalPaid}
+              max={summary.totalPlanned || 1}
+              color={budgetProgress > 90 ? "warning" : "success"}
+              size="lg"
+              className="mb-6"
+            />
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-blue-50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm text-blue-600 font-medium">Запланировано</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-700">
+                  {formatCurrency(summary.totalPlanned)}
+                </div>
+              </div>
+              <div className="p-4 rounded-xl bg-emerald-50">
+                <div className="flex items-center gap-2 mb-2">
+                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                  <span className="text-sm text-emerald-600 font-medium">Оплачено</span>
+                </div>
+                <div className="text-2xl font-bold text-emerald-700">
+                  {formatCurrency(summary.totalPaid)}
+                </div>
+              </div>
+              <div className={cn(
+                "p-4 rounded-xl",
+                remaining >= 0 ? "bg-amber-50" : "bg-red-50"
+              )}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Wallet className={cn("w-4 h-4", remaining >= 0 ? "text-amber-600" : "text-red-600")} />
+                  <span className={cn("text-sm font-medium", remaining >= 0 ? "text-amber-600" : "text-red-600")}>
+                    {remaining >= 0 ? "Осталось" : "Перерасход"}
+                  </span>
+                </div>
+                <div className={cn("text-2xl font-bold", remaining >= 0 ? "text-amber-700" : "text-red-700")}>
+                  {formatCurrency(Math.abs(remaining))}
+                </div>
               </div>
             </div>
           </div>
-          <div className="card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-yellow-600" />
+
+          {/* Quick Stats */}
+          <div className="card p-6">
+            <h3 className="text-lg font-semibold mb-4">Статистика</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Всего расходов</span>
+                <span className="font-semibold">{expensesList.length}</span>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Фактически</p>
-                <p className="text-xl font-bold">{formatCurrency(summary.totalActual)}</p>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Категорий</span>
+                <span className="font-semibold">{summary.byCategory.length}</span>
               </div>
-            </div>
-          </div>
-          <div className="card">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                <TrendingDown className="w-5 h-5 text-green-600" />
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Оплачено позиций</span>
+                <span className="font-semibold">
+                  {expensesList.filter(e => e.status === 'paid').length}
+                </span>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Оплачено</p>
-                <p className="text-xl font-bold">{formatCurrency(summary.totalPaid)}</p>
+              <div className="border-t border-border pt-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Средний расход</span>
+                  <span className="font-semibold">
+                    {expensesList.length > 0
+                      ? formatCurrency(Math.round(summary.totalPlanned / expensesList.length))
+                      : "—"
+                    }
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -164,40 +245,59 @@ export default function BudgetPage() {
       )}
 
       {/* Categories */}
-      <div className="card">
+      <div className="card p-6">
         <h2 className="text-lg font-semibold mb-4">По категориям</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           <button
             onClick={() => setSelectedCategory(null)}
             className={cn(
-              "p-3 rounded-lg border text-left transition-colors",
+              "p-4 rounded-xl border-2 text-left transition-all duration-150",
               selectedCategory === null
-                ? "border-primary bg-primary/5"
-                : "border-border hover:border-primary/50"
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-transparent bg-secondary hover:bg-secondary/80"
             )}
           >
-            <p className="font-medium">Все</p>
+            <p className="font-semibold">Все</p>
             <p className="text-sm text-muted-foreground">
               {expensesList.length} расходов
             </p>
           </button>
           {summary?.byCategory.map((cat) => {
             const label = expenseCategoryLabels[cat.category];
+            const colors = categoryColors[cat.category] || categoryColors.other;
+            const catProgress = cat.planned > 0 ? (cat.paid / cat.planned) * 100 : 0;
+
             return (
               <button
                 key={cat.category}
                 onClick={() => setSelectedCategory(cat.category)}
                 className={cn(
-                  "p-3 rounded-lg border text-left transition-colors",
+                  "p-4 rounded-xl border-2 text-left transition-all duration-150 relative overflow-hidden",
                   selectedCategory === cat.category
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-transparent bg-secondary hover:bg-secondary/80"
                 )}
               >
-                <p className="font-medium">{label?.ru || cat.category}</p>
-                <p className="text-sm text-muted-foreground">
+                <div className={cn(
+                  "absolute left-0 top-0 bottom-0 w-1 rounded-l-xl",
+                  colors.accent
+                )} />
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center text-xs", colors.bg, colors.text)}>
+                    {(label?.ru || cat.category).charAt(0)}
+                  </div>
+                  <p className="font-medium text-sm">{label?.ru || cat.category}</p>
+                </div>
+                <p className="text-lg font-bold">
                   {formatCurrency(cat.planned)}
                 </p>
+                <ProgressBar
+                  value={cat.paid}
+                  max={cat.planned || 1}
+                  size="sm"
+                  color={catProgress > 100 ? "error" : "primary"}
+                  className="mt-2"
+                />
               </button>
             );
           })}
@@ -205,25 +305,32 @@ export default function BudgetPage() {
       </div>
 
       {/* Expenses list */}
-      <div className="card">
-        <h2 className="text-lg font-semibold mb-4">
-          {selectedCategory
-            ? expenseCategoryLabels[selectedCategory]?.ru || selectedCategory
-            : "Все расходы"}
-        </h2>
+      <div className="card p-0 overflow-hidden">
+        <div className="p-4 border-b border-border">
+          <h2 className="text-lg font-semibold">
+            {selectedCategory
+              ? expenseCategoryLabels[selectedCategory]?.ru || selectedCategory
+              : "Все расходы"}
+          </h2>
+        </div>
         {filteredExpenses.length === 0 ? (
           <div className="text-center py-12">
             <PieChart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">Нет расходов</p>
+            <p className="text-muted-foreground mb-4">Нет расходов</p>
+            <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
+              <Plus className="w-4 h-4" />
+              Добавить расход
+            </button>
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {filteredExpenses.map((expense) => (
+            {filteredExpenses.map((expense, index) => (
               <ExpenseRow
                 key={expense.id}
                 expense={expense}
                 onEdit={() => setEditingExpense(expense)}
                 onDelete={() => setDeleteExpenseId(expense.id)}
+                className={`animate-in stagger-${Math.min(index + 1, 4)}`}
               />
             ))}
           </div>
@@ -267,47 +374,67 @@ function ExpenseRow({
   expense,
   onEdit,
   onDelete,
+  className,
 }: {
   expense: Expense;
   onEdit: () => void;
   onDelete: () => void;
+  className?: string;
 }) {
   const label = expenseCategoryLabels[expense.category];
+  const colors = categoryColors[expense.category] || categoryColors.other;
   const paidPercent =
     expense.plannedAmount > 0
       ? Math.round((expense.paidAmount / expense.plannedAmount) * 100)
       : 0;
 
-  const statusLabels: Record<ExpenseStatus, { text: string; class: string }> = {
-    planned: { text: "Запланировано", class: "badge-default" },
-    booked: { text: "Забронировано", class: "badge-info" },
-    paid: { text: "Оплачено", class: "badge-success" },
+  const statusLabels: Record<ExpenseStatus, { text: string; class: string; icon: typeof Check }> = {
+    planned: { text: "Запланировано", class: "badge-default", icon: Target },
+    booked: { text: "Забронировано", class: "badge-info", icon: CreditCard },
+    paid: { text: "Оплачено", class: "badge-success", icon: Check },
   };
 
   const status = statusLabels[expense.status] || statusLabels.planned;
+  const StatusIcon = status.icon;
 
   return (
     <div
-      className="flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors cursor-pointer group"
+      className={cn(
+        "flex items-center gap-4 px-4 py-4 hover:bg-secondary/50 transition-colors cursor-pointer group",
+        className
+      )}
       onClick={onEdit}
     >
+      <div className={cn(
+        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+        colors.bg
+      )}>
+        <span className={cn("text-sm font-bold", colors.text)}>
+          {(label?.ru || expense.category).charAt(0)}
+        </span>
+      </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-1">
           <p className="font-medium truncate">{expense.title}</p>
-          <span className={status.class}>{status.text}</span>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {label?.ru || expense.category}
-        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {label?.ru || expense.category}
+          </span>
+          <span className={cn("inline-flex items-center gap-1", status.class)}>
+            <StatusIcon className="w-3 h-3" />
+            {status.text}
+          </span>
+        </div>
       </div>
       <div className="text-right">
-        <p className="font-medium">{formatCurrency(expense.plannedAmount)}</p>
+        <p className="font-semibold">{formatCurrency(expense.plannedAmount)}</p>
         {expense.paidAmount > 0 && (
           <p className="text-sm text-emerald-600">
-            Оплачено: {formatCurrency(expense.paidAmount)}
+            {formatCurrency(expense.paidAmount)} оплачено
           </p>
         )}
-        {expense.paidAmount === 0 && (
+        {expense.paidAmount === 0 && expense.plannedAmount > 0 && (
           <p className="text-sm text-muted-foreground">
             {paidPercent}% оплачено
           </p>
@@ -316,14 +443,14 @@ function ExpenseRow({
       <div className="flex items-center gap-1">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
           title="Редактировать"
         >
           <Pencil className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
           title="Удалить"
         >
           <Trash2 className="w-4 h-4" />
@@ -374,17 +501,27 @@ function AddExpenseModal({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1.5">Категория</label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
-            className="input"
-          >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {expenseCategoryLabels[cat]?.ru || cat}
-              </option>
-            ))}
-          </select>
+          <div className="grid grid-cols-4 gap-2">
+            {categories.map((cat) => {
+              const colors = categoryColors[cat];
+              const label = expenseCategoryLabels[cat]?.ru || cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategory(cat)}
+                  className={cn(
+                    "p-2 rounded-lg text-xs font-medium transition-all",
+                    category === cat
+                      ? cn(colors.bg, colors.text, "ring-2 ring-primary ring-offset-1")
+                      : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Название *</label>
@@ -526,24 +663,28 @@ function EditExpenseModal({
           <label className="block text-sm font-medium mb-2">Статус</label>
           <div className="flex gap-2">
             {[
-              { value: "planned", label: "Запланировано" },
-              { value: "booked", label: "Забронировано" },
-              { value: "paid", label: "Оплачено" },
-            ].map((s) => (
-              <button
-                key={s.value}
-                type="button"
-                onClick={() => setStatus(s.value as ExpenseStatus)}
-                className={cn(
-                  "px-3 py-1.5 text-sm rounded-md border transition-colors",
-                  status === s.value
-                    ? "bg-primary text-white border-primary"
-                    : "border-border hover:border-primary/50"
-                )}
-              >
-                {s.label}
-              </button>
-            ))}
+              { value: "planned", label: "Запланировано", icon: Target },
+              { value: "booked", label: "Забронировано", icon: CreditCard },
+              { value: "paid", label: "Оплачено", icon: Check },
+            ].map((s) => {
+              const Icon = s.icon;
+              return (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => setStatus(s.value as ExpenseStatus)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-all",
+                    status === s.value
+                      ? "bg-primary text-white border-primary"
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                  {s.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

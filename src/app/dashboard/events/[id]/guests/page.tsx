@@ -13,11 +13,12 @@ import {
   Users,
   UserCheck,
   UserX,
+  UserPlus,
 } from "lucide-react";
 import { guests } from "@/lib/api";
 import { Guest, GuestStats } from "@/lib/types";
 import { cn, rsvpStatusLabels } from "@/lib/utils";
-import { PageLoader, StatCard, Modal, ModalFooter, EmptyState, ConfirmDialog } from "@/components/ui";
+import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog, Avatar, ProgressBar } from "@/components/ui";
 import toast from "react-hot-toast";
 
 export default function GuestsPage() {
@@ -66,7 +67,7 @@ export default function GuestsPage() {
       setGuestList((prev) => [...prev, newGuest]);
       setShowAddModal(false);
       toast.success("Гость добавлен");
-      loadData(); // Reload stats
+      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось добавить гостя");
@@ -79,7 +80,7 @@ export default function GuestsPage() {
       setGuestList((prev) => [...prev, ...result.guests]);
       setShowImportModal(false);
       toast.success(`Добавлено ${result.created} гостей`);
-      loadData(); // Reload stats
+      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось импортировать гостей");
@@ -93,7 +94,7 @@ export default function GuestsPage() {
       await guests.delete(eventId, deleteGuestId);
       setGuestList((prev) => prev.filter((g) => g.id !== deleteGuestId));
       setDeleteGuestId(null);
-      loadData(); // Reload stats
+      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось удалить гостя");
@@ -106,61 +107,75 @@ export default function GuestsPage() {
     return <PageLoader />;
   }
 
+  const responseRate = stats && stats.total > 0
+    ? Math.round(((stats.accepted + stats.declined) / stats.total) * 100)
+    : 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold">Гости</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-h1">Гости</h1>
+          <p className="text-caption mt-1">
             Управляйте списком гостей и отслеживайте RSVP
           </p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowImportModal(true)} className="btn-outline btn-sm">
-            <Upload className="w-4 h-4 mr-2" />
+            <Upload className="w-4 h-4" />
             Импорт
           </button>
           <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4" />
             Добавить гостя
           </button>
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <StatCard
             icon={Users}
             label="Всего"
             value={stats.total}
-            iconColor="default"
+            color="slate"
           />
           <StatCard
             icon={UserCheck}
             label="Придут"
             value={stats.accepted}
-            sublabel={stats.plusOnes > 0 ? `+${stats.plusOnes} сопровождающих` : undefined}
-            iconColor="success"
+            sublabel={stats.plusOnes > 0 ? `+${stats.plusOnes}` : undefined}
+            color="emerald"
           />
           <StatCard
             icon={UserX}
             label="Не придут"
             value={stats.declined}
-            iconColor="error"
+            color="red"
           />
           <StatCard
             icon={Clock}
             label="Ожидание"
             value={stats.pending}
-            iconColor="warning"
+            color="amber"
           />
+          <div className="card p-4">
+            <div className="text-sm text-muted-foreground mb-2">Отклик</div>
+            <div className="text-2xl font-bold mb-2">{responseRate}%</div>
+            <ProgressBar
+              value={stats.accepted + stats.declined}
+              max={stats.total || 1}
+              color="primary"
+              size="sm"
+            />
+          </div>
         </div>
       )}
 
       {/* Filters */}
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -171,31 +186,37 @@ export default function GuestsPage() {
             className="input pl-10"
           />
         </div>
-        <div className="flex gap-1 bg-secondary rounded-lg p-1">
+        <div className="flex gap-2">
           {[
-            { key: "all", label: "Все" },
-            { key: "accepted", label: "Придут" },
-            { key: "pending", label: "Ожидание" },
-            { key: "declined", label: "Не придут" },
+            { key: "all", label: "Все", count: stats?.total },
+            { key: "accepted", label: "Придут", count: stats?.accepted },
+            { key: "pending", label: "Ожидание", count: stats?.pending },
+            { key: "declined", label: "Не придут", count: stats?.declined },
           ].map((f) => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key as typeof filter)}
               className={cn(
-                "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-                filter === f.key
-                  ? "bg-white text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                "chip",
+                filter === f.key && "chip-active"
               )}
             >
               {f.label}
+              {f.count !== undefined && f.count > 0 && (
+                <span className={cn(
+                  "text-xs px-1.5 py-0.5 rounded-full ml-1",
+                  filter === f.key ? "bg-white/20" : "bg-secondary"
+                )}>
+                  {f.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
       </div>
 
       {/* Guest list */}
-      <div className="card p-0">
+      <div className="card p-0 overflow-hidden">
         {filteredGuests.length === 0 ? (
           <EmptyState
             icon={Users}
@@ -212,11 +233,12 @@ export default function GuestsPage() {
           />
         ) : (
           <div className="divide-y divide-border">
-            {filteredGuests.map((guest) => (
+            {filteredGuests.map((guest, index) => (
               <GuestRow
                 key={guest.id}
                 guest={guest}
                 onDelete={() => setDeleteGuestId(guest.id)}
+                className={`animate-in stagger-${Math.min(index + 1, 4)}`}
               />
             ))}
           </div>
@@ -255,44 +277,102 @@ export default function GuestsPage() {
   );
 }
 
-function GuestRow({ guest, onDelete }: { guest: Guest; onDelete: () => void }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  sublabel,
+  color,
+}: {
+  icon: typeof Users;
+  label: string;
+  value: number;
+  sublabel?: string;
+  color: "slate" | "emerald" | "red" | "amber";
+}) {
+  const colorStyles = {
+    slate: { bg: "bg-slate-100", text: "text-slate-600" },
+    emerald: { bg: "bg-emerald-100", text: "text-emerald-600" },
+    red: { bg: "bg-red-100", text: "text-red-600" },
+    amber: { bg: "bg-amber-100", text: "text-amber-600" },
+  };
+
+  const styles = colorStyles[color];
+
+  return (
+    <div className="card p-4">
+      <div className="flex items-center gap-3">
+        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", styles.bg)}>
+          <Icon className={cn("w-5 h-5", styles.text)} />
+        </div>
+        <div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold">{value}</span>
+            {sublabel && (
+              <span className="text-sm text-emerald-600 font-medium">{sublabel}</span>
+            )}
+          </div>
+          <div className="text-sm text-muted-foreground">{label}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GuestRow({ guest, onDelete, className }: { guest: Guest; onDelete: () => void; className?: string }) {
   const statusConfig = rsvpStatusLabels[guest.rsvpStatus] || { ru: "Неизвестно", color: "gray" };
 
   return (
-    <div className="flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors">
-      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-        <span className="text-primary font-medium">
-          {guest.name.charAt(0).toUpperCase()}
-        </span>
-      </div>
+    <div className={cn("flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors group", className)}>
+      <Avatar name={guest.name} size="md" />
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{guest.name}</p>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {guest.phone && <span>{guest.phone}</span>}
           {guest.group && <span>• {guest.group}</span>}
-          {guest.plusCount > 0 && <span>• +{guest.plusCount}</span>}
+          {guest.plusCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-emerald-600">
+              <UserPlus className="w-3 h-3" />
+              +{guest.plusCount}
+            </span>
+          )}
         </div>
       </div>
-      <span
-        className={cn(
-          statusConfig.color === "green" && "badge-success",
-          statusConfig.color === "red" && "badge-error",
-          statusConfig.color === "gray" && "badge-warning"
-        )}
-      >
-        {statusConfig.color === "green" && <Check className="w-3 h-3 mr-1" />}
-        {statusConfig.color === "red" && <X className="w-3 h-3 mr-1" />}
-        {statusConfig.color === "gray" && <Clock className="w-3 h-3 mr-1" />}
-        {statusConfig.ru}
-      </span>
+      <RsvpBadge status={guest.rsvpStatus} label={statusConfig.ru} />
       <button
         onClick={onDelete}
-        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
         title="Удалить"
       >
         <Trash2 className="w-4 h-4" />
       </button>
     </div>
+  );
+}
+
+function RsvpBadge({ status, label }: { status: string; label: string }) {
+  const config = {
+    accepted: {
+      className: "badge-success",
+      icon: Check,
+    },
+    declined: {
+      className: "badge-error",
+      icon: X,
+    },
+    pending: {
+      className: "badge-warning",
+      icon: Clock,
+    },
+  };
+
+  const { className, icon: Icon } = config[status as keyof typeof config] || config.pending;
+
+  return (
+    <span className={cn("inline-flex items-center gap-1.5", className)}>
+      <Icon className="w-3 h-3" />
+      {label}
+    </span>
   );
 }
 

@@ -5,3 +5,6 @@ export { ConfirmDialog, SuccessDialog } from "./ConfirmDialog";
 export { Skeleton, SkeletonCard, SkeletonRow, SkeletonTable, SkeletonStats } from "./Skeleton";
 export { FormField } from "./FormField";
 export { EmptyState } from "./EmptyState";
+export { ProgressBar, CircularProgress } from "./ProgressBar";
+export { Avatar, AvatarGroup } from "./Avatar";
+export { StatsGrid, StatItem, StatusBadge } from "./StatsGrid";
