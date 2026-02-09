@@ -141,9 +141,10 @@ export interface BudgetSummary {
 
 export interface CategoryBudget {
   category: ExpenseCategory;
-  planned: number;
-  actual: number;
-  paid: number;
+  plannedTotal: number;
+  actualTotal: number;
+  paidTotal: number;
+  expenseCount: number;
 }
 
 // Vendor

@@ -263,7 +263,9 @@ export default function BudgetPage() {
           {summary?.byCategory.map((cat) => {
             const label = expenseCategoryLabels[cat.category];
             const colors = categoryColors[cat.category] || categoryColors.other;
-            const catProgress = cat.planned > 0 ? (cat.paid / cat.planned) * 100 : 0;
+            const planned = Number(cat.plannedTotal) || 0;
+            const paid = Number(cat.paidTotal) || 0;
+            const catProgress = planned > 0 ? (paid / planned) * 100 : 0;
 
             return (
               <button
@@ -287,11 +289,11 @@ export default function BudgetPage() {
                   <p className="font-medium text-sm">{label?.ru || cat.category}</p>
                 </div>
                 <p className="text-lg font-bold">
-                  {formatCurrency(cat.planned)}
+                  {formatCurrency(planned)}
                 </p>
                 <ProgressBar
-                  value={cat.paid}
-                  max={cat.planned || 1}
+                  value={paid}
+                  max={planned || 1}
                   size="sm"
                   color={catProgress > 100 ? "error" : "primary"}
                   className="mt-2"
