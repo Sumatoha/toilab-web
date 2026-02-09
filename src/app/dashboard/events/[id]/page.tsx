@@ -14,12 +14,11 @@ import {
   ExternalLink,
   Pencil,
   ArrowRight,
-  TrendingUp,
 } from "lucide-react";
 import { events } from "@/lib/api";
 import { Event, EventStats } from "@/lib/types";
 import { formatDate, formatCurrency, getDaysUntil, eventTypeLabels, cn } from "@/lib/utils";
-import { PageLoader, ProgressBar, CircularProgress } from "@/components/ui";
+import { PageLoader, ProgressBar } from "@/components/ui";
 import toast from "react-hot-toast";
 
 const eventTypeEmojis: Record<string, string> = {
@@ -80,8 +79,6 @@ export default function EventDetailPage() {
   const daysUntil = getDaysUntil(event.date);
   const typeLabel = eventTypeLabels[event.type]?.ru || event.type;
   const emoji = eventTypeEmojis[event.type] || eventTypeEmojis.other;
-  const guestProgress = stats?.totalGuests ? (stats.confirmedGuests / stats.totalGuests) * 100 : 0;
-  const budgetProgress = event.totalBudget ? ((stats?.paidAmount || 0) / event.totalBudget) * 100 : 0;
   const taskProgress = stats?.checklistTotal ? (stats.checklistDone / stats.checklistTotal) * 100 : 0;
 
   return (

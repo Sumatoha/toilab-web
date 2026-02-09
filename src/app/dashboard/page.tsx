@@ -2,18 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Calendar, Users, Wallet, MoreHorizontal, Sparkles } from "lucide-react";
+import { Plus, Calendar, Users, MoreHorizontal, Sparkles } from "lucide-react";
 import { events } from "@/lib/api";
 import { Event } from "@/lib/types";
 import { formatDate, eventTypeLabels, cn } from "@/lib/utils";
-import { PageLoader, EmptyState } from "@/components/ui";
-
-const eventTypeIcons: Record<string, string> = {
-  wedding: "ring",
-  birthday: "cake",
-  corporate: "briefcase",
-  other: "calendar",
-};
+import { PageLoader } from "@/components/ui";
 
 const eventTypeEmojis: Record<string, string> = {
   wedding: "\u{1F48D}",

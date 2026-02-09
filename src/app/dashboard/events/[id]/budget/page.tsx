@@ -5,8 +5,6 @@ import { useParams } from "next/navigation";
 import {
   Plus,
   Wallet,
-  TrendingUp,
-  TrendingDown,
   PieChart,
   Trash2,
   Pencil,

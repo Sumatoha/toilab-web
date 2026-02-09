@@ -77,7 +77,6 @@ export function StatItem({
   onClick,
   className,
 }: StatItemProps) {
-  const isInteractive = href || onClick;
   const styles = colorStyles[color];
 
   const content = (

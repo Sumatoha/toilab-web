@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface AvatarProps {
   name: string;
@@ -56,10 +57,13 @@ export function Avatar({ name, size = "md", src, className }: AvatarProps) {
   const colors = getColorFromName(name);
 
   if (src) {
+    const sizeMap = { xs: 24, sm: 32, md: 40, lg: 48, xl: 64 };
     return (
-      <img
+      <Image
         src={src}
         alt={name}
+        width={sizeMap[size]}
+        height={sizeMap[size]}
         className={cn(
           "rounded-full object-cover",
           sizeClasses[size],
