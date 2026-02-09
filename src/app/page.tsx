@@ -85,13 +85,11 @@ const plans = [
   },
 ];
 
-const eventTypes = [
-  { name: "Свадьба", nameKz: "Той" },
-  { name: "Сүндет той", nameKz: "Сүндет той" },
-  { name: "Тұсау кесу", nameKz: "Тұсау кесу" },
-  { name: "Юбилей", nameKz: "Мерейтой" },
-  { name: "День рождения", nameKz: "Туған күн" },
-  { name: "Корпоратив", nameKz: "Корпоратив" },
+const weddingFeatures = [
+  "Список гостей и RSVP",
+  "Бюджет и расходы",
+  "Чек-лист задач",
+  "Приглашения",
 ];
 
 export default function LandingPage() {
@@ -140,15 +138,15 @@ export default function LandingPage() {
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-foreground mb-6 animate-slide-up">
               Планируйте{" "}
-              <span className="text-primary">мероприятия</span>
+              <span className="text-primary">свадьбу</span>
               <br />
               легко и красиво
             </h1>
 
             <p className="text-lg sm:text-xl text-muted-foreground mb-8 animate-slide-up" style={{ animationDelay: "0.1s" }}>
-              Бюджет, гости, приглашения, чек-лист — всё в одном месте.
+              Гости, бюджет, задачи, приглашения — всё в одном месте.
               <br />
-              Свадьбы, тои, юбилеи и другие торжества.
+              Организуйте идеальную свадьбу без стресса.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: "0.2s" }}>
@@ -162,14 +160,15 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Event types */}
+          {/* Wedding features */}
           <div className="mt-16 flex flex-wrap items-center justify-center gap-3">
-            {eventTypes.map((type) => (
+            {weddingFeatures.map((feature) => (
               <span
-                key={type.name}
-                className="px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm"
+                key={feature}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary text-secondary-foreground text-sm"
               >
-                {type.name}
+                <Check className="w-4 h-4 text-primary" />
+                {feature}
               </span>
             ))}
           </div>

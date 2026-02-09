@@ -2,18 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Calendar, Users, MoreHorizontal, Sparkles } from "lucide-react";
+import { Plus, Calendar, Users, MoreHorizontal } from "lucide-react";
 import { events } from "@/lib/api";
 import { Event } from "@/lib/types";
-import { formatDate, eventTypeLabels, cn } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import { PageLoader } from "@/components/ui";
 
-const eventTypeEmojis: Record<string, string> = {
-  wedding: "\u{1F48D}",
-  birthday: "\u{1F382}",
-  corporate: "\u{1F4BC}",
-  other: "\u{1F389}",
-};
+const WEDDING_EMOJI = "\u{1F48D}";
 
 export default function DashboardPage() {
   const [eventList, setEventList] = useState<Event[]>([]);
@@ -51,8 +46,8 @@ export default function DashboardPage() {
             </h1>
             <p className="text-muted-foreground mt-1">
               {eventList.length === 0
-                ? "Создайте первое мероприятие, чтобы начать"
-                : `У вас ${activeEvents.length} активных мероприятий`}
+                ? "Создайте первую свадьбу, чтобы начать"
+                : `У вас ${activeEvents.length} активных свадеб`}
             </p>
           </div>
           <Link
@@ -60,7 +55,7 @@ export default function DashboardPage() {
             className="btn-primary btn-lg shadow-lg hover:shadow-xl inline-flex"
           >
             <Plus className="w-5 h-5" />
-            Создать мероприятие
+            Новая свадьба
           </Link>
         </div>
       </div>
@@ -75,7 +70,7 @@ export default function DashboardPage() {
             <section>
               <div className="flex items-center gap-2 mb-4">
                 <div className="status-dot-active" />
-                <h2 className="text-h3">Активные мероприятия</h2>
+                <h2 className="text-h3">Активные свадьбы</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {activeEvents.map((event, index) => (
@@ -123,24 +118,22 @@ function getGreeting() {
 function EventsEmptyState() {
   return (
     <div className="card-gradient p-12 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-        <Sparkles className="w-8 h-8 text-primary" />
+      <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6 text-3xl">
+        {WEDDING_EMOJI}
       </div>
-      <h2 className="text-h2 mb-2">Начните планировать</h2>
+      <h2 className="text-h2 mb-2">Начните планировать свадьбу</h2>
       <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-        Создайте первое мероприятие и управляйте гостями, бюджетом и задачами в одном месте
+        Создайте свадьбу и управляйте гостями, бюджетом и задачами в одном месте
       </p>
       <Link href="/dashboard/events/new" className="btn-primary btn-lg inline-flex">
         <Plus className="w-5 h-5" />
-        Создать мероприятие
+        Создать свадьбу
       </Link>
     </div>
   );
 }
 
 function EventCard({ event, className }: { event: Event; className?: string }) {
-  const typeLabel = eventTypeLabels[event.type]?.ru || event.type;
-  const emoji = eventTypeEmojis[event.type] || eventTypeEmojis.other;
 
   // Mock stats - in real app these would come from API
   const guestCount = 0; // Would be fetched from event stats
@@ -161,11 +154,11 @@ function EventCard({ event, className }: { event: Event; className?: string }) {
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg">
-            {emoji}
+            {WEDDING_EMOJI}
           </div>
           <div>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              {typeLabel}
+              Свадьба
             </span>
             <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
               {event.title}
