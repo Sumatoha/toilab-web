@@ -5,17 +5,21 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number | string | undefined | null, currency = "KZT"): string {
-  const numAmount = Number(amount);
-  if (isNaN(numAmount) || amount === undefined || amount === null) {
+export function formatCurrency(amount: number | string | undefined | null): string {
+  // Конвертируем в число
+  const num = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
+
+  // Проверяем на NaN/undefined/null
+  if (amount === undefined || amount === null || isNaN(num)) {
     return "0 ₸";
   }
 
-  return new Intl.NumberFormat("ru-KZ", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(numAmount);
+  // Простое форматирование с разделителями тысяч
+  const formatted = Math.round(num)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+
+  return formatted + " ₸";
 }
 
 export function formatDate(dateString: string | undefined, locale = "ru-KZ"): string {
