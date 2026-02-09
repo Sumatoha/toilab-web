@@ -43,7 +43,9 @@ export function ProgressBar({
   className,
   animated = true,
 }: ProgressBarProps) {
-  const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
+  const safeValue = Number(value) || 0;
+  const safeMax = Number(max) || 1;
+  const percentage = Math.min(Math.max((safeValue / safeMax) * 100, 0), 100);
 
   return (
     <div className={cn("w-full", className)}>
@@ -105,7 +107,9 @@ export function CircularProgress({
   label,
   className,
 }: CircularProgressProps) {
-  const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
+  const safeValue = Number(value) || 0;
+  const safeMax = Number(max) || 1;
+  const percentage = Math.min(Math.max((safeValue / safeMax) * 100, 0), 100);
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (percentage / 100) * circumference;

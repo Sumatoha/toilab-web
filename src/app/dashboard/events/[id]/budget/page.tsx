@@ -381,9 +381,11 @@ function ExpenseRow({
 }) {
   const label = expenseCategoryLabels[expense.category];
   const colors = categoryColors[expense.category] || categoryColors.other;
+  const plannedAmount = Number(expense.plannedAmount) || 0;
+  const paidAmount = Number(expense.paidAmount) || 0;
   const paidPercent =
-    expense.plannedAmount > 0
-      ? Math.round((expense.paidAmount / expense.plannedAmount) * 100)
+    plannedAmount > 0
+      ? Math.round((paidAmount / plannedAmount) * 100)
       : 0;
 
   const statusLabels: Record<ExpenseStatus, { text: string; class: string; icon: typeof Check }> = {
@@ -426,13 +428,13 @@ function ExpenseRow({
         </div>
       </div>
       <div className="text-right">
-        <p className="font-semibold">{formatCurrency(expense.plannedAmount)}</p>
-        {expense.paidAmount > 0 && (
+        <p className="font-semibold">{formatCurrency(plannedAmount)}</p>
+        {paidAmount > 0 && (
           <p className="text-sm text-emerald-600">
-            {formatCurrency(expense.paidAmount)} оплачено
+            {formatCurrency(paidAmount)} оплачено
           </p>
         )}
-        {expense.paidAmount === 0 && expense.plannedAmount > 0 && (
+        {paidAmount === 0 && plannedAmount > 0 && (
           <p className="text-sm text-muted-foreground">
             {paidPercent}% оплачено
           </p>
