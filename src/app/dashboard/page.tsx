@@ -144,7 +144,7 @@ function EventCard({ event, className }: { event: Event; className?: string }) {
 
   // Mock stats - in real app these would come from API
   const guestCount = 0; // Would be fetched from event stats
-  const maxGuests = event.maxGuests || 100;
+  const maxGuests = event.guestLimit || 100;
   const daysUntil = event.date ? getDaysUntil(event.date) : null;
 
   return (
