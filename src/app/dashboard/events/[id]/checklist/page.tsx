@@ -12,7 +12,7 @@ import {
 import { checklist as checklistApi } from "@/lib/api";
 import { ChecklistItem, ChecklistProgress, ChecklistCategory } from "@/lib/types";
 import { cn, formatShortDate, checklistCategoryLabels } from "@/lib/utils";
-import { PageLoader, ConfirmDialog, Modal, ModalFooter, ProgressBar } from "@/components/ui";
+import { PageLoader, ConfirmDialog, Modal, ProgressBar } from "@/components/ui";
 import toast from "react-hot-toast";
 
 // Suggested wedding tasks
@@ -324,7 +324,11 @@ function AddTaskModal({
 
   const handleAddSuggestion = (suggestion: { title: string; category: ChecklistCategory }) => {
     onAdd({ title: suggestion.title, category: suggestion.category });
-    setAddedTasks(prev => new Set([...prev, suggestion.title]));
+    setAddedTasks(prev => {
+      const newSet = new Set(prev);
+      newSet.add(suggestion.title);
+      return newSet;
+    });
   };
 
   const handleSubmitCustom = (e: React.FormEvent) => {
