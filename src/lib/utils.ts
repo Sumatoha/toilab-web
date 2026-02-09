@@ -5,12 +5,17 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currency = "KZT"): string {
+export function formatCurrency(amount: number | string | undefined | null, currency = "KZT"): string {
+  const numAmount = Number(amount);
+  if (isNaN(numAmount) || amount === undefined || amount === null) {
+    return "0 ₸";
+  }
+
   return new Intl.NumberFormat("ru-KZ", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(numAmount);
 }
 
 export function formatDate(dateString: string | undefined, locale = "ru-KZ"): string {
