@@ -40,7 +40,7 @@ export default function InvitationPage() {
         guestsApi.list(eventId),
       ]);
       setEvent(eventData);
-      setGuests(guestsData);
+      setGuests(guestsData || []);
       setExternalUrl(eventData.invitation?.externalUrl || "");
     } catch (error) {
       console.error("Failed to load data:", error);
