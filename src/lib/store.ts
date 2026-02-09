@@ -36,6 +36,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         refreshToken,
         isAuthenticated: true,
         isHydrated: true,
+        isLoading: false,
       });
     } else {
       set({ isLoading: false, isHydrated: true });

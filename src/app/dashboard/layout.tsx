@@ -16,16 +16,13 @@ export default function DashboardLayout({
   // Check if we're inside an event page (but not /new)
   const isEventPage = pathname.match(/\/dashboard\/events\/[^/]+/) && !pathname.includes("/new");
 
-  if (isLoading) {
+  // Show loading only briefly, then redirect happens automatically
+  if (isLoading || !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-foreground border-t-transparent"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null;
   }
 
   return (
