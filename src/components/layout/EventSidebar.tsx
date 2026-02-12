@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
-import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings, LucideIcon } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings, Gift, Clock, LayoutGrid, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -15,6 +15,9 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "", label: "Обзор", icon: LayoutDashboard },
   { href: "/guests", label: "Гости", icon: Users },
+  { href: "/seating", label: "Рассадка", icon: LayoutGrid },
+  { href: "/gifts", label: "Подарки", icon: Gift },
+  { href: "/program", label: "Программа", icon: Clock },
   { href: "/budget", label: "Расходы", icon: Wallet },
   { href: "/checklist", label: "Задачи", icon: CheckSquare },
   { href: "/invitation", label: "Приглашение", icon: Mail },

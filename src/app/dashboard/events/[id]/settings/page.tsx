@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Trash2, Check } from "lucide-react";
-import { events } from "@/lib/api";
-import { Event, UpdateEventRequest } from "@/lib/types";
-import { PageLoader, ConfirmDialog, SuccessDialog } from "@/components/ui";
+import { Trash2, Check, Link2, Plus, Copy, RefreshCw, Eye, Edit3, Lock, X } from "lucide-react";
+import { events, shares } from "@/lib/api";
+import { Event, UpdateEventRequest, ShareLink, ShareAccessLevel } from "@/lib/types";
+import { PageLoader, ConfirmDialog, SuccessDialog, Modal, ModalFooter } from "@/components/ui";
+import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 export default function EventSettingsPage() {
@@ -20,6 +21,11 @@ export default function EventSettingsPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Sharing state
+  const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [isLoadingShares, setIsLoadingShares] = useState(false);
 
   useEffect(() => {
     async function loadEvent() {
@@ -37,6 +43,8 @@ export default function EventSettingsPage() {
           greetingRu: data.greetingRu || "",
           hashtag: data.hashtag || "",
         });
+        // Load share links
+        loadShareLinks();
       } catch (error) {
         console.error("Failed to load event:", error);
         toast.error("Не удалось загрузить");
@@ -46,6 +54,70 @@ export default function EventSettingsPage() {
     }
     loadEvent();
   }, [eventId]);
+
+  async function loadShareLinks() {
+    setIsLoadingShares(true);
+    try {
+      const links = await shares.list(eventId);
+      setShareLinks(links || []);
+    } catch (error) {
+      console.error("Failed to load share links:", error);
+    } finally {
+      setIsLoadingShares(false);
+    }
+  }
+
+  async function handleCreateShare(data: { accessLevel: ShareAccessLevel; pinCode?: string; label?: string }) {
+    try {
+      const link = await shares.create(eventId, data);
+      setShareLinks((prev) => [link, ...prev]);
+      setShowShareModal(false);
+      toast.success("Ссылка создана");
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "Не удалось создать ссылку");
+    }
+  }
+
+  async function handleDeactivateShare(shareId: string) {
+    try {
+      await shares.deactivate(eventId, shareId);
+      setShareLinks((prev) => prev.map((l) => (l.id === shareId ? { ...l, isActive: false } : l)));
+      toast.success("Ссылка деактивирована");
+    } catch {
+      toast.error("Не удалось деактивировать");
+    }
+  }
+
+  async function handleRegenerateShare(shareId: string) {
+    try {
+      const link = await shares.regenerate(eventId, shareId);
+      setShareLinks((prev) => prev.map((l) => (l.id === shareId ? link : l)));
+      toast.success("Ссылка обновлена");
+    } catch {
+      toast.error("Не удалось обновить");
+    }
+  }
+
+  async function handleDeleteShare(shareId: string) {
+    try {
+      await shares.delete(eventId, shareId);
+      setShareLinks((prev) => prev.filter((l) => l.id !== shareId));
+      toast.success("Ссылка удалена");
+    } catch {
+      toast.error("Не удалось удалить");
+    }
+  }
+
+  function getShareUrl(token: string) {
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+    return `${baseUrl}/share/${token}`;
+  }
+
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+    toast.success("Скопировано");
+  }
 
   async function handleSave() {
     setIsSaving(true);
@@ -238,6 +310,110 @@ export default function EventSettingsPage() {
         </div>
       </section>
 
+      {/* Sharing */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-medium flex items-center gap-2">
+              <Link2 className="w-4 h-4" />
+              Доступ по ссылке
+            </h2>
+            <p className="text-sm text-muted-foreground">Поделитесь дашбордом с партнёром или координатором</p>
+          </div>
+          <button onClick={() => setShowShareModal(true)} className="btn-primary btn-sm">
+            <Plus className="w-4 h-4" />
+            Создать ссылку
+          </button>
+        </div>
+
+        {isLoadingShares ? (
+          <div className="text-center py-4 text-muted-foreground">Загрузка...</div>
+        ) : shareLinks.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
+            <Link2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p>Нет активных ссылок</p>
+            <p className="text-sm">Создайте ссылку для доступа к дашборду</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {shareLinks.map((link) => (
+              <div
+                key={link.id}
+                className={cn(
+                  "p-4 rounded-lg border",
+                  link.isActive ? "border-border bg-white" : "border-border/50 bg-secondary/30 opacity-60"
+                )}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      {link.accessLevel === "editor" ? (
+                        <span className="badge-success flex items-center gap-1 text-xs">
+                          <Edit3 className="w-3 h-3" />
+                          Редактор
+                        </span>
+                      ) : (
+                        <span className="badge-default flex items-center gap-1 text-xs">
+                          <Eye className="w-3 h-3" />
+                          Просмотр
+                        </span>
+                      )}
+                      {link.pinCode && (
+                        <span className="badge-warning flex items-center gap-1 text-xs">
+                          <Lock className="w-3 h-3" />
+                          PIN
+                        </span>
+                      )}
+                      {!link.isActive && (
+                        <span className="badge-default text-xs">Неактивна</span>
+                      )}
+                    </div>
+                    {link.label && (
+                      <p className="font-medium text-sm">{link.label}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground truncate mt-1">
+                      {getShareUrl(link.token)}
+                    </p>
+                  </div>
+                  {link.isActive && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => copyToClipboard(getShareUrl(link.token))}
+                        className="btn-ghost btn-sm"
+                        title="Копировать ссылку"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleRegenerateShare(link.id)}
+                        className="btn-ghost btn-sm"
+                        title="Обновить токен"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeactivateShare(link.id)}
+                        className="btn-ghost btn-sm text-amber-600"
+                        title="Деактивировать"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteShare(link.id)}
+                        className="btn-ghost btn-sm text-red-600"
+                        title="Удалить"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Actions */}
       <div className="flex items-center justify-between pt-4 border-t border-border">
         <button onClick={() => setShowDeleteModal(true)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
@@ -271,6 +447,155 @@ export default function EventSettingsPage() {
         variant="danger"
         isLoading={isDeleting}
       />
+
+      {/* Create Share Modal */}
+      <CreateShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        onSubmit={handleCreateShare}
+      />
     </div>
+  );
+}
+
+interface CreateShareModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: { accessLevel: ShareAccessLevel; pinCode?: string; label?: string }) => void;
+}
+
+function CreateShareModal({ isOpen, onClose, onSubmit }: CreateShareModalProps) {
+  const [accessLevel, setAccessLevel] = useState<ShareAccessLevel>("view");
+  const [usePin, setUsePin] = useState(false);
+  const [pinCode, setPinCode] = useState("");
+  const [label, setLabel] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (usePin && pinCode.length !== 4) return;
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        accessLevel,
+        pinCode: usePin ? pinCode : undefined,
+        label: label || undefined,
+      });
+      // Reset form
+      setAccessLevel("view");
+      setUsePin(false);
+      setPinCode("");
+      setLabel("");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Создать ссылку доступа">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-2">Уровень доступа</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setAccessLevel("view")}
+              className={cn(
+                "p-3 rounded-lg border-2 text-left transition-colors",
+                accessLevel === "view"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50"
+              )}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Eye className="w-4 h-4" />
+                <span className="font-medium">Просмотр</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Только просмотр статистики
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccessLevel("editor")}
+              className={cn(
+                "p-3 rounded-lg border-2 text-left transition-colors",
+                accessLevel === "editor"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50"
+              )}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Edit3 className="w-4 h-4" />
+                <span className="font-medium">Редактор</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Просмотр и редактирование
+              </p>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Название (опционально)</label>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            className="input"
+            placeholder="Для координатора"
+          />
+        </div>
+
+        <div className="space-y-3">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={usePin}
+              onChange={(e) => {
+                setUsePin(e.target.checked);
+                if (!e.target.checked) setPinCode("");
+              }}
+              className="rounded border-border"
+            />
+            <span className="text-sm">Защитить PIN-кодом</span>
+          </label>
+
+          {usePin && (
+            <div>
+              <label className="block text-sm text-muted-foreground mb-1.5">
+                4-значный PIN-код
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={4}
+                value={pinCode}
+                onChange={(e) => setPinCode(e.target.value.replace(/\D/g, ""))}
+                className="input text-center text-xl tracking-widest w-32"
+                placeholder="____"
+              />
+            </div>
+          )}
+        </div>
+
+        <ModalFooter>
+          <button type="button" onClick={onClose} className="btn-ghost btn-md">
+            Отмена
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting || (usePin && pinCode.length !== 4)}
+            className="btn-primary btn-md"
+          >
+            {isSubmitting ? "Создание..." : "Создать"}
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }

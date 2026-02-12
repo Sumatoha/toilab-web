@@ -82,6 +82,7 @@ export interface Guest {
   rsvpAt?: string;
   rsvpNote?: string;
   tableNumber?: string;
+  tableId?: string;
   notifiedAt?: string;
   createdAt: string;
 }
@@ -319,6 +320,223 @@ export interface UpdateChecklistItemRequest {
   dueDate?: string;
   relativeDays?: number;
   order?: number;
+}
+
+// Gift
+export type GiftType = "money" | "item";
+
+export interface Gift {
+  id: string;
+  eventId: string;
+  guestId?: string;
+  guestName: string;
+  type: GiftType;
+  amount: number;
+  description?: string;
+  note?: string;
+  receivedAt: string;
+  createdAt: string;
+}
+
+export interface GiftStats {
+  totalGifts: number;
+  moneyGifts: number;
+  itemGifts: number;
+  totalAmount: number;
+}
+
+export interface GiftSummary {
+  totalGifts: number;
+  totalAmount: number;
+  moneyCount: number;
+  itemCount: number;
+  moneyTotal: number;
+}
+
+export interface CreateGiftRequest {
+  guestId?: string;
+  guestName: string;
+  type: GiftType;
+  amount?: number;
+  description?: string;
+  note?: string;
+  receivedAt?: string;
+}
+
+export interface CreateGiftWithGuestRequest {
+  guestName: string;
+  guestPhone?: string;
+  guestEmail?: string;
+  createGuest: boolean;
+  type: GiftType;
+  amount?: number;
+  description?: string;
+  note?: string;
+  receivedAt?: string;
+}
+
+export interface UpdateGiftRequest {
+  guestName?: string;
+  type?: GiftType;
+  amount?: number;
+  description?: string;
+  note?: string;
+  receivedAt?: string;
+}
+
+export interface GiftTypeInfo {
+  key: GiftType;
+  nameRu: string;
+  nameKz: string;
+}
+
+// Program
+export interface ProgramItem {
+  id: string;
+  eventId: string;
+  startTime: string;
+  endTime?: string;
+  title: string;
+  description?: string;
+  responsible?: string;
+  duration: number;
+  order: number;
+  createdAt: string;
+}
+
+export interface CreateProgramItemRequest {
+  startTime: string;
+  endTime?: string;
+  title: string;
+  description?: string;
+  responsible?: string;
+  duration?: number;
+}
+
+export interface UpdateProgramItemRequest {
+  startTime?: string;
+  endTime?: string;
+  title?: string;
+  description?: string;
+  responsible?: string;
+  duration?: number;
+  order?: number;
+}
+
+export interface ReorderProgramRequest {
+  items: { id: string; order: number }[];
+}
+
+export interface ProgramTemplate {
+  eventType: string;
+  nameRu: string;
+  nameKz: string;
+  itemCount: number;
+}
+
+// Share
+export type ShareAccessLevel = "view" | "editor";
+
+export interface ShareLink {
+  id: string;
+  eventId: string;
+  token: string;
+  accessLevel: ShareAccessLevel;
+  pinCode?: string;
+  label?: string;
+  isActive: boolean;
+  expiresAt?: string;
+  lastUsedAt?: string;
+  createdAt: string;
+}
+
+export interface CreateShareLinkRequest {
+  accessLevel: ShareAccessLevel;
+  pinCode?: string;
+  label?: string;
+  expiresIn?: number;
+}
+
+export interface SharedEventData {
+  event: Event;
+  guestStats: GuestStats;
+  budgetSummary?: {
+    totalPlanned: number;
+    totalActual: number;
+    totalPaid: number;
+    remaining: number;
+  };
+  checklistStats: {
+    total: number;
+    completed: number;
+    percent: number;
+  };
+  program: ProgramItem[];
+  accessLevel: ShareAccessLevel;
+}
+
+export interface ShareCheckResponse {
+  requiresPin: boolean;
+  label?: string;
+}
+
+// Seating
+export type TableShape = "round" | "rect" | "square" | "oval";
+
+export interface SeatingTable {
+  id: string;
+  eventId: string;
+  name: string;
+  shape: TableShape;
+  capacity: number;
+  guestIds: string[];
+  positionX: number;
+  positionY: number;
+  width: number;
+  height: number;
+  rotation: number;
+  order: number;
+  createdAt: string;
+}
+
+export interface TableWithGuests extends SeatingTable {
+  guests: Guest[];
+}
+
+export interface SeatingPlan {
+  tables: SeatingTable[];
+  unseatedGuests: Guest[];
+  seatedCount: number;
+  totalCapacity: number;
+}
+
+export interface SeatingStats {
+  totalTables: number;
+  totalCapacity: number;
+  seatedGuests: number;
+  unseatedGuests: number;
+}
+
+export interface CreateTableRequest {
+  name: string;
+  shape?: TableShape;
+  capacity?: number;
+  positionX?: number;
+  positionY?: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
+}
+
+export interface UpdateTableRequest {
+  name?: string;
+  shape?: TableShape;
+  capacity?: number;
+  positionX?: number;
+  positionY?: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
 }
 
 // Auth

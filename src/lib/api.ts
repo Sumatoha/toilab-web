@@ -1,4 +1,4 @@
-import {
+import type {
   User,
   Event,
   EventStats,
@@ -10,6 +10,10 @@ import {
   VendorSummary,
   ChecklistItem,
   ChecklistProgress,
+  Gift,
+  GiftStats,
+  GiftSummary,
+  GiftTypeInfo,
   CreateEventRequest,
   UpdateEventRequest,
   CreateGuestRequest,
@@ -21,9 +25,27 @@ import {
   UpdateVendorRequest,
   CreateChecklistItemRequest,
   UpdateChecklistItemRequest,
+  CreateGiftRequest,
+  CreateGiftWithGuestRequest,
+  UpdateGiftRequest,
+  ProgramItem,
+  ProgramTemplate,
+  CreateProgramItemRequest,
+  UpdateProgramItemRequest,
+  ReorderProgramRequest,
+  ShareLink,
+  CreateShareLinkRequest,
+  SharedEventData,
+  ShareCheckResponse,
   ExpenseCategoryInfo,
   VendorStatusInfo,
   ChecklistCategory,
+  SeatingTable,
+  TableWithGuests,
+  SeatingPlan,
+  SeatingStats,
+  CreateTableRequest,
+  UpdateTableRequest,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -350,6 +372,178 @@ export const checklist = {
     fetchApi<ChecklistProgress>(`/events/${eventId}/checklist/progress`),
 
   getCategories: () => fetchApi<ChecklistCategory[]>("/checklist-categories"),
+};
+
+// Gifts
+export const gifts = {
+  list: (eventId: string, type?: string) => {
+    const params = type ? `?type=${type}` : "";
+    return fetchApi<Gift[]>(`/events/${eventId}/gifts${params}`);
+  },
+
+  get: (eventId: string, giftId: string) =>
+    fetchApi<Gift>(`/events/${eventId}/gifts/${giftId}`),
+
+  create: (eventId: string, data: CreateGiftRequest) =>
+    fetchApi<Gift>(`/events/${eventId}/gifts`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  createWithGuest: (eventId: string, data: CreateGiftWithGuestRequest) =>
+    fetchApi<{ gift: Gift; guest: Guest | null }>(
+      `/events/${eventId}/gifts/with-guest`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    ),
+
+  update: (eventId: string, giftId: string, data: UpdateGiftRequest) =>
+    fetchApi<Gift>(`/events/${eventId}/gifts/${giftId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (eventId: string, giftId: string) =>
+    fetchApi<void>(`/events/${eventId}/gifts/${giftId}`, {
+      method: "DELETE",
+    }),
+
+  getStats: (eventId: string) =>
+    fetchApi<GiftStats>(`/events/${eventId}/gifts/stats`),
+
+  getSummary: (eventId: string) =>
+    fetchApi<GiftSummary>(`/events/${eventId}/gifts/summary`),
+
+  search: (eventId: string, query: string) =>
+    fetchApi<Gift[]>(`/events/${eventId}/gifts/search?q=${encodeURIComponent(query)}`),
+
+  getExportUrl: (eventId: string) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
+    return `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/events/${eventId}/gifts/export?token=${token}`;
+  },
+
+  getTypes: () => fetchApi<GiftTypeInfo[]>("/gift-types"),
+};
+
+// Program
+export const program = {
+  list: (eventId: string) =>
+    fetchApi<ProgramItem[]>(`/events/${eventId}/program`),
+
+  get: (eventId: string, itemId: string) =>
+    fetchApi<ProgramItem>(`/events/${eventId}/program/${itemId}`),
+
+  create: (eventId: string, data: CreateProgramItemRequest) =>
+    fetchApi<ProgramItem>(`/events/${eventId}/program`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (eventId: string, itemId: string, data: UpdateProgramItemRequest) =>
+    fetchApi<ProgramItem>(`/events/${eventId}/program/${itemId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (eventId: string, itemId: string) =>
+    fetchApi<void>(`/events/${eventId}/program/${itemId}`, {
+      method: "DELETE",
+    }),
+
+  reorder: (eventId: string, data: ReorderProgramRequest) =>
+    fetchApi<ProgramItem[]>(`/events/${eventId}/program/reorder`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  applyTemplate: (eventId: string, eventType: string) =>
+    fetchApi<ProgramItem[]>(`/events/${eventId}/program/apply-template`, {
+      method: "POST",
+      body: JSON.stringify({ eventType }),
+    }),
+
+  getTemplates: () => fetchApi<ProgramTemplate[]>("/program-templates"),
+};
+
+// Shares
+export const shares = {
+  list: (eventId: string) =>
+    fetchApi<ShareLink[]>(`/events/${eventId}/shares`),
+
+  create: (eventId: string, data: CreateShareLinkRequest) =>
+    fetchApi<ShareLink>(`/events/${eventId}/shares`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deactivate: (eventId: string, shareId: string) =>
+    fetchApi<{ message: string }>(`/events/${eventId}/shares/${shareId}/deactivate`, {
+      method: "PUT",
+    }),
+
+  regenerate: (eventId: string, shareId: string) =>
+    fetchApi<ShareLink>(`/events/${eventId}/shares/${shareId}/regenerate`, {
+      method: "PUT",
+    }),
+
+  delete: (eventId: string, shareId: string) =>
+    fetchApi<void>(`/events/${eventId}/shares/${shareId}`, {
+      method: "DELETE",
+    }),
+
+  // Public share endpoints (no auth required)
+  check: (token: string) =>
+    fetchApi<ShareCheckResponse>(`/share/${token}/check`),
+
+  getData: (token: string, pin?: string) => {
+    const params = pin ? `?pin=${pin}` : "";
+    return fetchApi<SharedEventData>(`/share/${token}${params}`);
+  },
+};
+
+// Seating
+export const seating = {
+  getTables: (eventId: string) =>
+    fetchApi<SeatingTable[]>(`/events/${eventId}/seating/tables`),
+
+  getSeatingPlan: (eventId: string) =>
+    fetchApi<SeatingPlan>(`/events/${eventId}/seating/plan`),
+
+  getTablesWithGuests: (eventId: string) =>
+    fetchApi<TableWithGuests[]>(`/events/${eventId}/seating/tables-with-guests`),
+
+  getStats: (eventId: string) =>
+    fetchApi<SeatingStats>(`/events/${eventId}/seating/stats`),
+
+  createTable: (eventId: string, data: CreateTableRequest) =>
+    fetchApi<SeatingTable>(`/events/${eventId}/seating/tables`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateTable: (eventId: string, tableId: string, data: UpdateTableRequest) =>
+    fetchApi<SeatingTable>(`/events/${eventId}/seating/tables/${tableId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  deleteTable: (eventId: string, tableId: string) =>
+    fetchApi<void>(`/events/${eventId}/seating/tables/${tableId}`, {
+      method: "DELETE",
+    }),
+
+  assignGuest: (eventId: string, tableId: string, guestId: string) =>
+    fetchApi<{ message: string }>(`/events/${eventId}/seating/tables/${tableId}/guests`, {
+      method: "POST",
+      body: JSON.stringify({ guestId }),
+    }),
+
+  removeGuest: (eventId: string, tableId: string, guestId: string) =>
+    fetchApi<{ message: string }>(`/events/${eventId}/seating/tables/${tableId}/guests/${guestId}`, {
+      method: "DELETE",
+    }),
 };
 
 export { ApiError };

@@ -135,3 +135,9 @@ export const checklistCategoryLabels: Record<string, { ru: string; kz: string }>
   documents: { ru: "Документы", kz: "Құжаттар" },
   other: { ru: "Другое", kz: "Басқа" },
 };
+
+// Gift type labels
+export const giftTypeLabels: Record<string, { ru: string; kz: string }> = {
+  money: { ru: "Деньги", kz: "Ақша" },
+  item: { ru: "Подарок", kz: "Сыйлық" },
+};
