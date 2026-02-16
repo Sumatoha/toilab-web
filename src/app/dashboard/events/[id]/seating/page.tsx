@@ -26,7 +26,7 @@ import {
   CreateTableRequest,
 } from "@/lib/types";
 import { PageLoader, Modal, ModalFooter } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { cn, formatTableName } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const CANVAS_WIDTH = 1200;
@@ -321,7 +321,9 @@ export default function SeatingPage() {
           {selectedTableData && (
             <div className="card p-4 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{selectedTableData.name}</h3>
+                <h3 className="font-semibold">
+                  {formatTableName(selectedTableData.number, selectedTableData.name, isSelectedScene)}
+                </h3>
                 <button
                   onClick={() => handleDeleteTable(selectedTableData.id)}
                   className="btn-ghost btn-sm text-red-600"
@@ -408,6 +410,7 @@ export default function SeatingPage() {
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateTable}
         tableCount={tables.length}
+        nextTableNumber={Math.max(0, ...tables.filter(t => t.shape !== "scene").map(t => t.number)) + 1}
       />
 
       {/* Assign Guest Modal */}
@@ -484,11 +487,15 @@ function TableElement({
         {isScene ? (
           <>
             <Theater className="w-5 h-5 text-amber-600 mb-1" />
-            <span className="font-medium text-sm truncate w-full text-amber-700">{table.name}</span>
+            <span className="font-medium text-sm truncate w-full text-amber-700">
+              {formatTableName(table.number, table.name, true)}
+            </span>
           </>
         ) : (
           <>
-            <span className="font-medium text-sm truncate w-full">{table.name}</span>
+            <span className="font-medium text-sm truncate w-full">
+              {formatTableName(table.number, table.name)}
+            </span>
             <span className="text-xs text-muted-foreground">
               {table.guests.length}/{table.capacity}
             </span>
@@ -504,29 +511,20 @@ interface CreateTableModalProps {
   onClose: () => void;
   onSubmit: (data: CreateTableRequest) => void;
   tableCount: number;
+  nextTableNumber: number;
 }
 
-function CreateTableModal({ isOpen, onClose, onSubmit, tableCount }: CreateTableModalProps) {
-  const [name, setName] = useState(`Стол ${tableCount + 1}`);
+function CreateTableModal({ isOpen, onClose, onSubmit, tableCount, nextTableNumber }: CreateTableModalProps) {
+  const [name, setName] = useState("");
   const [shape, setShape] = useState<TableShape>("round");
   const [capacity, setCapacity] = useState(8);
 
   const isScene = shape === "scene";
 
-  useEffect(() => {
-    if (isScene) {
-      setName("Сцена");
-      setCapacity(0);
-    } else if (name === "Сцена") {
-      setName(`Стол ${tableCount + 1}`);
-      setCapacity(8);
-    }
-  }, [shape, isScene, tableCount, name]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
-      name,
+      name: name.trim() || undefined,
       shape,
       capacity: isScene ? 0 : capacity,
       positionX: 100 + (tableCount % 5) * 150,
@@ -534,7 +532,7 @@ function CreateTableModal({ isOpen, onClose, onSubmit, tableCount }: CreateTable
       width: isScene ? 200 : DEFAULT_TABLE_SIZE,
       height: isScene ? 80 : DEFAULT_TABLE_SIZE,
     });
-    setName(`Стол ${tableCount + 2}`);
+    setName("");
     setShape("round");
     setCapacity(8);
   };
@@ -575,16 +573,30 @@ function CreateTableModal({ isOpen, onClose, onSubmit, tableCount }: CreateTable
           </div>
         </div>
 
+        {!isScene && (
+          <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+            <span className="text-sm text-primary font-medium">
+              Будет создан: Стол {nextTableNumber}
+            </span>
+          </div>
+        )}
+
         <div>
-          <label className="block text-sm font-medium mb-1.5">Название</label>
+          <label className="block text-sm font-medium mb-1.5">
+            {isScene ? "Название" : "Название (необязательно)"}
+          </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="input"
-            placeholder={isScene ? "Сцена" : "Стол 1"}
-            required
+            placeholder={isScene ? "Сцена" : "Друзья, Родственники..."}
           />
+          {!isScene && name && (
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Отображение: Стол {nextTableNumber}: {name}
+            </p>
+          )}
         </div>
 
         {!isScene && (
@@ -638,7 +650,7 @@ function AssignGuestModal({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Добавить гостя - ${table.name}`}>
+    <Modal isOpen={isOpen} onClose={onClose} title={`Добавить гостя - ${formatTableName(table.number, table.name)}`}>
       <div className="space-y-4">
         <input
           type="text"

@@ -486,7 +486,8 @@ export type TableShape = "round" | "rect" | "square" | "oval" | "scene";
 export interface SeatingTable {
   id: string;
   eventId: string;
-  name: string;
+  number: number;
+  name?: string;
   shape: TableShape;
   capacity: number;
   guestIds: string[];
@@ -518,7 +519,7 @@ export interface SeatingStats {
 }
 
 export interface CreateTableRequest {
-  name: string;
+  name?: string;
   shape?: TableShape;
   capacity?: number;
   positionX?: number;

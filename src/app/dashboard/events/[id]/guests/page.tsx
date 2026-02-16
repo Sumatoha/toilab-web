@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { guests, seating } from "@/lib/api";
 import { Guest, GuestStats, SeatingTable } from "@/lib/types";
-import { cn, rsvpStatusLabels } from "@/lib/utils";
+import { cn, rsvpStatusLabels, formatTableName } from "@/lib/utils";
 import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog, Avatar, ProgressBar } from "@/components/ui";
 import toast from "react-hot-toast";
 
@@ -149,9 +149,9 @@ export default function GuestsPage() {
     }
   };
 
-  // Create a map of tableId -> table name
+  // Create a map of tableId -> formatted table name
   const tableNameMap = new Map<string, string>();
-  tables.forEach(t => tableNameMap.set(t.id, t.name));
+  tables.forEach(t => tableNameMap.set(t.id, formatTableName(t.number, t.name)));
 
   if (isLoading) {
     return <PageLoader />;
@@ -544,7 +544,7 @@ function AddGuestModal({
               <option value="">Не назначен</option>
               {tables.map((table) => (
                 <option key={table.id} value={table.id}>
-                  {table.name} ({table.guestIds.length}/{table.capacity})
+                  {formatTableName(table.number, table.name)} ({table.guestIds.length}/{table.capacity})
                 </option>
               ))}
             </select>
@@ -640,7 +640,7 @@ function EditGuestModal({
               <option value="">Не назначен</option>
               {tables.map((table) => (
                 <option key={table.id} value={table.id}>
-                  {table.name} ({table.guestIds.length}/{table.capacity})
+                  {formatTableName(table.number, table.name)} ({table.guestIds.length}/{table.capacity})
                 </option>
               ))}
             </select>

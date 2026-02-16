@@ -74,6 +74,16 @@ export function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+export function formatTableName(number: number, name?: string, isScene?: boolean): string {
+  if (isScene) {
+    return name || "Сцена";
+  }
+  if (name) {
+    return `Стол ${number}: ${name}`;
+  }
+  return `Стол ${number}`;
+}
+
 export function pluralize(count: number, one: string, few: string, many: string): string {
   const n = Math.abs(count) % 100;
   const n1 = n % 10;
