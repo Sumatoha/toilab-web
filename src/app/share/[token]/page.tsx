@@ -13,6 +13,8 @@ import {
   Lock,
   Eye,
   Edit3,
+  LayoutGrid,
+  Gift,
 } from "lucide-react";
 import { shares } from "@/lib/api";
 import { SharedEventData, ShareCheckResponse, ProgramItem } from "@/lib/types";
@@ -167,9 +169,12 @@ function SharedDashboardContent() {
 
   if (!data) return null;
 
-  const { event, guestStats, budgetSummary, checklistStats, program, accessLevel } = data;
+  const { event, widgets, guestStats, budgetSummary, checklistStats, program, seatingStats, giftStats, accessLevel } = data;
   const eventLabel = eventTypeLabels[event.type]?.ru || event.type;
   const programItems = program || [];
+
+  // Helper to check if a widget is enabled
+  const hasWidget = (widget: string) => widgets?.includes(widget as typeof widgets[number]) ?? false;
 
   return (
     <div className="min-h-screen bg-secondary/30">
@@ -217,60 +222,94 @@ function SharedDashboardContent() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Guests */}
-          <div className="card p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                <Users className="w-5 h-5 text-indigo-600" />
+          {hasWidget("guests") && guestStats && (
+            <>
+              <div className="card p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{guestStats.total}</div>
+                    <div className="text-sm text-muted-foreground">гостей</div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold">{guestStats.total}</div>
-                <div className="text-sm text-muted-foreground">гостей</div>
-              </div>
-            </div>
-          </div>
 
-          {/* Confirmed */}
-          <div className="card p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                <UserCheck className="w-5 h-5 text-emerald-600" />
+              <div className="card p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <UserCheck className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{guestStats.accepted}</div>
+                    <div className="text-sm text-muted-foreground">придут</div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold">{guestStats.accepted}</div>
-                <div className="text-sm text-muted-foreground">придут</div>
-              </div>
-            </div>
-          </div>
 
-          {/* Pending */}
-          <div className="card p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-amber-600" />
+              <div className="card p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{guestStats.pending}</div>
+                    <div className="text-sm text-muted-foreground">ожидают</div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold">{guestStats.pending}</div>
-                <div className="text-sm text-muted-foreground">ожидают</div>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
 
           {/* Checklist */}
-          <div className="card p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                <CheckSquare className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{checklistStats.percent}%</div>
-                <div className="text-sm text-muted-foreground">готово</div>
+          {hasWidget("checklist") && checklistStats && (
+            <div className="card p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+                  <CheckSquare className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{checklistStats.percent}%</div>
+                  <div className="text-sm text-muted-foreground">готово</div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Seating */}
+          {hasWidget("seating") && seatingStats && (
+            <div className="card p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <LayoutGrid className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{seatingStats.seatedGuests}/{seatingStats.totalCapacity}</div>
+                  <div className="text-sm text-muted-foreground">рассажено</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Gifts */}
+          {hasWidget("gifts") && giftStats && (
+            <div className="card p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
+                  <Gift className="w-5 h-5 text-pink-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{giftStats.totalGifts}</div>
+                  <div className="text-sm text-muted-foreground">подарков</div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Budget (Editor only) */}
-        {budgetSummary && (
+        {/* Budget */}
+        {hasWidget("budget") && budgetSummary && (
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
               <Wallet className="w-5 h-5 text-emerald-600" />
@@ -310,73 +349,77 @@ function SharedDashboardContent() {
         )}
 
         {/* Guest Stats Detail */}
-        <div className="card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="w-5 h-5 text-indigo-600" />
-            <h2 className="text-lg font-semibold">Гости</h2>
-          </div>
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-emerald-600">{guestStats.accepted}</div>
-              <div className="text-sm text-muted-foreground">подтвердили</div>
+        {hasWidget("guests") && guestStats && (
+          <div className="card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="w-5 h-5 text-indigo-600" />
+              <h2 className="text-lg font-semibold">Гости</h2>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-amber-600">{guestStats.pending}</div>
-              <div className="text-sm text-muted-foreground">ожидают</div>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">{guestStats.accepted}</div>
+                <div className="text-sm text-muted-foreground">подтвердили</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-amber-600">{guestStats.pending}</div>
+                <div className="text-sm text-muted-foreground">ожидают</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">{guestStats.declined}</div>
+                <div className="text-sm text-muted-foreground">отказались</div>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{guestStats.declined}</div>
-              <div className="text-sm text-muted-foreground">отказались</div>
-            </div>
-          </div>
-          {guestStats.total > 0 && (
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-muted-foreground">Отклик</span>
-                <span className="font-medium">
-                  {Math.round(((guestStats.accepted + guestStats.declined) / guestStats.total) * 100)}%
+            {guestStats.total > 0 && (
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-muted-foreground">Отклик</span>
+                  <span className="font-medium">
+                    {Math.round(((guestStats.accepted + guestStats.declined) / guestStats.total) * 100)}%
+                  </span>
+                </div>
+                <ProgressBar
+                  value={guestStats.accepted + guestStats.declined}
+                  max={guestStats.total}
+                  color="primary"
+                />
+              </div>
+            )}
+            {guestStats.plusOnes > 0 && (
+              <div className="mt-3 pt-3 border-t border-border">
+                <span className="text-sm text-muted-foreground">
+                  +{guestStats.plusOnes} дополнительных гостей
                 </span>
               </div>
-              <ProgressBar
-                value={guestStats.accepted + guestStats.declined}
-                max={guestStats.total}
-                color="primary"
-              />
-            </div>
-          )}
-          {guestStats.plusOnes > 0 && (
-            <div className="mt-3 pt-3 border-t border-border">
-              <span className="text-sm text-muted-foreground">
-                +{guestStats.plusOnes} дополнительных гостей
-              </span>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Checklist Progress */}
-        <div className="card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <CheckSquare className="w-5 h-5 text-purple-600" />
-            <h2 className="text-lg font-semibold">Подготовка</h2>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <ProgressBar
-                value={checklistStats.completed}
-                max={checklistStats.total || 1}
-                color="primary"
-                size="lg"
-              />
+        {hasWidget("checklist") && checklistStats && (
+          <div className="card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <CheckSquare className="w-5 h-5 text-purple-600" />
+              <h2 className="text-lg font-semibold">Подготовка</h2>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold">{checklistStats.completed}/{checklistStats.total}</div>
-              <div className="text-sm text-muted-foreground">задач выполнено</div>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <ProgressBar
+                  value={checklistStats.completed}
+                  max={checklistStats.total || 1}
+                  color="primary"
+                  size="lg"
+                />
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold">{checklistStats.completed}/{checklistStats.total}</div>
+                <div className="text-sm text-muted-foreground">задач выполнено</div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Program */}
-        {programItems.length > 0 && (
+        {hasWidget("program") && programItems.length > 0 && (
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-4">
               <Clock className="w-5 h-5 text-amber-600" />
@@ -386,6 +429,75 @@ function SharedDashboardContent() {
               {programItems.map((item) => (
                 <ProgramItemCard key={item.id} item={item} />
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Seating */}
+        {hasWidget("seating") && seatingStats && (
+          <div className="card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <LayoutGrid className="w-5 h-5 text-blue-600" />
+              <h2 className="text-lg font-semibold">Рассадка</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{seatingStats.totalTables}</div>
+                <div className="text-sm text-muted-foreground">столов</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold">{seatingStats.totalCapacity}</div>
+                <div className="text-sm text-muted-foreground">мест</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">{seatingStats.seatedGuests}</div>
+                <div className="text-sm text-muted-foreground">рассажено</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-amber-600">{seatingStats.unseatedGuests}</div>
+                <div className="text-sm text-muted-foreground">без места</div>
+              </div>
+            </div>
+            {seatingStats.totalCapacity > 0 && (
+              <div className="mt-4">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-muted-foreground">Заполненность</span>
+                  <span className="font-medium">
+                    {Math.round((seatingStats.seatedGuests / seatingStats.totalCapacity) * 100)}%
+                  </span>
+                </div>
+                <ProgressBar
+                  value={seatingStats.seatedGuests}
+                  max={seatingStats.totalCapacity}
+                  color="primary"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Gifts */}
+        {hasWidget("gifts") && giftStats && (
+          <div className="card p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Gift className="w-5 h-5 text-pink-600" />
+              <h2 className="text-lg font-semibold">Подарки</h2>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold">{giftStats.totalGifts}</div>
+                <div className="text-sm text-muted-foreground">всего</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">
+                  {giftStats.totalCash > 0 ? `${(giftStats.totalCash / 1000).toFixed(0)}K` : "0"}
+                </div>
+                <div className="text-sm text-muted-foreground">деньгами</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-pink-600">{giftStats.totalItems}</div>
+                <div className="text-sm text-muted-foreground">предметов</div>
+              </div>
             </div>
           </div>
         )}

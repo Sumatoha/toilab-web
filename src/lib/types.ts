@@ -437,11 +437,14 @@ export interface ProgramTemplate {
 // Share
 export type ShareAccessLevel = "view" | "editor";
 
+export type ShareWidget = "guests" | "budget" | "checklist" | "program" | "seating" | "gifts";
+
 export interface ShareLink {
   id: string;
   eventId: string;
   token: string;
   accessLevel: ShareAccessLevel;
+  widgets: ShareWidget[];
   pinCode?: string;
   label?: string;
   isActive: boolean;
@@ -452,6 +455,7 @@ export interface ShareLink {
 
 export interface CreateShareLinkRequest {
   accessLevel: ShareAccessLevel;
+  widgets?: ShareWidget[];
   pinCode?: string;
   label?: string;
   expiresIn?: number;
@@ -459,19 +463,31 @@ export interface CreateShareLinkRequest {
 
 export interface SharedEventData {
   event: Event;
-  guestStats: GuestStats;
+  widgets: ShareWidget[];
+  guestStats?: GuestStats;
   budgetSummary?: {
     totalPlanned: number;
     totalActual: number;
     totalPaid: number;
     remaining: number;
   };
-  checklistStats: {
+  checklistStats?: {
     total: number;
     completed: number;
     percent: number;
   };
-  program: ProgramItem[];
+  program?: ProgramItem[];
+  seatingStats?: {
+    totalTables: number;
+    totalCapacity: number;
+    seatedGuests: number;
+    unseatedGuests: number;
+  };
+  giftStats?: {
+    totalGifts: number;
+    totalCash: number;
+    totalItems: number;
+  };
   accessLevel: ShareAccessLevel;
 }
 

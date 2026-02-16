@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Trash2, Check, Link2, Plus, Copy, RefreshCw, Eye, Edit3, Lock, X } from "lucide-react";
 import { events, shares } from "@/lib/api";
-import { Event, UpdateEventRequest, ShareLink, ShareAccessLevel } from "@/lib/types";
+import { Event, UpdateEventRequest, ShareLink, ShareAccessLevel, ShareWidget } from "@/lib/types";
 import { PageLoader, ConfirmDialog, SuccessDialog, Modal, ModalFooter } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -67,7 +67,7 @@ export default function EventSettingsPage() {
     }
   }
 
-  async function handleCreateShare(data: { accessLevel: ShareAccessLevel; pinCode?: string; label?: string }) {
+  async function handleCreateShare(data: { accessLevel: ShareAccessLevel; widgets?: ShareWidget[]; pinCode?: string; label?: string }) {
     try {
       const link = await shares.create(eventId, data);
       setShareLinks((prev) => [link, ...prev]);
@@ -371,6 +371,20 @@ export default function EventSettingsPage() {
                     {link.label && (
                       <p className="font-medium text-sm">{link.label}</p>
                     )}
+                    {link.widgets && link.widgets.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {link.widgets.map((w) => (
+                          <span key={w} className="text-xs px-1.5 py-0.5 bg-secondary rounded">
+                            {w === "guests" && "Гости"}
+                            {w === "budget" && "Бюджет"}
+                            {w === "checklist" && "Чек-лист"}
+                            {w === "program" && "Программа"}
+                            {w === "seating" && "Рассадка"}
+                            {w === "gifts" && "Подарки"}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground truncate mt-1">
                       {getShareUrl(link.token)}
                     </p>
@@ -461,29 +475,50 @@ export default function EventSettingsPage() {
 interface CreateShareModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { accessLevel: ShareAccessLevel; pinCode?: string; label?: string }) => void;
+  onSubmit: (data: { accessLevel: ShareAccessLevel; widgets?: ShareWidget[]; pinCode?: string; label?: string }) => void;
 }
+
+const WIDGET_OPTIONS: { key: ShareWidget; label: string; description: string }[] = [
+  { key: "guests", label: "Гости", description: "Статистика гостей и RSVP" },
+  { key: "budget", label: "Бюджет", description: "Расходы и оплаты" },
+  { key: "checklist", label: "Чек-лист", description: "Прогресс подготовки" },
+  { key: "program", label: "Программа", description: "Тайминг мероприятия" },
+  { key: "seating", label: "Рассадка", description: "Схема столов и места" },
+  { key: "gifts", label: "Подарки", description: "Учёт подарков" },
+];
 
 function CreateShareModal({ isOpen, onClose, onSubmit }: CreateShareModalProps) {
   const [accessLevel, setAccessLevel] = useState<ShareAccessLevel>("view");
+  const [selectedWidgets, setSelectedWidgets] = useState<ShareWidget[]>(["guests", "checklist", "program"]);
   const [usePin, setUsePin] = useState(false);
   const [pinCode, setPinCode] = useState("");
   const [label, setLabel] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const toggleWidget = (widget: ShareWidget) => {
+    setSelectedWidgets((prev) =>
+      prev.includes(widget)
+        ? prev.filter((w) => w !== widget)
+        : [...prev, widget]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (usePin && pinCode.length !== 4) return;
+    if (selectedWidgets.length === 0) return;
 
     setIsSubmitting(true);
     try {
       await onSubmit({
         accessLevel,
+        widgets: selectedWidgets,
         pinCode: usePin ? pinCode : undefined,
         label: label || undefined,
       });
       // Reset form
       setAccessLevel("view");
+      setSelectedWidgets(["guests", "checklist", "program"]);
       setUsePin(false);
       setPinCode("");
       setLabel("");
@@ -540,6 +575,37 @@ function CreateShareModal({ isOpen, onClose, onSubmit }: CreateShareModalProps) 
         </div>
 
         <div>
+          <label className="block text-sm font-medium mb-2">Виджеты для отображения</label>
+          <div className="grid grid-cols-2 gap-2">
+            {WIDGET_OPTIONS.map((widget) => (
+              <label
+                key={widget.key}
+                className={cn(
+                  "flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors",
+                  selectedWidgets.includes(widget.key)
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedWidgets.includes(widget.key)}
+                  onChange={() => toggleWidget(widget.key)}
+                  className="mt-0.5 rounded border-border"
+                />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium">{widget.label}</span>
+                  <p className="text-xs text-muted-foreground">{widget.description}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+          {selectedWidgets.length === 0 && (
+            <p className="text-xs text-red-500 mt-1">Выберите хотя бы один виджет</p>
+          )}
+        </div>
+
+        <div>
           <label className="block text-sm font-medium mb-1.5">Название (опционально)</label>
           <input
             type="text"
@@ -589,7 +655,7 @@ function CreateShareModal({ isOpen, onClose, onSubmit }: CreateShareModalProps) 
           </button>
           <button
             type="submit"
-            disabled={isSubmitting || (usePin && pinCode.length !== 4)}
+            disabled={isSubmitting || (usePin && pinCode.length !== 4) || selectedWidgets.length === 0}
             className="btn-primary btn-md"
           >
             {isSubmitting ? "Создание..." : "Создать"}
