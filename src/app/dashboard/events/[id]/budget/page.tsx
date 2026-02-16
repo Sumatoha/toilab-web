@@ -663,11 +663,11 @@ function EditExpenseModal({
 
         <div className="border-t border-border pt-4">
           <label className="block text-sm font-medium mb-2">Статус</label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {[
-              { value: "planned", label: "Запланировано", icon: Target },
-              { value: "booked", label: "Забронировано", icon: CreditCard },
-              { value: "paid", label: "Оплачено", icon: Check },
+              { value: "planned", label: "Запланировано", shortLabel: "План", icon: Target },
+              { value: "booked", label: "Забронировано", shortLabel: "Бронь", icon: CreditCard },
+              { value: "paid", label: "Оплачено", shortLabel: "Оплачено", icon: Check },
             ].map((s) => {
               const Icon = s.icon;
               return (
@@ -676,14 +676,14 @@ function EditExpenseModal({
                   type="button"
                   onClick={() => setStatus(s.value as ExpenseStatus)}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-all",
+                    "flex items-center gap-1.5 px-2.5 py-2 text-sm rounded-lg border transition-all flex-1 min-w-0 justify-center",
                     status === s.value
                       ? "bg-primary text-white border-primary"
                       : "border-border hover:border-primary/50"
                   )}
                 >
-                  <Icon className="w-4 h-4" />
-                  {s.label}
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate">{s.label}</span>
                 </button>
               );
             })}
