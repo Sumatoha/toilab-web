@@ -15,6 +15,7 @@ import {
   UserPlus,
   UserMinus,
   GripVertical,
+  Theater,
 } from "lucide-react";
 import { seating, guests as guestsApi } from "@/lib/api";
 import {
@@ -37,6 +38,7 @@ const tableShapeIcons: Record<TableShape, typeof Circle> = {
   rect: RectangleHorizontal,
   square: Square,
   oval: Circle,
+  scene: Theater,
 };
 
 export default function SeatingPage() {
@@ -50,16 +52,47 @@ export default function SeatingPage() {
   const [stats, setStats] = useState<SeatingStats | null>(null);
 
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [draggingTable, setDraggingTable] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-
   const [zoom, setZoom] = useState(1);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
 
+  // Drag state using refs to avoid stale closure issues
+  const draggingRef = useRef<string | null>(null);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
   useEffect(() => {
     loadData();
+  }, [eventId]);
+
+  // Global mouse up listener to handle drag end even outside canvas
+  useEffect(() => {
+    const handleGlobalMouseUp = async () => {
+      if (draggingRef.current) {
+        const tableId = draggingRef.current;
+        draggingRef.current = null;
+        setIsDragging(false);
+
+        // Get the latest table position from state
+        setTables((currentTables) => {
+          const table = currentTables.find((t) => t.id === tableId);
+          if (table) {
+            // Save position to backend (fire and forget)
+            seating.updateTable(eventId, tableId, {
+              positionX: table.positionX,
+              positionY: table.positionY,
+            }).catch((error) => {
+              console.error("Failed to save position:", error);
+            });
+          }
+          return currentTables;
+        });
+      }
+    };
+
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
   }, [eventId]);
 
   async function loadData() {
@@ -95,22 +128,23 @@ export default function SeatingPage() {
         { ...table, guests: [] },
       ]);
       setShowCreateModal(false);
-      toast.success("Стол создан");
+      toast.success(data.shape === "scene" ? "Сцена создана" : "Стол создан");
       loadData();
     } catch {
-      toast.error("Не удалось создать стол");
+      toast.error("Не удалось создать");
     }
   };
 
   const handleDeleteTable = async (tableId: string) => {
+    const table = tables.find((t) => t.id === tableId);
     try {
       await seating.deleteTable(eventId, tableId);
       setTables((prev) => prev.filter((t) => t.id !== tableId));
       setSelectedTable(null);
-      toast.success("Стол удалён");
+      toast.success(table?.shape === "scene" ? "Сцена удалена" : "Стол удалён");
       loadData();
     } catch {
-      toast.error("Не удалось удалить стол");
+      toast.error("Не удалось удалить");
     }
   };
 
@@ -137,6 +171,7 @@ export default function SeatingPage() {
 
   const handleTableMouseDown = (e: React.MouseEvent, tableId: string) => {
     if (e.button !== 0) return;
+    e.preventDefault();
     e.stopPropagation();
 
     const table = tables.find((t) => t.id === tableId);
@@ -145,55 +180,40 @@ export default function SeatingPage() {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    setDraggingTable(tableId);
+    draggingRef.current = tableId;
+    setIsDragging(true);
     setSelectedTable(tableId);
-    setDragOffset({
+    dragOffsetRef.current = {
       x: (e.clientX - rect.left) / zoom - table.positionX,
       y: (e.clientY - rect.top) / zoom - table.positionY,
-    });
+    };
   };
 
   const handleCanvasMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      if (!draggingTable) return;
+      if (!draggingRef.current) return;
 
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
 
+      const tableId = draggingRef.current;
       const newX = Math.max(
         0,
-        Math.min(CANVAS_WIDTH - DEFAULT_TABLE_SIZE, (e.clientX - rect.left) / zoom - dragOffset.x)
+        Math.min(CANVAS_WIDTH - DEFAULT_TABLE_SIZE, (e.clientX - rect.left) / zoom - dragOffsetRef.current.x)
       );
       const newY = Math.max(
         0,
-        Math.min(CANVAS_HEIGHT - DEFAULT_TABLE_SIZE, (e.clientY - rect.top) / zoom - dragOffset.y)
+        Math.min(CANVAS_HEIGHT - DEFAULT_TABLE_SIZE, (e.clientY - rect.top) / zoom - dragOffsetRef.current.y)
       );
 
       setTables((prev) =>
         prev.map((t) =>
-          t.id === draggingTable ? { ...t, positionX: newX, positionY: newY } : t
+          t.id === tableId ? { ...t, positionX: newX, positionY: newY } : t
         )
       );
     },
-    [draggingTable, dragOffset, zoom]
+    [zoom]
   );
-
-  const handleCanvasMouseUp = useCallback(async () => {
-    if (draggingTable) {
-      const table = tables.find((t) => t.id === draggingTable);
-      if (table) {
-        try {
-          await seating.updateTable(eventId, draggingTable, {
-            positionX: table.positionX,
-            positionY: table.positionY,
-          });
-        } catch (error) {
-          console.error("Failed to save position:", error);
-        }
-      }
-    }
-    setDraggingTable(null);
-  }, [draggingTable, tables, eventId]);
 
   const handleGuestDragStart = (e: React.DragEvent, guest: Guest) => {
     e.dataTransfer.setData("guestId", guest.id);
@@ -214,6 +234,7 @@ export default function SeatingPage() {
   };
 
   const selectedTableData = tables.find((t) => t.id === selectedTable);
+  const isSelectedScene = selectedTableData?.shape === "scene";
 
   if (isLoading) {
     return <PageLoader />;
@@ -253,7 +274,7 @@ export default function SeatingPage() {
           </div>
           <button onClick={() => setShowCreateModal(true)} className="btn-primary btn-md">
             <Plus className="w-4 h-4" />
-            Добавить стол
+            Добавить
           </button>
         </div>
       </div>
@@ -263,7 +284,10 @@ export default function SeatingPage() {
         <div className="flex-1 bg-secondary/50 rounded-lg overflow-auto relative">
           <div
             ref={canvasRef}
-            className="relative cursor-grab select-none"
+            className={cn(
+              "relative select-none",
+              isDragging ? "cursor-grabbing" : "cursor-default"
+            )}
             style={{
               width: CANVAS_WIDTH * zoom,
               height: CANVAS_HEIGHT * zoom,
@@ -274,8 +298,6 @@ export default function SeatingPage() {
               backgroundSize: `${50 * zoom}px ${50 * zoom}px`,
             }}
             onMouseMove={handleCanvasMouseMove}
-            onMouseUp={handleCanvasMouseUp}
-            onMouseLeave={handleCanvasMouseUp}
             onClick={() => setSelectedTable(null)}
           >
             {tables.map((table) => (
@@ -284,7 +306,7 @@ export default function SeatingPage() {
                 table={table}
                 zoom={zoom}
                 isSelected={selectedTable === table.id}
-                isDragging={draggingTable === table.id}
+                isDragging={draggingRef.current === table.id}
                 onMouseDown={(e) => handleTableMouseDown(e, table.id)}
                 onDrop={(e) => handleTableDrop(e, table.id)}
                 onDragOver={handleTableDragOver}
@@ -307,33 +329,42 @@ export default function SeatingPage() {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
-              <div className="text-sm text-muted-foreground">
-                {selectedTableData.guests.length} / {selectedTableData.capacity} мест
-              </div>
-              <div className="space-y-2">
-                {selectedTableData.guests.map((guest) => (
-                  <div
-                    key={guest.id}
-                    className="flex items-center justify-between p-2 bg-secondary rounded-lg"
-                  >
-                    <span className="text-sm">{guest.name}</span>
-                    <button
-                      onClick={() => handleRemoveGuest(selectedTableData.id, guest.id)}
-                      className="btn-ghost btn-sm text-red-600"
-                    >
-                      <UserMinus className="w-3 h-3" />
-                    </button>
+              {!isSelectedScene && (
+                <>
+                  <div className="text-sm text-muted-foreground">
+                    {selectedTableData.guests.length} / {selectedTableData.capacity} мест
                   </div>
-                ))}
-              </div>
-              {selectedTableData.guests.length < selectedTableData.capacity && (
-                <button
-                  onClick={() => setShowAssignModal(true)}
-                  className="btn-ghost btn-sm w-full"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Добавить гостя
-                </button>
+                  <div className="space-y-2">
+                    {selectedTableData.guests.map((guest) => (
+                      <div
+                        key={guest.id}
+                        className="flex items-center justify-between p-2 bg-secondary rounded-lg"
+                      >
+                        <span className="text-sm">{guest.name}</span>
+                        <button
+                          onClick={() => handleRemoveGuest(selectedTableData.id, guest.id)}
+                          className="btn-ghost btn-sm text-red-600"
+                        >
+                          <UserMinus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {selectedTableData.guests.length < selectedTableData.capacity && (
+                    <button
+                      onClick={() => setShowAssignModal(true)}
+                      className="btn-ghost btn-sm w-full"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Добавить гостя
+                    </button>
+                  )}
+                </>
+              )}
+              {isSelectedScene && (
+                <div className="text-sm text-muted-foreground">
+                  Сцена / декорация
+                </div>
               )}
             </div>
           )}
@@ -380,7 +411,7 @@ export default function SeatingPage() {
       />
 
       {/* Assign Guest Modal */}
-      {selectedTableData && (
+      {selectedTableData && !isSelectedScene && (
         <AssignGuestModal
           isOpen={showAssignModal}
           onClose={() => setShowAssignModal(false)}
@@ -415,7 +446,14 @@ function TableElement({
   onDrop,
   onDragOver,
 }: TableElementProps) {
-  const isFull = table.guests.length >= table.capacity;
+  const isScene = table.shape === "scene";
+  const isFull = !isScene && table.guests.length >= table.capacity;
+
+  const getShape = () => {
+    if (isScene) return "4px";
+    if (table.shape === "round" || table.shape === "oval") return "50%";
+    return "8px";
+  };
 
   return (
     <div
@@ -423,7 +461,7 @@ function TableElement({
         "absolute cursor-grab transition-shadow",
         isSelected && "ring-2 ring-primary ring-offset-2",
         isDragging && "opacity-70 cursor-grabbing",
-        isFull ? "bg-emerald-100" : "bg-white"
+        isScene ? "bg-amber-100 border-amber-400" : isFull ? "bg-emerald-100" : "bg-white"
       )}
       style={{
         left: table.positionX * zoom,
@@ -431,22 +469,31 @@ function TableElement({
         width: table.width * zoom,
         height: table.height * zoom,
         transform: `rotate(${table.rotation}deg)`,
-        borderRadius: table.shape === "round" || table.shape === "oval" ? "50%" : "8px",
-        border: "2px solid var(--border)",
+        borderRadius: getShape(),
+        border: isScene ? "2px dashed var(--amber-400)" : "2px solid var(--border)",
         boxShadow: isSelected ? undefined : "0 2px 4px rgba(0,0,0,0.1)",
       }}
       onMouseDown={onMouseDown}
-      onDrop={onDrop}
-      onDragOver={onDragOver}
+      onDrop={isScene ? undefined : onDrop}
+      onDragOver={isScene ? undefined : onDragOver}
     >
       <div
         className="absolute inset-0 flex flex-col items-center justify-center text-center p-2"
         style={{ transform: `rotate(-${table.rotation}deg)` }}
       >
-        <span className="font-medium text-sm truncate w-full">{table.name}</span>
-        <span className="text-xs text-muted-foreground">
-          {table.guests.length}/{table.capacity}
-        </span>
+        {isScene ? (
+          <>
+            <Theater className="w-5 h-5 text-amber-600 mb-1" />
+            <span className="font-medium text-sm truncate w-full text-amber-700">{table.name}</span>
+          </>
+        ) : (
+          <>
+            <span className="font-medium text-sm truncate w-full">{table.name}</span>
+            <span className="text-xs text-muted-foreground">
+              {table.guests.length}/{table.capacity}
+            </span>
+          </>
+        )}
       </div>
     </div>
   );
@@ -464,16 +511,28 @@ function CreateTableModal({ isOpen, onClose, onSubmit, tableCount }: CreateTable
   const [shape, setShape] = useState<TableShape>("round");
   const [capacity, setCapacity] = useState(8);
 
+  const isScene = shape === "scene";
+
+  useEffect(() => {
+    if (isScene) {
+      setName("Сцена");
+      setCapacity(0);
+    } else if (name === "Сцена") {
+      setName(`Стол ${tableCount + 1}`);
+      setCapacity(8);
+    }
+  }, [shape, isScene, tableCount, name]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
       name,
       shape,
-      capacity,
+      capacity: isScene ? 0 : capacity,
       positionX: 100 + (tableCount % 5) * 150,
       positionY: 100 + Math.floor(tableCount / 5) * 150,
-      width: DEFAULT_TABLE_SIZE,
-      height: DEFAULT_TABLE_SIZE,
+      width: isScene ? 200 : DEFAULT_TABLE_SIZE,
+      height: isScene ? 80 : DEFAULT_TABLE_SIZE,
     });
     setName(`Стол ${tableCount + 2}`);
     setShape("round");
@@ -483,24 +542,12 @@ function CreateTableModal({ isOpen, onClose, onSubmit, tableCount }: CreateTable
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Добавить стол">
+    <Modal isOpen={isOpen} onClose={onClose} title="Добавить элемент">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5">Название</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="input"
-            placeholder="Стол 1"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">Форма</label>
-          <div className="grid grid-cols-4 gap-2">
-            {(["round", "rect", "square", "oval"] as TableShape[]).map((s) => {
+          <label className="block text-sm font-medium mb-2">Тип</label>
+          <div className="grid grid-cols-5 gap-2">
+            {(["round", "rect", "square", "oval", "scene"] as TableShape[]).map((s) => {
               const Icon = tableShapeIcons[s];
               return (
                 <button
@@ -520,6 +567,7 @@ function CreateTableModal({ isOpen, onClose, onSubmit, tableCount }: CreateTable
                     {s === "rect" && "Прямоуг."}
                     {s === "square" && "Квадрат"}
                     {s === "oval" && "Овал"}
+                    {s === "scene" && "Сцена"}
                   </span>
                 </button>
               );
@@ -528,16 +576,30 @@ function CreateTableModal({ isOpen, onClose, onSubmit, tableCount }: CreateTable
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5">Вместимость</label>
+          <label className="block text-sm font-medium mb-1.5">Название</label>
           <input
-            type="number"
-            value={capacity}
-            onChange={(e) => setCapacity(parseInt(e.target.value) || 8)}
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className="input"
-            min={1}
-            max={50}
+            placeholder={isScene ? "Сцена" : "Стол 1"}
+            required
           />
         </div>
+
+        {!isScene && (
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Вместимость</label>
+            <input
+              type="number"
+              value={capacity}
+              onChange={(e) => setCapacity(parseInt(e.target.value) || 8)}
+              className="input"
+              min={1}
+              max={50}
+            />
+          </div>
+        )}
 
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-ghost btn-md">

@@ -14,9 +14,11 @@ import {
   UserCheck,
   UserX,
   UserPlus,
+  Pencil,
+  LayoutGrid,
 } from "lucide-react";
-import { guests } from "@/lib/api";
-import { Guest, GuestStats } from "@/lib/types";
+import { guests, seating } from "@/lib/api";
+import { Guest, GuestStats, SeatingTable } from "@/lib/types";
 import { cn, rsvpStatusLabels } from "@/lib/utils";
 import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog, Avatar, ProgressBar } from "@/components/ui";
 import toast from "react-hot-toast";
@@ -26,12 +28,14 @@ export default function GuestsPage() {
   const eventId = params.id as string;
 
   const [guestList, setGuestList] = useState<Guest[]>([]);
+  const [tables, setTables] = useState<SeatingTable[]>([]);
   const [stats, setStats] = useState<GuestStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "accepted" | "declined">("all");
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [deleteGuestId, setDeleteGuestId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -41,12 +45,15 @@ export default function GuestsPage() {
 
   async function loadData() {
     try {
-      const [guestsData, statsData] = await Promise.all([
+      const [guestsData, statsData, tablesData] = await Promise.all([
         guests.list(eventId),
         guests.getStats(eventId),
+        seating.getTables(eventId).catch(() => []), // Tables might not exist yet
       ]);
       setGuestList(guestsData || []);
-      setStats(statsData || { total: 0, accepted: 0, declined: 0, pending: 0, plusOnes: 0 });
+      setStats(statsData || { total: 0, accepted: 0, declined: 0, pending: 0, plusOnes: 0, attending: 0 });
+      // Filter out scene elements
+      setTables((tablesData || []).filter(t => t.shape !== "scene"));
     } catch (error) {
       console.error("Failed to load guests:", error);
       toast.error("Не удалось загрузить гостей");
@@ -61,9 +68,15 @@ export default function GuestsPage() {
     return true;
   });
 
-  const handleAddGuest = async (name: string, phone?: string, email?: string) => {
+  const handleAddGuest = async (data: { name: string; phone?: string; email?: string; tableId?: string }) => {
     try {
-      const newGuest = await guests.create(eventId, { name, phone, email });
+      const newGuest = await guests.create(eventId, { name: data.name, phone: data.phone, email: data.email });
+
+      // If tableId provided, assign guest to table
+      if (data.tableId) {
+        await seating.assignGuest(eventId, data.tableId, newGuest.id);
+      }
+
       setGuestList((prev) => [...prev, newGuest]);
       setShowAddModal(false);
       toast.success("Гость добавлен");
@@ -71,6 +84,39 @@ export default function GuestsPage() {
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось добавить гостя");
+    }
+  };
+
+  const handleUpdateGuest = async (guestId: string, data: { name?: string; phone?: string; email?: string; tableId?: string | null }) => {
+    try {
+      // Update guest info
+      await guests.update(eventId, guestId, {
+        name: data.name,
+        phone: data.phone,
+        email: data.email,
+      });
+
+      // Handle table assignment
+      const currentGuest = guestList.find(g => g.id === guestId);
+      const currentTableId = currentGuest?.tableId;
+
+      if (data.tableId !== undefined && data.tableId !== currentTableId) {
+        // Remove from current table if exists
+        if (currentTableId) {
+          await seating.removeGuest(eventId, currentTableId, guestId).catch(() => {});
+        }
+        // Add to new table if selected
+        if (data.tableId) {
+          await seating.assignGuest(eventId, data.tableId, guestId);
+        }
+      }
+
+      setEditingGuest(null);
+      toast.success("Гость обновлён");
+      loadData();
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "Не удалось обновить гостя");
     }
   };
 
@@ -102,6 +148,10 @@ export default function GuestsPage() {
       setIsDeleting(false);
     }
   };
+
+  // Create a map of tableId -> table name
+  const tableNameMap = new Map<string, string>();
+  tables.forEach(t => tableNameMap.set(t.id, t.name));
 
   if (isLoading) {
     return <PageLoader />;
@@ -237,6 +287,8 @@ export default function GuestsPage() {
               <GuestRow
                 key={guest.id}
                 guest={guest}
+                tableName={guest.tableId ? tableNameMap.get(guest.tableId) : undefined}
+                onEdit={() => setEditingGuest(guest)}
                 onDelete={() => setDeleteGuestId(guest.id)}
                 className={`animate-in stagger-${Math.min(index + 1, 4)}`}
               />
@@ -250,6 +302,17 @@ export default function GuestsPage() {
         <AddGuestModal
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddGuest}
+          tables={tables}
+        />
+      )}
+
+      {/* Edit Guest Modal */}
+      {editingGuest && (
+        <EditGuestModal
+          guest={editingGuest}
+          tables={tables}
+          onClose={() => setEditingGuest(null)}
+          onSave={(data) => handleUpdateGuest(editingGuest.id, data)}
         />
       )}
 
@@ -319,11 +382,26 @@ function StatCard({
   );
 }
 
-function GuestRow({ guest, onDelete, className }: { guest: Guest; onDelete: () => void; className?: string }) {
+function GuestRow({
+  guest,
+  tableName,
+  onEdit,
+  onDelete,
+  className
+}: {
+  guest: Guest;
+  tableName?: string;
+  onEdit: () => void;
+  onDelete: () => void;
+  className?: string;
+}) {
   const statusConfig = rsvpStatusLabels[guest.rsvpStatus] || { ru: "Неизвестно", color: "gray" };
 
   return (
-    <div className={cn("flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors group", className)}>
+    <div
+      className={cn("flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors group cursor-pointer", className)}
+      onClick={onEdit}
+    >
       <Avatar name={guest.name} size="md" />
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{guest.name}</p>
@@ -336,16 +414,31 @@ function GuestRow({ guest, onDelete, className }: { guest: Guest; onDelete: () =
               +{guest.plusCount}
             </span>
           )}
+          {tableName && (
+            <span className="inline-flex items-center gap-1 text-indigo-600">
+              <LayoutGrid className="w-3 h-3" />
+              {tableName}
+            </span>
+          )}
         </div>
       </div>
       <RsvpBadge status={guest.rsvpStatus} label={statusConfig.ru} />
-      <button
-        onClick={onDelete}
-        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-        title="Удалить"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+          title="Редактировать"
+        >
+          <Pencil className="w-4 h-4" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+          title="Удалить"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -379,18 +472,26 @@ function RsvpBadge({ status, label }: { status: string; label: string }) {
 function AddGuestModal({
   onClose,
   onAdd,
+  tables,
 }: {
   onClose: () => void;
-  onAdd: (name: string, phone?: string, email?: string) => void;
+  onAdd: (data: { name: string; phone?: string; email?: string; tableId?: string }) => void;
+  tables: SeatingTable[];
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [tableId, setTableId] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onAdd(name.trim(), phone.trim() || undefined, email.trim() || undefined);
+    onAdd({
+      name: name.trim(),
+      phone: phone.trim() || undefined,
+      email: email.trim() || undefined,
+      tableId: tableId || undefined,
+    });
   };
 
   return (
@@ -427,12 +528,130 @@ function AddGuestModal({
             placeholder="email@example.com"
           />
         </div>
+        {tables.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              <span className="inline-flex items-center gap-1.5">
+                <LayoutGrid className="w-4 h-4" />
+                Стол
+              </span>
+            </label>
+            <select
+              value={tableId}
+              onChange={(e) => setTableId(e.target.value)}
+              className="input"
+            >
+              <option value="">Не назначен</option>
+              {tables.map((table) => (
+                <option key={table.id} value={table.id}>
+                  {table.name} ({table.guestIds.length}/{table.capacity})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
             Отмена
           </button>
           <button type="submit" className="btn-primary btn-md">
             Добавить
+          </button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
+}
+
+function EditGuestModal({
+  guest,
+  tables,
+  onClose,
+  onSave,
+}: {
+  guest: Guest;
+  tables: SeatingTable[];
+  onClose: () => void;
+  onSave: (data: { name?: string; phone?: string; email?: string; tableId?: string | null }) => void;
+}) {
+  const [name, setName] = useState(guest.name);
+  const [phone, setPhone] = useState(guest.phone || "");
+  const [email, setEmail] = useState(guest.email || "");
+  const [tableId, setTableId] = useState(guest.tableId || "");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onSave({
+      name: name.trim(),
+      phone: phone.trim() || undefined,
+      email: email.trim() || undefined,
+      tableId: tableId || null,
+    });
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title="Редактировать гостя">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Имя *</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="input"
+            placeholder="Имя гостя"
+            autoFocus
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Телефон</label>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="input"
+            placeholder="+7 777 123 4567"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="input"
+            placeholder="email@example.com"
+          />
+        </div>
+        {tables.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              <span className="inline-flex items-center gap-1.5">
+                <LayoutGrid className="w-4 h-4" />
+                Стол
+              </span>
+            </label>
+            <select
+              value={tableId}
+              onChange={(e) => setTableId(e.target.value)}
+              className="input"
+            >
+              <option value="">Не назначен</option>
+              {tables.map((table) => (
+                <option key={table.id} value={table.id}>
+                  {table.name} ({table.guestIds.length}/{table.capacity})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <ModalFooter>
+          <button type="button" onClick={onClose} className="btn-outline btn-md">
+            Отмена
+          </button>
+          <button type="submit" className="btn-primary btn-md">
+            Сохранить
           </button>
         </ModalFooter>
       </form>

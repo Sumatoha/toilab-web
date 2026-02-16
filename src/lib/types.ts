@@ -481,7 +481,7 @@ export interface ShareCheckResponse {
 }
 
 // Seating
-export type TableShape = "round" | "rect" | "square" | "oval";
+export type TableShape = "round" | "rect" | "square" | "oval" | "scene";
 
 export interface SeatingTable {
   id: string;
