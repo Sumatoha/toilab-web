@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import {
   Users,
@@ -20,6 +20,25 @@ import { cn, formatCurrency, formatDate, eventTypeLabels } from "@/lib/utils";
 import { ProgressBar } from "@/components/ui";
 
 export default function SharedDashboardPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <SharedDashboardContent />
+    </Suspense>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="mt-4 text-muted-foreground">Загрузка...</p>
+      </div>
+    </div>
+  );
+}
+
+function SharedDashboardContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const token = params.token as string;
