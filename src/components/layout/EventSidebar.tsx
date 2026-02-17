@@ -20,19 +20,19 @@ const navItems: NavItem[] = [
   { href: "/guests", label: "Гости", icon: Users, feature: "guests" },
   { href: "/seating", label: "Рассадка", icon: LayoutGrid, feature: "seating" },
   { href: "/gifts", label: "Подарки", icon: Gift, feature: "gifts" },
-  { href: "/program", label: "Программа", icon: Clock, feature: "program" },
+  { href: "/program", label: "Программа", icon: Clock },
   { href: "/budget", label: "Расходы", icon: Wallet },
   { href: "/checklist", label: "Задачи", icon: CheckSquare },
-  { href: "/invitation", label: "Приглашение", icon: Mail },
+  { href: "/invitation", label: "Приглашение", icon: Mail, feature: "invitation" },
   { href: "/settings", label: "Настройки", icon: Settings },
 ];
 
 // Features available for each plan
 const planFeatures: Record<Plan, string[]> = {
-  free: ["budget", "checklist"],
-  single: ["guests", "budget", "checklist", "vendors", "program", "seating", "gifts", "sharing"],
-  pro: ["guests", "budget", "checklist", "vendors", "program", "seating", "gifts", "sharing"],
-  trial: ["guests", "budget", "checklist", "vendors", "program", "seating", "gifts", "sharing"],
+  free: ["budget", "checklist", "program"],
+  single: ["guests", "budget", "checklist", "vendors", "program", "seating", "gifts", "sharing", "invitation"],
+  pro: ["guests", "budget", "checklist", "vendors", "program", "seating", "gifts", "sharing", "invitation"],
+  trial: ["guests", "budget", "checklist", "vendors", "program", "seating", "gifts", "sharing", "invitation"],
 };
 
 function hasFeature(plan: Plan, feature: string | undefined): boolean {
