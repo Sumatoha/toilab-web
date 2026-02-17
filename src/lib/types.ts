@@ -464,31 +464,42 @@ export interface CreateShareLinkRequest {
 export interface SharedEventData {
   event: Event;
   widgets: ShareWidget[];
+  accessLevel: ShareAccessLevel;
+  // Guests
   guestStats?: GuestStats;
+  guests?: Guest[];
+  // Budget
   budgetSummary?: {
     totalPlanned: number;
     totalActual: number;
     totalPaid: number;
     remaining: number;
   };
+  expenses?: Expense[];
+  // Checklist
   checklistStats?: {
     total: number;
     completed: number;
     percent: number;
   };
+  checklist?: ChecklistItem[];
+  // Program
   program?: ProgramItem[];
+  // Seating
   seatingStats?: {
     totalTables: number;
     totalCapacity: number;
     seatedGuests: number;
     unseatedGuests: number;
   };
+  tables?: SeatingTable[];
+  // Gifts
   giftStats?: {
     totalGifts: number;
     totalCash: number;
     totalItems: number;
   };
-  accessLevel: ShareAccessLevel;
+  gifts?: Gift[];
 }
 
 export interface ShareCheckResponse {
