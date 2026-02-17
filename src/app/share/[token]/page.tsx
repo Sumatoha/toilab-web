@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import {
   Users,
@@ -18,6 +18,8 @@ import {
   Check,
   Phone,
   UserX,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { shares } from "@/lib/api";
 import {
@@ -31,9 +33,8 @@ import {
   Gift as GiftType,
 } from "@/lib/types";
 import { cn, formatCurrency, formatDate, eventTypeLabels } from "@/lib/utils";
-import { ProgressBar } from "@/components/ui";
 
-// Expense category labels
+// Category labels
 const expenseCategoryLabels: Record<string, string> = {
   venue: "Площадка",
   catering: "Кейтеринг",
@@ -49,7 +50,6 @@ const expenseCategoryLabels: Record<string, string> = {
   other: "Другое",
 };
 
-// Checklist category labels
 const checklistCategoryLabels: Record<string, string> = {
   venue: "Площадка",
   attire: "Наряды",
@@ -62,18 +62,25 @@ const checklistCategoryLabels: Record<string, string> = {
 
 export default function SharedDashboardPage() {
   return (
-    <Suspense fallback={<LoadingState />}>
+    <Suspense fallback={<LoadingSkeleton />}>
       <SharedDashboardContent />
     </Suspense>
   );
 }
 
-function LoadingState() {
+function LoadingSkeleton() {
   return (
-    <div className="min-h-screen bg-secondary/30 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="mt-4 text-muted-foreground">Загрузка...</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="h-16 bg-white border-b animate-pulse" />
+      <div className="max-w-6xl mx-auto p-4 space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-24 bg-white rounded-2xl animate-pulse" />
+          ))}
+        </div>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-64 bg-white rounded-2xl animate-pulse" />
+        ))}
       </div>
     </div>
   );
@@ -92,6 +99,20 @@ function SharedDashboardContent() {
   const [pin, setPin] = useState(pinFromUrl || "");
   const [showPinForm, setShowPinForm] = useState(false);
 
+  // Collapsible sections state
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    guests: true,
+    budget: true,
+    checklist: true,
+    program: true,
+    seating: true,
+    gifts: true,
+  });
+
+  const toggleSection = (key: string) => {
+    setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   useEffect(() => {
     checkLink();
   }, [token]);
@@ -100,7 +121,6 @@ function SharedDashboardContent() {
     try {
       const check = await shares.check(token);
       setCheckData(check);
-
       if (check.requiresPin && !pinFromUrl) {
         setShowPinForm(true);
         setIsLoading(false);
@@ -140,19 +160,17 @@ function SharedDashboardContent() {
     }
   };
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
+  if (isLoading) return <LoadingSkeleton />;
 
   if (error && !showPinForm) {
     return (
-      <div className="min-h-screen bg-secondary/30 flex items-center justify-center p-4">
-        <div className="card p-8 text-center max-w-md">
-          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-8 h-8 text-red-500" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-xl p-8 text-center max-w-sm w-full">
+          <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-6">
+            <Lock className="w-10 h-10 text-red-400" />
           </div>
-          <h1 className="text-xl font-bold mb-2">Ссылка недоступна</h1>
-          <p className="text-muted-foreground">{error}</p>
+          <h1 className="text-2xl font-bold mb-2">Ссылка недоступна</h1>
+          <p className="text-slate-500">{error}</p>
         </div>
       </div>
     );
@@ -160,15 +178,15 @@ function SharedDashboardContent() {
 
   if (showPinForm) {
     return (
-      <div className="min-h-screen bg-secondary/30 flex items-center justify-center p-4">
-        <div className="card p-8 max-w-sm w-full">
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-8 h-8 text-primary" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <Lock className="w-10 h-10 text-primary" />
             </div>
-            <h1 className="text-xl font-bold">Введите PIN-код</h1>
+            <h1 className="text-2xl font-bold">Введите PIN-код</h1>
             {checkData?.label && (
-              <p className="text-muted-foreground mt-1">{checkData.label}</p>
+              <p className="text-slate-500 mt-2">{checkData.label}</p>
             )}
           </div>
           <form onSubmit={handlePinSubmit}>
@@ -179,17 +197,17 @@ function SharedDashboardContent() {
               maxLength={4}
               value={pin}
               onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-              className="input text-center text-2xl tracking-widest mb-4"
-              placeholder="____"
+              className="w-full h-16 text-center text-3xl font-mono tracking-[0.5em] border-2 border-slate-200 rounded-2xl focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all"
+              placeholder="• • • •"
               autoFocus
             />
             {error && (
-              <p className="text-red-500 text-sm text-center mb-4">{error}</p>
+              <p className="text-red-500 text-sm text-center mt-3">{error}</p>
             )}
             <button
               type="submit"
               disabled={pin.length !== 4}
-              className="btn-primary btn-md w-full"
+              className="w-full mt-6 h-14 bg-primary text-white font-semibold rounded-2xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Войти
             </button>
@@ -217,52 +235,45 @@ function SharedDashboardContent() {
     giftStats,
     gifts,
   } = data;
-  const eventLabel = eventTypeLabels[event.type]?.ru || event.type;
-  const programItems = program || [];
-  const guestList = guests || [];
-  const expenseList = expenses || [];
-  const checklistItems = checklist || [];
-  const tableList = tables || [];
-  const giftList = gifts || [];
 
-  const hasWidget = (widget: string) =>
-    widgets?.includes(widget as (typeof widgets)[number]) ?? false;
+  const eventLabel = eventTypeLabels[event.type]?.ru || event.type;
+  const hasWidget = (w: string) => widgets?.includes(w as (typeof widgets)[number]) ?? false;
 
   return (
-    <div className="min-h-screen bg-secondary/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
-      <header className="bg-white border-b border-border sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                <span className="badge-info">{eventLabel}</span>
-                {accessLevel === "editor" ? (
-                  <span className="badge-success flex items-center gap-1">
-                    <Edit3 className="w-3 h-3" />
-                    Редактор
-                  </span>
-                ) : (
-                  <span className="badge-default flex items-center gap-1">
-                    <Eye className="w-3 h-3" />
-                    Просмотр
-                  </span>
-                )}
+      <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200/50 sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 py-3 sm:py-4">
+          <div className="flex items-start sm:items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className="text-xs font-medium px-2 py-1 bg-primary/10 text-primary rounded-full">
+                  {eventLabel}
+                </span>
+                <span className={cn(
+                  "text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1",
+                  accessLevel === "editor"
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-100 text-slate-600"
+                )}>
+                  {accessLevel === "editor" ? <Edit3 className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  {accessLevel === "editor" ? "Редактор" : "Просмотр"}
+                </span>
               </div>
-              <h1 className="text-xl font-bold">{event.title}</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">{event.title}</h1>
             </div>
-            <div className="text-right text-sm text-muted-foreground">
+            <div className="text-right text-xs sm:text-sm text-slate-500 shrink-0">
               {event.date && (
                 <div className="flex items-center gap-1.5 justify-end">
-                  <Calendar className="w-4 h-4" />
-                  {formatDate(event.date)}
-                  {event.time && `, ${event.time}`}
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>{formatDate(event.date)}</span>
+                  {event.time && <span className="hidden sm:inline">, {event.time}</span>}
                 </div>
               )}
               {event.venue?.name && (
-                <div className="flex items-center gap-1.5 justify-end mt-1">
-                  <MapPin className="w-4 h-4" />
-                  {event.venue.name}
+                <div className="flex items-center gap-1.5 justify-end mt-0.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span className="truncate max-w-[120px] sm:max-w-none">{event.venue.name}</span>
                 </div>
               )}
             </div>
@@ -270,494 +281,526 @@ function SharedDashboardContent() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-6">
-        {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {hasWidget("guests") && guestStats && (
-            <div className="card p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-indigo-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">
-                    {guestStats.accepted}/{guestStats.total}
-                  </div>
-                  <div className="text-sm text-muted-foreground">придут</div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              icon={Users}
+              iconBg="bg-indigo-100"
+              iconColor="text-indigo-600"
+              value={`${guestStats.accepted}/${guestStats.total}`}
+              label="придут"
+            />
           )}
-
           {hasWidget("budget") && budgetSummary && (
-            <div className="card p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                  <Wallet className="w-5 h-5 text-emerald-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">
-                    {Math.round(
-                      (budgetSummary.totalPaid / (budgetSummary.totalPlanned || 1)) * 100
-                    )}
-                    %
-                  </div>
-                  <div className="text-sm text-muted-foreground">оплачено</div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              icon={Wallet}
+              iconBg="bg-emerald-100"
+              iconColor="text-emerald-600"
+              value={`${Math.round((budgetSummary.totalPaid / (budgetSummary.totalPlanned || 1)) * 100)}%`}
+              label="оплачено"
+            />
           )}
-
           {hasWidget("checklist") && checklistStats && (
-            <div className="card p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                  <CheckSquare className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{checklistStats.percent}%</div>
-                  <div className="text-sm text-muted-foreground">готово</div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              icon={CheckSquare}
+              iconBg="bg-violet-100"
+              iconColor="text-violet-600"
+              value={`${checklistStats.percent}%`}
+              label="готово"
+            />
           )}
-
           {hasWidget("seating") && seatingStats && (
-            <div className="card p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <LayoutGrid className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">
-                    {seatingStats.seatedGuests}/{seatingStats.totalCapacity}
-                  </div>
-                  <div className="text-sm text-muted-foreground">рассажено</div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              icon={LayoutGrid}
+              iconBg="bg-sky-100"
+              iconColor="text-sky-600"
+              value={`${seatingStats.seatedGuests}/${seatingStats.totalCapacity}`}
+              label="рассажено"
+            />
           )}
-
           {hasWidget("gifts") && giftStats && (
-            <div className="card p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
-                  <Gift className="w-5 h-5 text-pink-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{formatCurrency(giftStats.totalCash)}</div>
-                  <div className="text-sm text-muted-foreground">подарков</div>
-                </div>
-              </div>
-            </div>
+            <StatCard
+              icon={Gift}
+              iconBg="bg-pink-100"
+              iconColor="text-pink-600"
+              value={formatCurrency(giftStats.totalCash)}
+              label="подарков"
+              small
+            />
           )}
         </div>
 
-        {/* Guests Detail */}
-        {hasWidget("guests") && guestList.length > 0 && (
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-indigo-600" />
-                <h2 className="text-lg font-semibold">Гости</h2>
-              </div>
-              <div className="flex gap-4 text-sm">
-                <span className="text-emerald-600">{guestStats?.accepted || 0} придут</span>
-                <span className="text-amber-600">{guestStats?.pending || 0} ожидают</span>
-                <span className="text-red-600">{guestStats?.declined || 0} отказ</span>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 font-medium">Имя</th>
-                    <th className="text-left py-2 font-medium">Статус</th>
-                    <th className="text-left py-2 font-medium">Группа</th>
-                    <th className="text-left py-2 font-medium">+</th>
-                    <th className="text-left py-2 font-medium">Стол</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {guestList.map((guest) => (
-                    <GuestRow key={guest.id} guest={guest} tables={tableList} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {/* Guests */}
+        {hasWidget("guests") && guests && guests.length > 0 && (
+          <CollapsibleSection
+            title="Гости"
+            icon={Users}
+            iconColor="text-indigo-600"
+            badge={`${guestStats?.accepted || 0} из ${guestStats?.total || 0}`}
+            expanded={expanded.guests}
+            onToggle={() => toggleSection("guests")}
+          >
+            <GuestList guests={guests} tables={tables || []} />
+          </CollapsibleSection>
         )}
 
-        {/* Budget Detail */}
-        {hasWidget("budget") && expenseList.length > 0 && (
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-emerald-600" />
-                <h2 className="text-lg font-semibold">Бюджет</h2>
-              </div>
-              {budgetSummary && (
-                <div className="text-sm text-muted-foreground">
-                  {formatCurrency(budgetSummary.totalPaid)} из {formatCurrency(budgetSummary.totalPlanned)}
-                </div>
-              )}
-            </div>
-            {budgetSummary && (
-              <div className="mb-4">
-                <ProgressBar
-                  value={budgetSummary.totalPaid}
-                  max={budgetSummary.totalPlanned || 1}
-                  color="success"
-                />
-              </div>
-            )}
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 font-medium">Категория</th>
-                    <th className="text-left py-2 font-medium">Название</th>
-                    <th className="text-right py-2 font-medium">План</th>
-                    <th className="text-right py-2 font-medium">Факт</th>
-                    <th className="text-right py-2 font-medium">Оплачено</th>
-                    <th className="text-left py-2 font-medium">Статус</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {expenseList.map((expense) => (
-                    <ExpenseRow key={expense.id} expense={expense} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {/* Budget */}
+        {hasWidget("budget") && expenses && expenses.length > 0 && (
+          <CollapsibleSection
+            title="Бюджет"
+            icon={Wallet}
+            iconColor="text-emerald-600"
+            badge={budgetSummary ? formatCurrency(budgetSummary.totalPaid) : undefined}
+            expanded={expanded.budget}
+            onToggle={() => toggleSection("budget")}
+          >
+            <ExpenseList expenses={expenses} summary={budgetSummary} />
+          </CollapsibleSection>
         )}
 
-        {/* Checklist Detail */}
-        {hasWidget("checklist") && checklistItems.length > 0 && (
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <CheckSquare className="w-5 h-5 text-purple-600" />
-                <h2 className="text-lg font-semibold">Чек-лист</h2>
-              </div>
-              {checklistStats && (
-                <div className="text-sm text-muted-foreground">
-                  {checklistStats.completed} из {checklistStats.total} выполнено
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              {checklistItems.map((item) => (
-                <ChecklistItemRow key={item.id} item={item} />
-              ))}
-            </div>
-          </div>
+        {/* Checklist */}
+        {hasWidget("checklist") && checklist && checklist.length > 0 && (
+          <CollapsibleSection
+            title="Чек-лист"
+            icon={CheckSquare}
+            iconColor="text-violet-600"
+            badge={checklistStats ? `${checklistStats.completed}/${checklistStats.total}` : undefined}
+            expanded={expanded.checklist}
+            onToggle={() => toggleSection("checklist")}
+          >
+            <ChecklistList items={checklist} />
+          </CollapsibleSection>
         )}
 
         {/* Program */}
-        {hasWidget("program") && programItems.length > 0 && (
-          <div className="card p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Clock className="w-5 h-5 text-amber-600" />
-              <h2 className="text-lg font-semibold">Программа</h2>
-            </div>
-            <div className="space-y-0">
-              {programItems.map((item) => (
-                <ProgramItemCard key={item.id} item={item} />
-              ))}
-            </div>
-          </div>
+        {hasWidget("program") && program && program.length > 0 && (
+          <CollapsibleSection
+            title="Программа"
+            icon={Clock}
+            iconColor="text-amber-600"
+            badge={`${program.length} пунктов`}
+            expanded={expanded.program}
+            onToggle={() => toggleSection("program")}
+          >
+            <ProgramList items={program} />
+          </CollapsibleSection>
         )}
 
-        {/* Seating Layout */}
-        {hasWidget("seating") && tableList.length > 0 && (
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <LayoutGrid className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-semibold">Рассадка</h2>
-              </div>
-              {seatingStats && (
-                <div className="text-sm text-muted-foreground">
-                  {seatingStats.seatedGuests} из {seatingStats.totalCapacity} мест занято
-                </div>
-              )}
-            </div>
-            <SeatingCanvas tables={tableList} guests={guestList} />
-          </div>
+        {/* Seating */}
+        {hasWidget("seating") && tables && tables.length > 0 && (
+          <CollapsibleSection
+            title="Рассадка"
+            icon={LayoutGrid}
+            iconColor="text-sky-600"
+            badge={seatingStats ? `${seatingStats.totalTables} столов` : undefined}
+            expanded={expanded.seating}
+            onToggle={() => toggleSection("seating")}
+          >
+            <SeatingView tables={tables} guests={guests || []} />
+          </CollapsibleSection>
         )}
 
-        {/* Gifts List */}
-        {hasWidget("gifts") && giftList.length > 0 && (
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Gift className="w-5 h-5 text-pink-600" />
-                <h2 className="text-lg font-semibold">Подарки</h2>
-              </div>
-              {giftStats && (
-                <div className="text-sm text-muted-foreground">
-                  Всего: {formatCurrency(giftStats.totalCash)} + {giftStats.totalItems} предметов
-                </div>
-              )}
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 font-medium">От кого</th>
-                    <th className="text-left py-2 font-medium">Тип</th>
-                    <th className="text-right py-2 font-medium">Сумма</th>
-                    <th className="text-left py-2 font-medium">Описание</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {giftList.map((gift) => (
-                    <GiftRow key={gift.id} gift={gift} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {/* Gifts */}
+        {hasWidget("gifts") && gifts && gifts.length > 0 && (
+          <CollapsibleSection
+            title="Подарки"
+            icon={Gift}
+            iconColor="text-pink-600"
+            badge={giftStats ? `${giftStats.totalGifts} шт` : undefined}
+            expanded={expanded.gifts}
+            onToggle={() => toggleSection("gifts")}
+          >
+            <GiftList gifts={gifts} />
+          </CollapsibleSection>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-white mt-8">
-        <div className="max-w-5xl mx-auto px-4 py-4 text-center text-sm text-muted-foreground">
-          <p>Создано с помощью Toilab</p>
+      <footer className="border-t border-slate-200 bg-white/50 mt-8">
+        <div className="max-w-6xl mx-auto px-4 py-4 text-center text-sm text-slate-400">
+          Toilab
         </div>
       </footer>
     </div>
   );
 }
 
-// Guest Row Component
-function GuestRow({ guest, tables }: { guest: Guest; tables: SeatingTable[] }) {
-  const table = tables.find((t) => t.id === guest.tableId);
-  const tableName = table
-    ? table.name
-      ? `Стол ${table.number}: ${table.name}`
-      : `Стол ${table.number}`
-    : "-";
-
+// Stat Card Component
+function StatCard({
+  icon: Icon,
+  iconBg,
+  iconColor,
+  value,
+  label,
+  small,
+}: {
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+  value: string;
+  label: string;
+  small?: boolean;
+}) {
   return (
-    <tr className="border-b border-border/50 last:border-0">
-      <td className="py-2">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{guest.name}</span>
-          {guest.phone && (
-            <Phone className="w-3 h-3 text-muted-foreground" />
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+      <div className="flex items-center gap-3">
+        <div className={cn("w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0", iconBg)}>
+          <Icon className={cn("w-5 h-5 sm:w-6 sm:h-6", iconColor)} />
+        </div>
+        <div className="min-w-0">
+          <div className={cn("font-bold text-slate-900 truncate", small ? "text-lg sm:text-xl" : "text-xl sm:text-2xl")}>
+            {value}
+          </div>
+          <div className="text-xs sm:text-sm text-slate-500">{label}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Collapsible Section
+function CollapsibleSection({
+  title,
+  icon: Icon,
+  iconColor,
+  badge,
+  expanded,
+  onToggle,
+  children,
+}: {
+  title: string;
+  icon: React.ElementType;
+  iconColor: string;
+  badge?: string;
+  expanded: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between p-4 sm:p-5 hover:bg-slate-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Icon className={cn("w-5 h-5", iconColor)} />
+          <h2 className="text-base sm:text-lg font-semibold text-slate-900">{title}</h2>
+          {badge && (
+            <span className="text-xs font-medium px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">
+              {badge}
+            </span>
           )}
         </div>
-      </td>
-      <td className="py-2">
-        {guest.rsvpStatus === "accepted" && (
-          <span className="badge-success text-xs flex items-center gap-1 w-fit">
-            <UserCheck className="w-3 h-3" />
-            Придёт
-          </span>
+        {expanded ? (
+          <ChevronUp className="w-5 h-5 text-slate-400" />
+        ) : (
+          <ChevronDown className="w-5 h-5 text-slate-400" />
         )}
-        {guest.rsvpStatus === "declined" && (
-          <span className="badge-danger text-xs flex items-center gap-1 w-fit">
-            <UserX className="w-3 h-3" />
-            Отказ
-          </span>
-        )}
-        {guest.rsvpStatus === "pending" && (
-          <span className="badge-warning text-xs flex items-center gap-1 w-fit">
-            <Clock className="w-3 h-3" />
-            Ожидает
-          </span>
-        )}
-      </td>
-      <td className="py-2 text-muted-foreground">{guest.group || "-"}</td>
-      <td className="py-2">{guest.plusCount > 0 ? `+${guest.plusCount}` : "-"}</td>
-      <td className="py-2 text-muted-foreground">{tableName}</td>
-    </tr>
+      </button>
+      {expanded && <div className="px-4 sm:px-5 pb-4 sm:pb-5">{children}</div>}
+    </div>
   );
 }
 
-// Expense Row Component
-function ExpenseRow({ expense }: { expense: Expense }) {
-  const statusColors: Record<string, string> = {
-    planned: "badge-default",
-    booked: "badge-warning",
-    paid: "badge-success",
-  };
-  const statusLabels: Record<string, string> = {
-    planned: "Запланировано",
-    booked: "Забронировано",
-    paid: "Оплачено",
+// Guest List
+function GuestList({ guests, tables }: { guests: Guest[]; tables: SeatingTable[] }) {
+  const getTableName = (tableId?: string) => {
+    if (!tableId) return null;
+    const table = tables.find((t) => t.id === tableId);
+    if (!table) return null;
+    return table.name ? `${table.number}: ${table.name}` : `Стол ${table.number}`;
   };
 
   return (
-    <tr className="border-b border-border/50 last:border-0">
-      <td className="py-2 text-muted-foreground">
-        {expenseCategoryLabels[expense.category] || expense.category}
-      </td>
-      <td className="py-2 font-medium">{expense.title}</td>
-      <td className="py-2 text-right">{formatCurrency(expense.plannedAmount)}</td>
-      <td className="py-2 text-right">{formatCurrency(expense.actualAmount)}</td>
-      <td className="py-2 text-right text-emerald-600">{formatCurrency(expense.paidAmount)}</td>
-      <td className="py-2">
-        <span className={cn("text-xs", statusColors[expense.status])}>
-          {statusLabels[expense.status] || expense.status}
-        </span>
-      </td>
-    </tr>
+    <div className="space-y-2">
+      {guests.map((guest) => (
+        <div
+          key={guest.id}
+          className={cn(
+            "flex items-center gap-3 p-3 rounded-xl transition-colors",
+            guest.rsvpStatus === "accepted" && "bg-emerald-50",
+            guest.rsvpStatus === "declined" && "bg-red-50",
+            guest.rsvpStatus === "pending" && "bg-slate-50"
+          )}
+        >
+          <div className={cn(
+            "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+            guest.rsvpStatus === "accepted" && "bg-emerald-500",
+            guest.rsvpStatus === "declined" && "bg-red-400",
+            guest.rsvpStatus === "pending" && "bg-slate-300"
+          )}>
+            {guest.rsvpStatus === "accepted" && <UserCheck className="w-4 h-4 text-white" />}
+            {guest.rsvpStatus === "declined" && <UserX className="w-4 h-4 text-white" />}
+            {guest.rsvpStatus === "pending" && <Clock className="w-4 h-4 text-white" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-slate-900 truncate">{guest.name}</span>
+              {guest.plusCount > 0 && (
+                <span className="text-xs font-medium px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">
+                  +{guest.plusCount}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+              {guest.group && <span>{guest.group}</span>}
+              {guest.group && getTableName(guest.tableId) && <span>•</span>}
+              {getTableName(guest.tableId) && <span>{getTableName(guest.tableId)}</span>}
+            </div>
+          </div>
+          {guest.phone && <Phone className="w-4 h-4 text-slate-400 shrink-0" />}
+        </div>
+      ))}
+    </div>
   );
 }
 
-// Checklist Item Row Component
-function ChecklistItemRow({ item }: { item: ChecklistItem }) {
+// Expense List
+function ExpenseList({ expenses, summary }: { expenses: Expense[]; summary?: { totalPlanned: number; totalActual: number; totalPaid: number; remaining: number } }) {
+  // Group by category
+  const byCategory = useMemo(() => {
+    const grouped: Record<string, { expenses: Expense[]; total: number; paid: number }> = {};
+    expenses.forEach((exp) => {
+      if (!grouped[exp.category]) {
+        grouped[exp.category] = { expenses: [], total: 0, paid: 0 };
+      }
+      grouped[exp.category].expenses.push(exp);
+      grouped[exp.category].total += exp.actualAmount || exp.plannedAmount;
+      grouped[exp.category].paid += exp.paidAmount;
+    });
+    return grouped;
+  }, [expenses]);
+
   return (
-    <div
-      className={cn(
-        "flex items-center gap-3 py-2 px-3 rounded-lg",
-        item.isCompleted ? "bg-emerald-50" : "bg-white border border-border"
+    <div className="space-y-4">
+      {summary && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 rounded-xl">
+          <div>
+            <div className="text-xs text-slate-500">План</div>
+            <div className="font-semibold text-slate-900">{formatCurrency(summary.totalPlanned)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">Факт</div>
+            <div className="font-semibold text-slate-900">{formatCurrency(summary.totalActual)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">Оплачено</div>
+            <div className="font-semibold text-emerald-600">{formatCurrency(summary.totalPaid)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">Осталось</div>
+            <div className={cn("font-semibold", summary.remaining < 0 ? "text-red-600" : "text-slate-900")}>
+              {formatCurrency(Math.abs(summary.remaining))}
+            </div>
+          </div>
+        </div>
       )}
-    >
-      <div
-        className={cn(
-          "w-5 h-5 rounded flex items-center justify-center shrink-0",
-          item.isCompleted ? "bg-emerald-500 text-white" : "border border-border"
-        )}
-      >
-        {item.isCompleted && <Check className="w-3 h-3" />}
+      <div className="space-y-3">
+        {Object.entries(byCategory).map(([category, { expenses: catExp, total, paid }]) => (
+          <div key={category} className="border border-slate-100 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between p-3 bg-slate-50">
+              <span className="font-medium text-slate-700">{expenseCategoryLabels[category] || category}</span>
+              <div className="text-sm">
+                <span className="text-emerald-600 font-medium">{formatCurrency(paid)}</span>
+                <span className="text-slate-400"> / {formatCurrency(total)}</span>
+              </div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {catExp.map((exp) => (
+                <div key={exp.id} className="flex items-center justify-between p-3 text-sm">
+                  <span className="text-slate-700">{exp.title}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "text-xs px-2 py-0.5 rounded-full",
+                      exp.status === "paid" && "bg-emerald-100 text-emerald-700",
+                      exp.status === "booked" && "bg-amber-100 text-amber-700",
+                      exp.status === "planned" && "bg-slate-100 text-slate-600"
+                    )}>
+                      {exp.status === "paid" ? "Оплачено" : exp.status === "booked" ? "Забронировано" : "План"}
+                    </span>
+                    <span className="font-medium text-slate-900">{formatCurrency(exp.actualAmount || exp.plannedAmount)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Checklist
+function ChecklistList({ items }: { items: ChecklistItem[] }) {
+  const completed = items.filter((i) => i.isCompleted);
+  const pending = items.filter((i) => !i.isCompleted);
+
+  return (
+    <div className="space-y-4">
+      {pending.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Осталось ({pending.length})</div>
+          {pending.map((item) => (
+            <ChecklistRow key={item.id} item={item} />
+          ))}
+        </div>
+      )}
+      {completed.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Выполнено ({completed.length})</div>
+          {completed.map((item) => (
+            <ChecklistRow key={item.id} item={item} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChecklistRow({ item }: { item: ChecklistItem }) {
+  return (
+    <div className={cn(
+      "flex items-start gap-3 p-3 rounded-xl",
+      item.isCompleted ? "bg-emerald-50" : "bg-white border border-slate-200"
+    )}>
+      <div className={cn(
+        "w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5",
+        item.isCompleted ? "bg-emerald-500" : "border-2 border-slate-300"
+      )}>
+        {item.isCompleted && <Check className="w-3 h-3 text-white" />}
       </div>
       <div className="flex-1 min-w-0">
-        <span className={cn("text-sm", item.isCompleted && "line-through text-muted-foreground")}>
+        <div className={cn("text-sm", item.isCompleted && "line-through text-slate-500")}>
           {item.title}
-        </span>
+        </div>
         {item.description && (
-          <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
+          <div className="text-xs text-slate-500 mt-0.5">{item.description}</div>
         )}
       </div>
-      <span className="text-xs text-muted-foreground shrink-0">
+      <span className="text-xs text-slate-400 shrink-0">
         {checklistCategoryLabels[item.category] || item.category}
       </span>
-      {item.dueDate && (
-        <span className="text-xs text-muted-foreground shrink-0">{formatDate(item.dueDate)}</span>
-      )}
     </div>
   );
 }
 
-// Program Item Card
-function ProgramItemCard({ item }: { item: ProgramItem }) {
+// Program
+function ProgramList({ items }: { items: ProgramItem[] }) {
   return (
-    <div className="flex items-start gap-4 py-3 border-b border-border last:border-0">
-      <div className="w-16 text-center shrink-0">
-        <span className="font-mono text-lg font-semibold text-primary">{item.startTime}</span>
+    <div className="relative">
+      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-200" />
+      <div className="space-y-4">
+        {items.map((item) => (
+          <div key={item.id} className="relative flex gap-4 pl-4">
+            <div className="absolute left-2.5 w-3 h-3 rounded-full bg-primary border-2 border-white shadow-sm" style={{ top: "0.5rem" }} />
+            <div className="flex-1 pb-4">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="text-lg font-bold text-primary font-mono">{item.startTime}</span>
+                {item.duration > 0 && (
+                  <span className="text-xs text-slate-400">{item.duration} мин</span>
+                )}
+              </div>
+              <div className="font-medium text-slate-900 mt-1">{item.title}</div>
+              {item.description && (
+                <div className="text-sm text-slate-500 mt-0.5">{item.description}</div>
+              )}
+              {item.responsible && (
+                <div className="text-xs text-slate-400 mt-1">Ответственный: {item.responsible}</div>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-medium">{item.title}</div>
-        {item.description && (
-          <div className="text-sm text-muted-foreground">{item.description}</div>
-        )}
-      </div>
-      {item.responsible && (
-        <div className="text-sm text-muted-foreground shrink-0">{item.responsible}</div>
-      )}
-      {item.duration > 0 && (
-        <div className="text-sm text-muted-foreground shrink-0">{item.duration} мин</div>
-      )}
     </div>
   );
 }
 
-// Gift Row Component
-function GiftRow({ gift }: { gift: GiftType }) {
-  return (
-    <tr className="border-b border-border/50 last:border-0">
-      <td className="py-2 font-medium">{gift.guestName}</td>
-      <td className="py-2">
-        {gift.type === "money" ? (
-          <span className="badge-success text-xs">Деньги</span>
-        ) : (
-          <span className="badge-info text-xs">Предмет</span>
-        )}
-      </td>
-      <td className="py-2 text-right">
-        {gift.type === "money" ? formatCurrency(gift.amount) : "-"}
-      </td>
-      <td className="py-2 text-muted-foreground">{gift.description || "-"}</td>
-    </tr>
-  );
-}
+// Seating View
+function SeatingView({ tables, guests }: { tables: SeatingTable[]; guests: Guest[] }) {
+  const padding = 40;
+  const bounds = useMemo(() => {
+    let maxX = 600, maxY = 400;
+    tables.forEach((t) => {
+      maxX = Math.max(maxX, t.positionX + t.width + padding);
+      maxY = Math.max(maxY, t.positionY + t.height + padding);
+    });
+    return { width: maxX, height: maxY };
+  }, [tables]);
 
-// Seating Canvas Component
-function SeatingCanvas({
-  tables,
-  guests,
-}: {
-  tables: SeatingTable[];
-  guests: Guest[];
-}) {
-  // Calculate canvas bounds
-  const padding = 50;
-  let maxX = 800;
-  let maxY = 600;
-
-  tables.forEach((t) => {
-    maxX = Math.max(maxX, t.positionX + t.width + padding);
-    maxY = Math.max(maxY, t.positionY + t.height + padding);
-  });
-
-  const formatTableName = (table: SeatingTable) => {
-    if (table.shape === "scene") return table.name || "Сцена";
-    return table.name ? `${table.number}: ${table.name}` : `${table.number}`;
-  };
-
-  const getGuestsForTable = (tableId: string) => {
-    return guests.filter((g) => g.tableId === tableId);
-  };
+  const getGuestCount = (tableId: string) => guests.filter((g) => g.tableId === tableId).length;
 
   return (
-    <div className="overflow-auto border border-border rounded-lg bg-secondary/30">
-      <div
-        className="relative"
-        style={{ width: maxX, height: maxY, minWidth: "100%" }}
-      >
+    <div className="overflow-auto rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="relative" style={{ width: bounds.width, height: bounds.height, minWidth: "100%" }}>
         {tables.map((table) => {
-          const tableGuests = getGuestsForTable(table.id);
           const isScene = table.shape === "scene";
+          const guestCount = getGuestCount(table.id);
+          const isFull = guestCount >= table.capacity;
 
           return (
             <div
               key={table.id}
               className={cn(
-                "absolute flex flex-col items-center justify-center border-2 text-center",
+                "absolute flex flex-col items-center justify-center border-2 shadow-sm",
                 isScene
-                  ? "bg-amber-100 border-amber-400"
-                  : "bg-white border-primary/30"
+                  ? "bg-gradient-to-br from-amber-100 to-amber-200 border-amber-400"
+                  : isFull
+                    ? "bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-400"
+                    : "bg-white border-slate-300"
               )}
               style={{
                 left: table.positionX,
                 top: table.positionY,
                 width: table.width,
                 height: table.height,
-                borderRadius:
-                  table.shape === "round"
-                    ? "50%"
-                    : table.shape === "oval"
-                    ? "50%"
-                    : "8px",
+                borderRadius: table.shape === "round" || table.shape === "oval" ? "50%" : "12px",
                 transform: `rotate(${table.rotation || 0}deg)`,
               }}
             >
-              <span className="text-xs font-medium">{formatTableName(table)}</span>
+              <span className="text-xs font-bold text-slate-700">
+                {isScene ? (table.name || "Сцена") : table.name || table.number}
+              </span>
               {!isScene && (
-                <span className="text-xs text-muted-foreground">
-                  {tableGuests.length}/{table.capacity}
+                <span className="text-[10px] text-slate-500">
+                  {guestCount}/{table.capacity}
                 </span>
               )}
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Gift List
+function GiftList({ gifts }: { gifts: GiftType[] }) {
+  return (
+    <div className="space-y-2">
+      {gifts.map((gift) => (
+        <div key={gift.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+          <div className={cn(
+            "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+            gift.type === "money" ? "bg-emerald-100" : "bg-pink-100"
+          )}>
+            {gift.type === "money" ? (
+              <Wallet className="w-5 h-5 text-emerald-600" />
+            ) : (
+              <Gift className="w-5 h-5 text-pink-600" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-slate-900 truncate">{gift.guestName}</div>
+            {gift.description && (
+              <div className="text-xs text-slate-500 truncate">{gift.description}</div>
+            )}
+          </div>
+          {gift.type === "money" && (
+            <span className="font-bold text-emerald-600 shrink-0">{formatCurrency(gift.amount)}</span>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
