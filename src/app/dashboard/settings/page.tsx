@@ -4,7 +4,57 @@ import { useState } from "react";
 import { useAuthStore } from "@/lib/store";
 import { auth } from "@/lib/api";
 import toast from "react-hot-toast";
-import { User, CreditCard, Bell } from "lucide-react";
+import { User, CreditCard, Bell, Check, Sparkles, Crown, Zap } from "lucide-react";
+import { cn, formatDate } from "@/lib/utils";
+import { Plan } from "@/lib/types";
+
+interface PlanInfo {
+  name: string;
+  price: number;
+  period?: string;
+  description: string;
+  features: string[];
+  limitations?: string[];
+  icon: typeof Zap;
+  color: string;
+}
+
+const PLANS: Record<Plan, PlanInfo> = {
+  free: {
+    name: "Бесплатный",
+    price: 0,
+    description: "Для знакомства",
+    features: ["1 мероприятие", "Бюджет", "Чек-лист"],
+    limitations: ["Без гостей", "Без рассадки", "Без программы"],
+    icon: Zap,
+    color: "slate",
+  },
+  single: {
+    name: "Разовый",
+    price: 7990,
+    description: "Для своей свадьбы",
+    features: ["1 мероприятие", "Все функции", "До 500 гостей", "Рассадка", "Программа", "Подарки", "Доступ по ссылке"],
+    icon: Sparkles,
+    color: "primary",
+  },
+  pro: {
+    name: "Pro",
+    price: 24990,
+    period: "/мес",
+    description: "Для агентств",
+    features: ["10 мероприятий в месяц", "Все функции", "До 500 гостей", "Приоритетная поддержка"],
+    icon: Crown,
+    color: "amber",
+  },
+  trial: {
+    name: "Пробный",
+    price: 0,
+    description: "Полный доступ",
+    features: ["10 мероприятий", "Все функции"],
+    icon: Sparkles,
+    color: "emerald",
+  },
+};
 
 export default function SettingsPage() {
   const { user, setUser } = useAuthStore();
@@ -25,14 +75,11 @@ export default function SettingsPage() {
     }
   };
 
-  const planLabels = {
-    free: "Бесплатный",
-    standard: "Стандарт",
-    premium: "Премиум",
-  };
+  const currentPlan = PLANS[user?.plan as Plan] || PLANS.free;
+  const isPaid = user?.plan === "single" || user?.plan === "pro" || user?.plan === "trial";
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-display font-bold">Настройки</h1>
         <p className="text-muted-foreground">Управление аккаунтом и подпиской</p>
@@ -79,31 +126,142 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Subscription */}
+      {/* Current Plan */}
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
           <CreditCard className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">Подписка</h2>
+          <h2 className="text-lg font-semibold">Ваш тариф</h2>
         </div>
 
-        <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
-          <div>
-            <p className="font-medium">
-              {planLabels[user?.plan as keyof typeof planLabels] || "Бесплатный"}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {user?.plan === "free"
-                ? "1 мероприятие, до 30 гостей"
-                : user?.plan === "standard"
-                ? "3 мероприятия, до 300 гостей"
-                : "10 мероприятий, до 500 гостей"}
-            </p>
+        <div className={cn(
+          "p-4 rounded-xl border-2",
+          isPaid ? "border-primary bg-primary/5" : "border-border bg-secondary/50"
+        )}>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center",
+                isPaid ? "bg-primary text-white" : "bg-slate-200 text-slate-600"
+              )}>
+                <currentPlan.icon className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">{currentPlan.name}</h3>
+                <p className="text-sm text-muted-foreground">{currentPlan.description}</p>
+              </div>
+            </div>
+            {currentPlan.price > 0 && (
+              <div className="text-right">
+                <div className="text-2xl font-bold">
+                  {currentPlan.price.toLocaleString()} ₸
+                </div>
+                {currentPlan.period && (
+                  <div className="text-sm text-muted-foreground">{currentPlan.period}</div>
+                )}
+              </div>
+            )}
           </div>
-          {user?.plan === "free" && (
-            <button className="btn-primary btn-sm">Улучшить</button>
+
+          {/* Pro plan stats */}
+          {(user?.plan === "pro" || user?.plan === "trial") && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Мероприятий в этом месяце:</span>
+                <span className="font-medium">{user?.monthlyEventsCreated || 0} / 10</span>
+              </div>
+              {user?.monthlyResetAt && (
+                <div className="flex items-center justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">Обновление лимита:</span>
+                  <span className="font-medium">{formatDate(user.monthlyResetAt)}</span>
+                </div>
+              )}
+            </div>
           )}
+
+          {/* Plan expires */}
+          {user?.planExpiresAt && user?.plan === "pro" && (
+            <div className="mt-4 pt-4 border-t border-border">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Подписка активна до:</span>
+                <span className="font-medium">{formatDate(user.planExpiresAt)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Features */}
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="grid grid-cols-2 gap-2">
+              {currentPlan.features.map((feature) => (
+                <div key={feature} className="flex items-center gap-2 text-sm">
+                  <Check className="w-4 h-4 text-emerald-500" />
+                  <span>{feature}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Upgrade options for free users */}
+      {user?.plan === "free" && (
+        <div className="card">
+          <h2 className="text-lg font-semibold mb-4">Выберите тариф</h2>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {/* Single */}
+            <div className="p-4 rounded-xl border-2 border-border hover:border-primary transition-colors">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-bold">Разовый</h3>
+                  <p className="text-xs text-muted-foreground">Для своей свадьбы</p>
+                </div>
+              </div>
+              <div className="text-2xl font-bold mb-3">7 990 ₸</div>
+              <ul className="space-y-1.5 mb-4">
+                {PLANS.single.features.slice(0, 4).map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm">
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button className="btn-primary w-full">Купить</button>
+            </div>
+
+            {/* Pro */}
+            <div className="p-4 rounded-xl border-2 border-amber-400 bg-amber-50 relative">
+              <div className="absolute -top-2.5 left-4 px-2 py-0.5 bg-amber-400 text-amber-900 text-xs font-bold rounded">
+                Для агентств
+              </div>
+              <div className="flex items-center gap-3 mb-3 mt-1">
+                <div className="w-10 h-10 rounded-lg bg-amber-400 flex items-center justify-center">
+                  <Crown className="w-5 h-5 text-amber-900" />
+                </div>
+                <div>
+                  <h3 className="font-bold">Pro</h3>
+                  <p className="text-xs text-muted-foreground">До 10 мероприятий/мес</p>
+                </div>
+              </div>
+              <div className="text-2xl font-bold mb-3">
+                24 990 ₸<span className="text-sm font-normal text-muted-foreground">/мес</span>
+              </div>
+              <ul className="space-y-1.5 mb-4">
+                {PLANS.pro.features.map((f) => (
+                  <li key={f} className="flex items-center gap-2 text-sm">
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button className="w-full py-2 px-4 bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold rounded-lg transition-colors">
+                Подписаться
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Notifications */}
       <div className="card">

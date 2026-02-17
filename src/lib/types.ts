@@ -4,7 +4,7 @@ export type EventStatus = "draft" | "active" | "completed" | "archived";
 export type RSVPStatus = "pending" | "accepted" | "declined";
 export type ExpenseStatus = "planned" | "booked" | "paid";
 export type VendorStatus = "contacted" | "booked" | "deposit_paid" | "paid" | "cancelled";
-export type Plan = "free" | "standard" | "premium";
+export type Plan = "free" | "single" | "pro" | "trial";
 
 // User
 export interface User {
@@ -13,6 +13,9 @@ export interface User {
   name: string;
   avatarUrl?: string;
   plan: Plan;
+  planExpiresAt?: string;
+  monthlyEventsCreated?: number;
+  monthlyResetAt?: string;
   createdAt: string;
 }
 
