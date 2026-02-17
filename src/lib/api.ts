@@ -195,6 +195,12 @@ export const auth = {
       method: "POST",
       body: JSON.stringify({ refreshToken }),
     }),
+
+  activatePromo: (code: string) =>
+    fetchApi<User>("/auth/promo", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
 };
 
 // Events

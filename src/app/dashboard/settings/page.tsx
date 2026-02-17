@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAuthStore } from "@/lib/store";
 import { auth } from "@/lib/api";
 import toast from "react-hot-toast";
-import { User, CreditCard, Bell, Check, Sparkles, Crown, Zap } from "lucide-react";
+import { User, CreditCard, Bell, Check, Sparkles, Crown, Zap, Gift } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { Plan } from "@/lib/types";
 
@@ -60,6 +60,8 @@ export default function SettingsPage() {
   const { user, setUser } = useAuthStore();
   const [name, setName] = useState(user?.name || "");
   const [saving, setSaving] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [activatingPromo, setActivatingPromo] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
@@ -72,6 +74,25 @@ export default function SettingsPage() {
       toast.error(err.message || "Не удалось сохранить");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleActivatePromo = async () => {
+    if (!promoCode.trim()) {
+      toast.error("Введите промокод");
+      return;
+    }
+    setActivatingPromo(true);
+    try {
+      const updated = await auth.activatePromo(promoCode.trim().toUpperCase());
+      setUser(updated);
+      setPromoCode("");
+      toast.success("Пробный период активирован!");
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "Неверный промокод");
+    } finally {
+      setActivatingPromo(false);
     }
   };
 
@@ -179,10 +200,12 @@ export default function SettingsPage() {
           )}
 
           {/* Plan expires */}
-          {user?.planExpiresAt && user?.plan === "pro" && (
+          {user?.planExpiresAt && (user?.plan === "pro" || user?.plan === "trial") && (
             <div className="mt-4 pt-4 border-t border-border">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Подписка активна до:</span>
+                <span className="text-muted-foreground">
+                  {user?.plan === "trial" ? "Пробный период до:" : "Подписка активна до:"}
+                </span>
                 <span className="font-medium">{formatDate(user.planExpiresAt)}</span>
               </div>
             </div>
@@ -255,6 +278,30 @@ export default function SettingsPage() {
               </ul>
               <button className="w-full py-2 px-4 bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold rounded-lg transition-colors">
                 Выбрать Studio
+              </button>
+            </div>
+          </div>
+
+          {/* Promo code */}
+          <div className="mt-6 pt-6 border-t border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <Gift className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Есть промокод?</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => setPromoCode(e.target.value)}
+                placeholder="Введите промокод"
+                className="input flex-1"
+              />
+              <button
+                onClick={handleActivatePromo}
+                disabled={activatingPromo || !promoCode.trim()}
+                className="btn-outline"
+              >
+                {activatingPromo ? "..." : "Применить"}
               </button>
             </div>
           </div>
