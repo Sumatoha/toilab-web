@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
-import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings, Gift, Clock, LayoutGrid, Lock, LucideIcon } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings, Gift, Clock, LayoutGrid, Sparkles, LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store";
 import { Plan } from "@/lib/types";
@@ -87,12 +87,13 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
                 <Link
                   key={item.href}
                   href="/dashboard/settings"
-                  className="group flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 text-muted-foreground/50 hover:bg-secondary/50"
-                  title="Требуется платный тариф"
+                  className="group flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 text-muted-foreground/60 hover:bg-primary/5 hover:text-primary"
                 >
-                  <Icon className="w-4 h-4 text-muted-foreground/50" />
+                  <Icon className="w-4 h-4 text-muted-foreground/60 group-hover:text-primary" />
                   <span className="flex-1">{item.label}</span>
-                  <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                    Pro
+                  </span>
                 </Link>
               );
             }
@@ -134,6 +135,22 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
             );
           })}
         </nav>
+
+        {/* Upsell banner for free users */}
+        {userPlan === "free" && (
+          <Link
+            href="/dashboard/settings"
+            className="mt-6 block p-3 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 hover:border-primary/40 transition-colors group"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-primary">Toilab Pro</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Откройте гостей, рассадку и другие функции
+            </p>
+          </Link>
+        )}
       </div>
     </aside>
   );

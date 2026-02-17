@@ -21,36 +21,36 @@ interface PlanInfo {
 
 const PLANS: Record<Plan, PlanInfo> = {
   free: {
-    name: "Бесплатный",
+    name: "Toilab",
     price: 0,
-    description: "Для знакомства",
+    description: "Бесплатный доступ",
     features: ["1 мероприятие", "Бюджет", "Чек-лист"],
     limitations: ["Без гостей", "Без рассадки", "Без программы"],
     icon: Zap,
     color: "slate",
   },
   single: {
-    name: "Разовый",
+    name: "Toilab Pro",
     price: 7990,
-    description: "Для своей свадьбы",
-    features: ["1 мероприятие", "Все функции", "До 500 гостей", "Рассадка", "Программа", "Подарки", "Доступ по ссылке"],
+    description: "Для вашего мероприятия",
+    features: ["Все функции", "Список гостей", "Рассадка", "Программа", "Подарки", "Поделиться"],
     icon: Sparkles,
     color: "primary",
   },
   pro: {
-    name: "Pro",
+    name: "Toilab Studio",
     price: 24990,
     period: "/мес",
-    description: "Для агентств",
-    features: ["10 мероприятий в месяц", "Все функции", "До 500 гостей", "Приоритетная поддержка"],
+    description: "Для вашего агентства",
+    features: ["До 10 мероприятий", "Все функции", "Приоритетная поддержка"],
     icon: Crown,
     color: "amber",
   },
   trial: {
-    name: "Пробный",
+    name: "Toilab Pro (пробный)",
     price: 0,
     description: "Полный доступ",
-    features: ["10 мероприятий", "Все функции"],
+    features: ["Все функции Pro", "Ограниченный срок"],
     icon: Sparkles,
     color: "emerald",
   },
@@ -205,43 +205,41 @@ export default function SettingsPage() {
       {/* Upgrade options for free users */}
       {user?.plan === "free" && (
         <div className="card">
-          <h2 className="text-lg font-semibold mb-4">Выберите тариф</h2>
+          <h2 className="text-lg font-semibold mb-2">Откройте все возможности</h2>
+          <p className="text-sm text-muted-foreground mb-4">Создайте мероприятие мечты с полным набором инструментов</p>
           <div className="grid sm:grid-cols-2 gap-4">
-            {/* Single */}
-            <div className="p-4 rounded-xl border-2 border-border hover:border-primary transition-colors">
+            {/* Pro */}
+            <div className="p-4 rounded-xl border-2 border-primary bg-primary/5">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-primary" />
+                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold">Разовый</h3>
-                  <p className="text-xs text-muted-foreground">Для своей свадьбы</p>
+                  <h3 className="font-bold">Toilab Pro</h3>
+                  <p className="text-xs text-muted-foreground">Для вашего мероприятия</p>
                 </div>
               </div>
               <div className="text-2xl font-bold mb-3">7 990 ₸</div>
               <ul className="space-y-1.5 mb-4">
-                {PLANS.single.features.slice(0, 4).map((f) => (
+                {PLANS.single.features.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm">
                     <Check className="w-3.5 h-3.5 text-emerald-500" />
                     {f}
                   </li>
                 ))}
               </ul>
-              <button className="btn-primary w-full">Купить</button>
+              <button className="btn-primary w-full">Выбрать Pro</button>
             </div>
 
-            {/* Pro */}
-            <div className="p-4 rounded-xl border-2 border-amber-400 bg-amber-50 relative">
-              <div className="absolute -top-2.5 left-4 px-2 py-0.5 bg-amber-400 text-amber-900 text-xs font-bold rounded">
-                Для агентств
-              </div>
-              <div className="flex items-center gap-3 mb-3 mt-1">
+            {/* Studio */}
+            <div className="p-4 rounded-xl border-2 border-amber-400 bg-amber-50">
+              <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-lg bg-amber-400 flex items-center justify-center">
                   <Crown className="w-5 h-5 text-amber-900" />
                 </div>
                 <div>
-                  <h3 className="font-bold">Pro</h3>
-                  <p className="text-xs text-muted-foreground">До 10 мероприятий/мес</p>
+                  <h3 className="font-bold">Toilab Studio</h3>
+                  <p className="text-xs text-muted-foreground">Для вашего агентства</p>
                 </div>
               </div>
               <div className="text-2xl font-bold mb-3">
@@ -256,7 +254,7 @@ export default function SettingsPage() {
                 ))}
               </ul>
               <button className="w-full py-2 px-4 bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold rounded-lg transition-colors">
-                Подписаться
+                Выбрать Studio
               </button>
             </div>
           </div>

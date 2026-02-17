@@ -45,42 +45,41 @@ const features = [
 
 const plans = [
   {
-    name: "Бесплатный",
+    name: "Toilab",
     price: "0 ₸",
-    description: "Для знакомства",
-    features: ["1 мероприятие", "50 гостей", "Бюджет", "Чек-лист"],
+    description: "Попробуйте бесплатно",
+    features: ["Бюджет и расходы", "Чек-лист задач", "1 мероприятие"],
     cta: "Начать бесплатно",
-    popular: false,
+    highlight: false,
   },
   {
-    name: "Разовый",
+    name: "Toilab Pro",
     price: "7 990 ₸",
-    description: "Для своей свадьбы",
+    description: "Для вашего мероприятия",
     features: [
-      "1 мероприятие",
-      "До 500 гостей",
       "Все функции",
+      "Список гостей и RSVP",
       "Рассадка гостей",
-      "Программа",
-      "Подарки",
-      "Доступ по ссылке",
+      "Программа вечера",
+      "Учёт подарков",
+      "Поделиться с командой",
     ],
-    cta: "Купить",
-    popular: true,
+    cta: "Выбрать Pro",
+    highlight: true,
   },
   {
-    name: "Pro",
+    name: "Toilab Studio",
     price: "24 990 ₸",
     period: "/мес",
-    description: "Для агентств",
+    description: "Для вашего агентства",
     features: [
-      "10 мероприятий/мес",
-      "До 500 гостей",
-      "Все функции",
+      "Всё из Pro",
+      "До 10 мероприятий",
       "Приоритетная поддержка",
+      "Командный доступ",
     ],
-    cta: "Подписаться",
-    popular: false,
+    cta: "Выбрать Studio",
+    highlight: false,
   },
 ];
 
@@ -221,14 +220,9 @@ export default function LandingPage() {
               <div
                 key={plan.name}
                 className={`card relative ${
-                  plan.popular ? "border-primary shadow-lg scale-105" : ""
+                  plan.highlight ? "border-primary shadow-lg scale-105" : ""
                 }`}
               >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-primary text-white text-sm font-medium rounded-full">
-                    Популярный
-                  </div>
-                )}
 
                 <div className="text-center mb-6">
                   <h3 className="text-lg font-semibold mb-1">{plan.name}</h3>
@@ -250,7 +244,7 @@ export default function LandingPage() {
 
                 <Link
                   href="/login"
-                  className={`w-full ${plan.popular ? "btn-primary" : "btn-outline"} btn-md`}
+                  className={`w-full ${plan.highlight ? "btn-primary" : "btn-outline"} btn-md`}
                 >
                   {plan.cta}
                 </Link>
