@@ -45,42 +45,41 @@ const features = [
 
 const plans = [
   {
-    name: "Free",
+    name: "Бесплатный",
     price: "0 ₸",
-    description: "Для пробы",
-    features: ["1 мероприятие", "30 гостей", "Базовый чек-лист", "1 шаблон приглашения"],
+    description: "Для знакомства",
+    features: ["1 мероприятие", "50 гостей", "Бюджет", "Чек-лист"],
     cta: "Начать бесплатно",
     popular: false,
   },
   {
-    name: "Standard",
-    price: "14 990 ₸",
-    description: "Для семьи",
+    name: "Разовый",
+    price: "7 990 ₸",
+    description: "Для своей свадьбы",
     features: [
-      "3 мероприятия",
-      "300 гостей",
-      "Полный бюджет",
-      "Все шаблоны",
-      "RSVP аналитика",
-      "Подрядчики",
+      "1 мероприятие",
+      "До 500 гостей",
+      "Все функции",
+      "Рассадка гостей",
+      "Программа",
+      "Подарки",
+      "Доступ по ссылке",
     ],
-    cta: "Выбрать Standard",
+    cta: "Купить",
     popular: true,
   },
   {
-    name: "Premium",
-    price: "34 990 ₸",
-    description: "Всё включено",
+    name: "Pro",
+    price: "24 990 ₸",
+    period: "/мес",
+    description: "Для агентств",
     features: [
-      "10 мероприятий",
-      "500 гостей",
-      "Всё из Standard",
-      "Рассадка гостей",
-      "Программа вечера",
-      "Photo Hub",
-      "AI-генерация",
+      "10 мероприятий/мес",
+      "До 500 гостей",
+      "Все функции",
+      "Приоритетная поддержка",
     ],
-    cta: "Выбрать Premium",
+    cta: "Подписаться",
     popular: false,
   },
 ];
@@ -213,7 +212,7 @@ export default function LandingPage() {
               Простые тарифы
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Разовая оплата за событие. Без подписок и скрытых платежей.
+              Выберите подходящий тариф. Без скрытых платежей.
             </p>
           </div>
 
@@ -234,7 +233,10 @@ export default function LandingPage() {
                 <div className="text-center mb-6">
                   <h3 className="text-lg font-semibold mb-1">{plan.name}</h3>
                   <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
-                  <div className="text-4xl font-bold">{plan.price}</div>
+                  <div className="text-4xl font-bold">
+                    {plan.price}
+                    {plan.period && <span className="text-lg font-normal text-muted-foreground">{plan.period}</span>}
+                  </div>
                 </div>
 
                 <ul className="space-y-3 mb-6">
