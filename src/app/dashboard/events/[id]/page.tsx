@@ -14,9 +14,10 @@ import {
   ExternalLink,
   Pencil,
   ArrowRight,
+  AlertCircle,
 } from "lucide-react";
-import { events } from "@/lib/api";
-import { Event, EventStats } from "@/lib/types";
+import { events, checklist } from "@/lib/api";
+import { Event, EventStats, ChecklistItem } from "@/lib/types";
 import { formatDate, formatCurrency, getDaysUntil, eventTypeLabels, cn } from "@/lib/utils";
 import { PageLoader, ProgressBar } from "@/components/ui";
 import toast from "react-hot-toast";
@@ -34,17 +35,34 @@ export default function EventDetailPage() {
 
   const [event, setEvent] = useState<Event | null>(null);
   const [stats, setStats] = useState<EventStats | null>(null);
+  const [upcomingTasks, setUpcomingTasks] = useState<ChecklistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [eventData, statsData] = await Promise.all([
+        const [eventData, statsData, checklistData] = await Promise.all([
           events.get(eventId),
           events.getStats(eventId).catch(() => null),
+          checklist.list(eventId).catch(() => []),
         ]);
         setEvent(eventData);
         setStats(statsData);
+
+        // Filter and sort upcoming deadlines
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const upcoming = (checklistData || [])
+          .filter((item: ChecklistItem) =>
+            item.dueDate &&
+            !item.isCompleted &&
+            new Date(item.dueDate) >= now
+          )
+          .sort((a: ChecklistItem, b: ChecklistItem) =>
+            new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
+          )
+          .slice(0, 3);
+        setUpcomingTasks(upcoming);
       } catch (error) {
         console.error("Failed to load event:", error);
       } finally {
@@ -245,6 +263,73 @@ export default function EventDetailPage() {
           </div>
         </Link>
       </div>
+
+      {/* Upcoming Deadlines */}
+      {upcomingTasks.length > 0 && (
+        <div className="card p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-500" />
+              Ближайшие дедлайны
+            </h3>
+            <Link
+              href={`/dashboard/events/${eventId}/checklist`}
+              className="text-xs text-primary hover:underline"
+            >
+              Все задачи
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {upcomingTasks.map((task) => {
+              const dueDate = new Date(task.dueDate!);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              const isUrgent = diffDays <= 3;
+              const isToday = diffDays === 0;
+
+              return (
+                <Link
+                  key={task.id}
+                  href={`/dashboard/events/${eventId}/checklist`}
+                  className={cn(
+                    "flex items-center gap-3 p-2 sm:p-3 rounded-lg transition-colors",
+                    isUrgent ? "bg-amber-50 hover:bg-amber-100" : "bg-secondary/50 hover:bg-secondary"
+                  )}
+                >
+                  <div className={cn(
+                    "w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                    isUrgent ? "bg-amber-200 text-amber-700" : "bg-primary/10 text-primary"
+                  )}>
+                    <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{task.title}</p>
+                    <p className={cn(
+                      "text-xs",
+                      isUrgent ? "text-amber-600 font-medium" : "text-muted-foreground"
+                    )}>
+                      {isToday
+                        ? "Сегодня"
+                        : diffDays === 1
+                          ? "Завтра"
+                          : `Через ${diffDays} дн.`
+                      }
+                      {" • "}
+                      {dueDate.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" })}
+                    </p>
+                  </div>
+                  {isUrgent && (
+                    <div className="flex-shrink-0">
+                      <span className="badge-warning text-xs">Срочно</span>
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="card p-3 sm:p-4">
