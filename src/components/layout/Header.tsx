@@ -12,14 +12,14 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
-      <div className="flex h-14 items-center px-6">
+      <div className="flex h-14 items-center px-4 lg:px-6">
         {/* Logo */}
-        <div className="mr-8">
+        <div className="mr-4 lg:mr-8">
           <Logo size="md" href="/dashboard" />
         </div>
 
-        {/* Nav */}
-        <nav className="flex items-center gap-6 text-sm">
+        {/* Nav - hidden on mobile when inside event */}
+        <nav className="hidden sm:flex items-center gap-6 text-sm">
           <Link
             href="/dashboard"
             className={
@@ -33,17 +33,17 @@ export function Header() {
         </nav>
 
         {/* Right side */}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1 sm:gap-2">
           <Link
             href="/dashboard/settings"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-md hover:bg-secondary"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors p-2 sm:px-3 sm:py-1.5 rounded-md hover:bg-secondary"
           >
             <User className="w-4 h-4" />
             <span className="hidden sm:inline">{user?.name || "Профиль"}</span>
           </Link>
           <button
             onClick={logout}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-secondary"
+            className="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-md hover:bg-secondary"
           >
             <LogOut className="w-4 h-4" />
           </button>

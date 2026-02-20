@@ -28,12 +28,18 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="flex">
-        {isEventPage && <EventSidebar />}
-        <main className="flex-1 p-6 max-w-5xl mx-auto w-full">
+      {isEventPage ? (
+        <div className="flex flex-col lg:flex-row">
+          <EventSidebar />
+          <main className="flex-1 p-4 lg:p-6 max-w-5xl mx-auto w-full">
+            {children}
+          </main>
+        </div>
+      ) : (
+        <main className="flex-1 p-4 lg:p-6 max-w-5xl mx-auto w-full">
           {children}
         </main>
-      </div>
+      )}
     </div>
   );
 }

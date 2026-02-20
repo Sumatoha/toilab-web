@@ -164,7 +164,7 @@ export default function GuestsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-h1">Гости</h1>
           <p className="text-caption mt-1">
@@ -174,11 +174,11 @@ export default function GuestsPage() {
         <div className="flex gap-2">
           <button onClick={() => setShowImportModal(true)} className="btn-outline btn-sm">
             <Upload className="w-4 h-4" />
-            Импорт
+            <span className="hidden sm:inline">Импорт</span>
           </button>
           <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
             <Plus className="w-4 h-4" />
-            Добавить гостя
+            <span className="hidden sm:inline">Добавить гостя</span>
           </button>
         </div>
       </div>
@@ -236,7 +236,7 @@ export default function GuestsPage() {
             className="input pl-10"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 sm:overflow-x-visible">
           {[
             { key: "all", label: "Все", count: stats?.total },
             { key: "accepted", label: "Придут", count: stats?.accepted },
@@ -247,7 +247,7 @@ export default function GuestsPage() {
               key={f.key}
               onClick={() => setFilter(f.key as typeof filter)}
               className={cn(
-                "chip",
+                "chip whitespace-nowrap",
                 filter === f.key && "chip-active"
               )}
             >
@@ -399,15 +399,15 @@ function GuestRow({
 
   return (
     <div
-      className={cn("flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors group cursor-pointer", className)}
+      className={cn("flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 hover:bg-secondary/50 transition-colors group cursor-pointer", className)}
       onClick={onEdit}
     >
-      <Avatar name={guest.name} size="md" />
+      <Avatar name={guest.name} size="md" className="hidden sm:flex" />
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{guest.name}</p>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {guest.phone && <span>{guest.phone}</span>}
-          {guest.group && <span>• {guest.group}</span>}
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
+          {guest.phone && <span className="hidden sm:inline">{guest.phone}</span>}
+          {guest.group && <span className="hidden sm:inline">• {guest.group}</span>}
           {guest.plusCount > 0 && (
             <span className="inline-flex items-center gap-1 text-emerald-600">
               <UserPlus className="w-3 h-3" />
@@ -426,14 +426,14 @@ function GuestRow({
       <div className="flex items-center gap-1">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
           title="Редактировать"
         >
           <Pencil className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
           title="Удалить"
         >
           <Trash2 className="w-4 h-4" />

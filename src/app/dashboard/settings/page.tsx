@@ -140,7 +140,7 @@ export default function SettingsPage() {
           <button
             onClick={handleSave}
             disabled={saving || name === user?.name}
-            className="btn-primary"
+            className="btn-primary h-10 px-6"
           >
             {saving ? "Сохранение..." : "Сохранить"}
           </button>

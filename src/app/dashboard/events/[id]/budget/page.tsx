@@ -131,7 +131,7 @@ export default function BudgetPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-h1">Бюджет</h1>
           <p className="text-caption mt-1">
@@ -140,7 +140,7 @@ export default function BudgetPage() {
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
           <Plus className="w-4 h-4" />
-          Добавить расход
+          <span className="hidden sm:inline">Добавить расход</span>
         </button>
       </div>
 
@@ -172,7 +172,7 @@ export default function BudgetPage() {
               className="mb-6"
             />
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-4 rounded-xl bg-blue-50">
                 <div className="flex items-center gap-2 mb-2">
                   <Target className="w-4 h-4 text-blue-600" />
@@ -402,13 +402,13 @@ function ExpenseRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-4 px-4 py-4 hover:bg-secondary/50 transition-colors cursor-pointer group",
+        "flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-4 hover:bg-secondary/50 transition-colors cursor-pointer group",
         className
       )}
       onClick={onEdit}
     >
       <div className={cn(
-        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
+        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 hidden sm:flex",
         colors.bg
       )}>
         <span className={cn("text-sm font-bold", colors.text)}>
@@ -419,40 +419,41 @@ function ExpenseRow({
         <div className="flex items-center gap-2 mb-1">
           <p className="font-medium truncate">{expense.title}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+          <span className="text-muted-foreground">
             {label?.ru || expense.category}
           </span>
           <span className={cn("inline-flex items-center gap-1", status.class)}>
             <StatusIcon className="w-3 h-3" />
-            {status.text}
+            <span className="hidden sm:inline">{status.text}</span>
           </span>
         </div>
       </div>
       <div className="text-right">
-        <p className="font-semibold">{formatCurrency(plannedAmount)}</p>
+        <p className="font-semibold text-sm sm:text-base">{formatCurrency(plannedAmount)}</p>
         {paidAmount > 0 && (
-          <p className="text-sm text-emerald-600">
-            {formatCurrency(paidAmount)} оплачено
+          <p className="text-xs sm:text-sm text-emerald-600">
+            <span className="hidden sm:inline">{formatCurrency(paidAmount)} оплачено</span>
+            <span className="sm:hidden">{formatCurrency(paidAmount)}</span>
           </p>
         )}
         {paidAmount === 0 && plannedAmount > 0 && (
-          <p className="text-sm text-muted-foreground">
-            {paidPercent}% оплачено
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            {paidPercent}%
           </p>
         )}
       </div>
       <div className="flex items-center gap-1">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
           title="Редактировать"
         >
           <Pencil className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
           title="Удалить"
         >
           <Trash2 className="w-4 h-4" />
@@ -503,7 +504,7 @@ function AddExpenseModal({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1.5">Категория</label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {categories.map((cat) => {
               const colors = categoryColors[cat];
               const label = expenseCategoryLabels[cat]?.ru || cat;
@@ -630,7 +631,7 @@ function EditExpenseModal({
 
         <div className="border-t border-border pt-4">
           <h4 className="text-sm font-medium mb-3">Суммы (тенге)</h4>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Планировали</label>
               <input

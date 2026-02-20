@@ -86,7 +86,7 @@ export default function EventDetailPage() {
       {/* Hero Section */}
       <div className="hero-gradient rounded-2xl p-6 md:p-8 relative overflow-hidden">
         <div className="relative z-10">
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur flex items-center justify-center text-2xl shadow-sm">
