@@ -299,7 +299,7 @@ export default function SettingsPage() {
               <button
                 onClick={handleActivatePromo}
                 disabled={activatingPromo || !promoCode.trim()}
-                className="btn-outline"
+                className="btn-primary px-6"
               >
                 {activatingPromo ? "..." : "Применить"}
               </button>
