@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import {
   Plus,
@@ -16,6 +16,7 @@ import {
   UserMinus,
   GripVertical,
   Theater,
+  Move,
 } from "lucide-react";
 import { seating, guests as guestsApi } from "@/lib/api";
 import {
@@ -29,9 +30,12 @@ import { PageLoader, Modal, ModalFooter } from "@/components/ui";
 import { cn, formatTableName } from "@/lib/utils";
 import toast from "react-hot-toast";
 
-const CANVAS_WIDTH = 1200;
-const CANVAS_HEIGHT = 800;
+// Canvas is now responsive, these are minimum dimensions
+const MIN_CANVAS_WIDTH = 900;
+const MIN_CANVAS_HEIGHT = 600;
 const DEFAULT_TABLE_SIZE = 100;
+// Staging position marker - tables with positionX < 0 are in staging
+const STAGING_POSITION = -1000;
 
 const tableShapeIcons: Record<TableShape, typeof Circle> = {
   round: Circle,
@@ -45,6 +49,7 @@ export default function SeatingPage() {
   const params = useParams();
   const eventId = params.id as string;
   const canvasRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [tables, setTables] = useState<TableWithGuests[]>([]);
@@ -53,6 +58,7 @@ export default function SeatingPage() {
 
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [canvasSize, setCanvasSize] = useState({ width: MIN_CANVAS_WIDTH, height: MIN_CANVAS_HEIGHT });
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -62,12 +68,73 @@ export default function SeatingPage() {
   const dragOffsetRef = useRef({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
 
+  // Separate tables into staged and placed
+  const stagedTables = tables.filter((t) => t.positionX < 0);
+  const placedTables = tables.filter((t) => t.positionX >= 0);
+
+  // Resize observer to make canvas responsive
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateSize = () => {
+      const rect = container.getBoundingClientRect();
+      // Leave some padding
+      const width = Math.max(MIN_CANVAS_WIDTH, rect.width - 16);
+      const height = Math.max(MIN_CANVAS_HEIGHT, rect.height - 16);
+      setCanvasSize({ width, height });
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(container);
+
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [eventId]);
 
-  // Global mouse up listener to handle drag end even outside canvas
+  // Global mouse move/up listeners for dragging
   useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!draggingRef.current) return;
+
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) return;
+
+      const tableId = draggingRef.current;
+
+      // Check if mouse is over canvas area
+      const isOverCanvas =
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom;
+
+      if (isOverCanvas) {
+        setTables((prev) => {
+          const table = prev.find((t) => t.id === tableId);
+          const tableWidth = table?.width || DEFAULT_TABLE_SIZE;
+          const tableHeight = table?.height || DEFAULT_TABLE_SIZE;
+
+          const newX = Math.max(
+            0,
+            Math.min(canvasSize.width - tableWidth, (e.clientX - rect.left) / zoom - dragOffsetRef.current.x)
+          );
+          const newY = Math.max(
+            0,
+            Math.min(canvasSize.height - tableHeight, (e.clientY - rect.top) / zoom - dragOffsetRef.current.y)
+          );
+
+          return prev.map((t) =>
+            t.id === tableId ? { ...t, positionX: newX, positionY: newY } : t
+          );
+        });
+      }
+    };
+
     const handleGlobalMouseUp = async () => {
       if (draggingRef.current) {
         const tableId = draggingRef.current;
@@ -77,8 +144,8 @@ export default function SeatingPage() {
         // Get the latest table position from state
         setTables((currentTables) => {
           const table = currentTables.find((t) => t.id === tableId);
-          if (table) {
-            // Save position to backend (fire and forget)
+          if (table && table.positionX >= 0) {
+            // Only save if placed on canvas (not in staging)
             seating.updateTable(eventId, tableId, {
               positionX: table.positionX,
               positionY: table.positionY,
@@ -91,9 +158,13 @@ export default function SeatingPage() {
       }
     };
 
+    window.addEventListener("mousemove", handleGlobalMouseMove);
     window.addEventListener("mouseup", handleGlobalMouseUp);
-    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
-  }, [eventId]);
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalMouseMove);
+      window.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [eventId, zoom, canvasSize]);
 
   async function loadData() {
     try {
@@ -169,7 +240,7 @@ export default function SeatingPage() {
     }
   };
 
-  const handleTableMouseDown = (e: React.MouseEvent, tableId: string) => {
+  const handleTableMouseDown = (e: React.MouseEvent, tableId: string, fromStaging = false) => {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
@@ -177,43 +248,26 @@ export default function SeatingPage() {
     const table = tables.find((t) => t.id === tableId);
     if (!table) return;
 
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
-
     draggingRef.current = tableId;
     setIsDragging(true);
     setSelectedTable(tableId);
-    dragOffsetRef.current = {
-      x: (e.clientX - rect.left) / zoom - table.positionX,
-      y: (e.clientY - rect.top) / zoom - table.positionY,
-    };
-  };
 
-  const handleCanvasMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (!draggingRef.current) return;
-
+    if (fromStaging) {
+      // For staging, offset is simpler - center of table
+      dragOffsetRef.current = {
+        x: table.width / 2,
+        y: table.height / 2,
+      };
+    } else {
       const rect = canvasRef.current?.getBoundingClientRect();
       if (!rect) return;
 
-      const tableId = draggingRef.current;
-      const newX = Math.max(
-        0,
-        Math.min(CANVAS_WIDTH - DEFAULT_TABLE_SIZE, (e.clientX - rect.left) / zoom - dragOffsetRef.current.x)
-      );
-      const newY = Math.max(
-        0,
-        Math.min(CANVAS_HEIGHT - DEFAULT_TABLE_SIZE, (e.clientY - rect.top) / zoom - dragOffsetRef.current.y)
-      );
-
-      setTables((prev) =>
-        prev.map((t) =>
-          t.id === tableId ? { ...t, positionX: newX, positionY: newY } : t
-        )
-      );
-    },
-    [zoom]
-  );
+      dragOffsetRef.current = {
+        x: (e.clientX - rect.left) / zoom - table.positionX,
+        y: (e.clientY - rect.top) / zoom - table.positionY,
+      };
+    }
+  };
 
   const handleGuestDragStart = (e: React.DragEvent, guest: Guest) => {
     e.dataTransfer.setData("guestId", guest.id);
@@ -280,38 +334,62 @@ export default function SeatingPage() {
       </div>
 
       <div className="flex-1 flex gap-4 min-h-0">
-        {/* Canvas */}
-        <div className="flex-1 bg-secondary/50 rounded-lg overflow-auto relative">
-          <div
-            ref={canvasRef}
-            className={cn(
-              "relative select-none",
-              isDragging ? "cursor-grabbing" : "cursor-default"
-            )}
-            style={{
-              width: CANVAS_WIDTH * zoom,
-              height: CANVAS_HEIGHT * zoom,
-              backgroundImage: `
-                linear-gradient(to right, var(--border) 1px, transparent 1px),
-                linear-gradient(to bottom, var(--border) 1px, transparent 1px)
-              `,
-              backgroundSize: `${50 * zoom}px ${50 * zoom}px`,
-            }}
-            onMouseMove={handleCanvasMouseMove}
-            onClick={() => setSelectedTable(null)}
-          >
-            {tables.map((table) => (
-              <TableElement
-                key={table.id}
-                table={table}
-                zoom={zoom}
-                isSelected={selectedTable === table.id}
-                isDragging={draggingRef.current === table.id}
-                onMouseDown={(e) => handleTableMouseDown(e, table.id)}
-                onDrop={(e) => handleTableDrop(e, table.id)}
-                onDragOver={handleTableDragOver}
-              />
-            ))}
+        {/* Canvas area with staging */}
+        <div className="flex-1 flex flex-col gap-3 min-w-0">
+          {/* Staging area */}
+          {stagedTables.length > 0 && (
+            <div className="bg-amber-50 border-2 border-dashed border-amber-300 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Move className="w-4 h-4 text-amber-600" />
+                <span className="text-sm font-medium text-amber-700">
+                  Перетащите на план рассадки
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {stagedTables.map((table) => (
+                  <StagedTableElement
+                    key={table.id}
+                    table={table}
+                    isSelected={selectedTable === table.id}
+                    onMouseDown={(e) => handleTableMouseDown(e, table.id, true)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Canvas */}
+          <div ref={containerRef} className="flex-1 bg-secondary/50 rounded-lg overflow-auto relative">
+            <div
+              ref={canvasRef}
+              className={cn(
+                "relative select-none",
+                isDragging ? "cursor-grabbing" : "cursor-default"
+              )}
+              style={{
+                width: canvasSize.width * zoom,
+                height: canvasSize.height * zoom,
+                backgroundImage: `
+                  linear-gradient(to right, var(--border) 1px, transparent 1px),
+                  linear-gradient(to bottom, var(--border) 1px, transparent 1px)
+                `,
+                backgroundSize: `${50 * zoom}px ${50 * zoom}px`,
+              }}
+              onClick={() => setSelectedTable(null)}
+            >
+              {placedTables.map((table) => (
+                <TableElement
+                  key={table.id}
+                  table={table}
+                  zoom={zoom}
+                  isSelected={selectedTable === table.id}
+                  isDragging={draggingRef.current === table.id}
+                  onMouseDown={(e) => handleTableMouseDown(e, table.id)}
+                  onDrop={(e) => handleTableDrop(e, table.id)}
+                  onDragOver={handleTableDragOver}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
@@ -409,7 +487,6 @@ export default function SeatingPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateTable}
-        tableCount={tables.length}
         nextTableNumber={Math.max(0, ...tables.filter(t => t.shape !== "scene").map(t => t.number)) + 1}
       />
 
@@ -426,6 +503,44 @@ export default function SeatingPage() {
           table={selectedTableData}
         />
       )}
+    </div>
+  );
+}
+
+// Staged table (in staging area, not on canvas yet)
+interface StagedTableElementProps {
+  table: TableWithGuests;
+  isSelected: boolean;
+  onMouseDown: (e: React.MouseEvent) => void;
+}
+
+function StagedTableElement({ table, isSelected, onMouseDown }: StagedTableElementProps) {
+  const isScene = table.shape === "scene";
+
+  return (
+    <div
+      className={cn(
+        "cursor-grab select-none p-3 rounded-lg border-2 transition-all hover:shadow-md",
+        isSelected ? "border-primary ring-2 ring-primary/20" : "border-border",
+        isScene ? "bg-amber-100" : "bg-white"
+      )}
+      onMouseDown={onMouseDown}
+    >
+      <div className="flex items-center gap-2">
+        {isScene ? (
+          <Theater className="w-4 h-4 text-amber-600" />
+        ) : (
+          <Circle className="w-4 h-4 text-muted-foreground" />
+        )}
+        <span className="text-sm font-medium">
+          {formatTableName(table.number, table.name, isScene)}
+        </span>
+        {!isScene && (
+          <span className="text-xs text-muted-foreground">
+            ({table.capacity} мест)
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -510,11 +625,10 @@ interface CreateTableModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateTableRequest) => void;
-  tableCount: number;
   nextTableNumber: number;
 }
 
-function CreateTableModal({ isOpen, onClose, onSubmit, tableCount, nextTableNumber }: CreateTableModalProps) {
+function CreateTableModal({ isOpen, onClose, onSubmit, nextTableNumber }: CreateTableModalProps) {
   const [name, setName] = useState("");
   const [shape, setShape] = useState<TableShape>("round");
   const [capacity, setCapacity] = useState(8);
@@ -527,8 +641,9 @@ function CreateTableModal({ isOpen, onClose, onSubmit, tableCount, nextTableNumb
       name: name.trim() || undefined,
       shape,
       capacity: isScene ? 0 : capacity,
-      positionX: 100 + (tableCount % 5) * 150,
-      positionY: 100 + Math.floor(tableCount / 5) * 150,
+      // Create in staging area (negative X position)
+      positionX: STAGING_POSITION,
+      positionY: 0,
       width: isScene ? 200 : DEFAULT_TABLE_SIZE,
       height: isScene ? 80 : DEFAULT_TABLE_SIZE,
     });

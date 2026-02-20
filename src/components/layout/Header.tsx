@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, User } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
+import { Logo } from "@/components/ui";
 
 export function Header() {
   const pathname = usePathname();
@@ -13,12 +14,9 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
       <div className="flex h-14 items-center px-6">
         {/* Logo */}
-        <Link href="/dashboard" className="flex items-center gap-2 mr-8">
-          <div className="w-7 h-7 bg-foreground rounded-md flex items-center justify-center">
-            <span className="text-background font-semibold text-sm">T</span>
-          </div>
-          <span className="font-semibold">Toilab</span>
-        </Link>
+        <div className="mr-8">
+          <Logo size="md" href="/dashboard" />
+        </div>
 
         {/* Nav */}
         <nav className="flex items-center gap-6 text-sm">

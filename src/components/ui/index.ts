@@ -8,3 +8,4 @@ export { EmptyState } from "./EmptyState";
 export { ProgressBar, CircularProgress } from "./ProgressBar";
 export { Avatar, AvatarGroup } from "./Avatar";
 export { StatsGrid, StatItem, StatusBadge } from "./StatsGrid";
+export { Logo } from "./Logo";
