@@ -258,13 +258,40 @@ function ChecklistRow({
 }) {
   const categoryLabel = checklistCategoryLabels[item.category];
 
+  // Calculate days until deadline
+  let daysUntil: number | null = null;
+  let isOverdue = false;
+  let isUrgent = false;
+
+  if (item.dueDate && !item.isCompleted) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(item.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    isOverdue = daysUntil < 0;
+    isUrgent = daysUntil >= 0 && daysUntil <= 3;
+  }
+
+  const getDeadlineLabel = () => {
+    if (daysUntil === null) return null;
+    if (isOverdue) return `Просрочено на ${Math.abs(daysUntil)} дн.`;
+    if (daysUntil === 0) return "Сегодня";
+    if (daysUntil === 1) return "Завтра";
+    return formatShortDate(item.dueDate!);
+  };
+
   return (
     <div
       className={cn(
         "flex items-center gap-3 sm:gap-4 p-3 sm:p-4 transition-colors group",
         item.isCompleted
           ? "bg-emerald-50/50"
-          : "hover:bg-secondary/50"
+          : isOverdue
+            ? "bg-red-50/50"
+            : isUrgent
+              ? "bg-amber-50/50"
+              : "hover:bg-secondary/50"
       )}
     >
       <button
@@ -292,11 +319,25 @@ function ChecklistRow({
           {item.dueDate && (
             <>
               <span>•</span>
-              <span className="flex-shrink-0">{formatShortDate(item.dueDate)}</span>
+              <span className={cn(
+                "flex-shrink-0",
+                !item.isCompleted && isOverdue && "text-red-600 font-medium",
+                !item.isCompleted && isUrgent && "text-amber-600 font-medium"
+              )}>
+                {getDeadlineLabel()}
+              </span>
             </>
           )}
         </div>
       </div>
+      {!item.isCompleted && (isOverdue || isUrgent) && (
+        <span className={cn(
+          "text-xs px-2 py-0.5 rounded-full flex-shrink-0 hidden sm:inline",
+          isOverdue ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+        )}>
+          {isOverdue ? "Просрочено" : "Скоро"}
+        </span>
+      )}
       <button
         onClick={onDelete}
         className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
@@ -340,8 +381,7 @@ function AddTaskModal({
       category,
       dueDate: dueDate || undefined,
     });
-    setTitle("");
-    setDueDate("");
+    onClose(); // Close modal after adding custom task
   };
 
   const categories: ChecklistCategory[] = [
