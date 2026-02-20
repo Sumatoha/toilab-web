@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import {
   Plus,
@@ -9,6 +9,7 @@ import {
   GripVertical,
   FileText,
   Download,
+  Printer,
   Sparkles,
   User,
   Edit2,
@@ -17,9 +18,11 @@ import {
 } from "lucide-react";
 import { program, events } from "@/lib/api";
 import { ProgramItem, ProgramTemplate, Event } from "@/lib/types";
-import { cn, eventTypeLabels } from "@/lib/utils";
+import { cn, eventTypeLabels, formatDate } from "@/lib/utils";
 import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog } from "@/components/ui";
 import toast from "react-hot-toast";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 export default function ProgramPage() {
   const params = useParams();
@@ -36,6 +39,8 @@ export default function ProgramPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadData();
@@ -204,6 +209,47 @@ export default function ProgramPage() {
     return `${mins} мин`;
   };
 
+  const handleDownloadPdf = async () => {
+    if (!printRef.current || items.length === 0) return;
+
+    setIsGeneratingPdf(true);
+    try {
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10;
+
+      pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+
+      const eventTitle = event?.title || "Программа";
+      pdf.save(`${eventTitle} - Программа.pdf`);
+
+      toast.success("PDF скачан");
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+      toast.error("Не удалось создать PDF");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   if (isLoading) {
     return <PageLoader />;
   }
@@ -220,13 +266,23 @@ export default function ProgramPage() {
         </div>
         <div className="flex gap-2">
           {items.length > 0 && (
-            <button
-              onClick={() => window.print()}
-              className="btn-outline btn-sm"
-            >
-              <Download className="w-4 h-4" />
-              PDF
-            </button>
+            <>
+              <button
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf}
+                className="btn-outline btn-sm"
+              >
+                <Download className="w-4 h-4" />
+                {isGeneratingPdf ? "..." : "Скачать"}
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="btn-outline btn-sm"
+              >
+                <Printer className="w-4 h-4" />
+                Печать
+              </button>
+            </>
           )}
           <button
             onClick={() => setShowTemplateModal(true)}
@@ -329,6 +385,42 @@ export default function ProgramPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Hidden printable content for PDF */}
+      <div className="fixed left-[-9999px] top-0">
+        <div ref={printRef} className="bg-white p-8" style={{ width: "595px" }}>
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold mb-1">{event?.title || "Программа мероприятия"}</h1>
+            {event?.date && (
+              <p className="text-gray-600">{formatDate(event.date)}</p>
+            )}
+          </div>
+          <div className="border-t border-gray-200">
+            {items.map((item) => (
+              <div key={item.id} className="flex gap-4 py-3 border-b border-gray-100">
+                <div className="w-16 text-center font-mono font-semibold text-indigo-600">
+                  {item.startTime}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{item.title}</p>
+                  {item.description && (
+                    <p className="text-sm text-gray-500">{item.description}</p>
+                  )}
+                </div>
+                {item.responsible && (
+                  <div className="text-sm text-gray-500">{item.responsible}</div>
+                )}
+                {item.duration > 0 && (
+                  <div className="text-sm text-gray-500">{item.duration} мин</div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 text-center text-sm text-gray-400">
+            Toilab
+          </div>
+        </div>
       </div>
 
       {/* Print styles */}

@@ -251,7 +251,7 @@ export default function SettingsPage() {
                   </li>
                 ))}
               </ul>
-              <button className="btn-primary w-full">Выбрать Pro</button>
+              <button className="btn-primary w-full h-10">Выбрать Pro</button>
             </div>
 
             {/* Studio */}
@@ -276,7 +276,7 @@ export default function SettingsPage() {
                   </li>
                 ))}
               </ul>
-              <button className="w-full py-2 px-4 bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold rounded-lg transition-colors">
+              <button className="w-full h-10 bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold rounded-lg transition-colors">
                 Выбрать Studio
               </button>
             </div>
