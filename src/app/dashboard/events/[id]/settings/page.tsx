@@ -162,14 +162,14 @@ export default function EventSettingsPage() {
   if (!event) return null;
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="max-w-2xl space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Настройки</h1>
-        <p className="text-muted-foreground">Редактирование мероприятия</p>
+        <h1 className="text-h1">Настройки</h1>
+        <p className="text-caption mt-1">Редактирование мероприятия</p>
       </div>
 
       {event.status === "draft" && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className="p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-lg">
           <p className="text-sm text-amber-800 mb-3">Мероприятие в черновике</p>
           <button onClick={handleActivate} className="btn-primary btn-sm">
             <Check className="w-4 h-4" />
@@ -179,10 +179,10 @@ export default function EventSettingsPage() {
       )}
 
       {/* Basic */}
-      <section className="space-y-4">
-        <h2 className="font-medium">Основное</h2>
+      <section className="space-y-3 sm:space-y-4">
+        <h2 className="font-medium text-sm sm:text-base">Основное</h2>
         <div>
-          <label className="block text-sm mb-1.5">Название</label>
+          <label className="block text-xs sm:text-sm mb-1.5">Название</label>
           <input
             type="text"
             value={formData.title || ""}
@@ -190,9 +190,9 @@ export default function EventSettingsPage() {
             className="input"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <label className="block text-sm mb-1.5">Имя 1</label>
+            <label className="block text-xs sm:text-sm mb-1.5">Имя 1</label>
             <input
               type="text"
               value={formData.person1 || ""}
@@ -201,7 +201,7 @@ export default function EventSettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm mb-1.5">Имя 2</label>
+            <label className="block text-xs sm:text-sm mb-1.5">Имя 2</label>
             <input
               type="text"
               value={formData.person2 || ""}
@@ -213,11 +213,11 @@ export default function EventSettingsPage() {
       </section>
 
       {/* Date & Time */}
-      <section className="space-y-4">
-        <h2 className="font-medium">Дата и время</h2>
-        <div className="grid grid-cols-2 gap-4">
+      <section className="space-y-3 sm:space-y-4">
+        <h2 className="font-medium text-sm sm:text-base">Дата и время</h2>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <label className="block text-sm mb-1.5">Дата</label>
+            <label className="block text-xs sm:text-sm mb-1.5">Дата</label>
             <input
               type="date"
               value={formData.date || ""}
@@ -226,7 +226,7 @@ export default function EventSettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-sm mb-1.5">Время</label>
+            <label className="block text-xs sm:text-sm mb-1.5">Время</label>
             <input
               type="time"
               value={formData.time || ""}
@@ -311,18 +311,18 @@ export default function EventSettingsPage() {
       </section>
 
       {/* Sharing */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
+      <section className="space-y-3 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="font-medium flex items-center gap-2">
+            <h2 className="font-medium text-sm sm:text-base flex items-center gap-2">
               <Link2 className="w-4 h-4" />
               Доступ по ссылке
             </h2>
-            <p className="text-sm text-muted-foreground">Поделитесь дашбордом с партнёром или координатором</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Поделитесь с партнёром</p>
           </div>
           <button onClick={() => setShowShareModal(true)} className="btn-primary btn-sm">
             <Plus className="w-4 h-4" />
-            Создать ссылку
+            <span className="hidden sm:inline">Создать</span> ссылку
           </button>
         </div>
 
@@ -429,12 +429,12 @@ export default function EventSettingsPage() {
       </section>
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-4 border-t border-border">
-        <button onClick={() => setShowDeleteModal(true)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-border">
+        <button onClick={() => setShowDeleteModal(true)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50 justify-center sm:justify-start">
           <Trash2 className="w-4 h-4" />
           Удалить
         </button>
-        <button onClick={handleSave} disabled={isSaving} className="btn-primary btn-md">
+        <button onClick={handleSave} disabled={isSaving} className="btn-primary btn-md w-full sm:w-auto">
           {isSaving ? "Сохранение..." : "Сохранить"}
         </button>
       </div>

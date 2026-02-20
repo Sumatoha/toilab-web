@@ -10,13 +10,14 @@ interface ModalProps {
   title: string;
   description?: string;
   children: React.ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
 const sizes = {
-  sm: "max-w-sm",
-  md: "max-w-md",
-  lg: "max-w-lg",
+  sm: "sm:max-w-sm",
+  md: "sm:max-w-md",
+  lg: "sm:max-w-lg",
+  xl: "sm:max-w-xl",
 };
 
 export function Modal({
@@ -47,33 +48,36 @@ export function Modal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
+      {/* Modal - Full width on mobile, centered on desktop */}
       <div
         className={cn(
-          "relative bg-card rounded-lg shadow-xl w-full mx-4 animate-in",
+          "relative bg-card shadow-xl w-full max-h-[90vh] overflow-y-auto",
+          "rounded-t-2xl sm:rounded-xl",
+          "sm:mx-4 sm:my-4",
+          "animate-in",
           sizes[size]
         )}
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-4 border-b border-border">
-          <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
+        <div className="sticky top-0 z-10 bg-card flex items-start justify-between p-4 border-b border-border">
+          <div className="flex-1 min-w-0 pr-2">
+            <h2 className="text-base sm:text-lg font-semibold truncate">{title}</h2>
             {description && (
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-2">
                 {description}
               </p>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-md hover:bg-secondary transition-colors -mt-1 -mr-1"
+            className="p-2 rounded-lg hover:bg-secondary transition-colors flex-shrink-0 -mt-1 -mr-1"
           >
             <X className="w-5 h-5 text-muted-foreground" />
           </button>
@@ -92,7 +96,7 @@ interface ModalFooterProps {
 
 export function ModalFooter({ children }: ModalFooterProps) {
   return (
-    <div className="flex items-center justify-end gap-3 pt-4 mt-4 border-t border-border">
+    <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 mt-4 border-t border-border">
       {children}
     </div>
   );

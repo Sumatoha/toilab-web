@@ -146,20 +146,20 @@ export default function BudgetPage() {
 
       {/* Budget Overview */}
       {summary && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
           {/* Main Budget Card */}
-          <div className="lg:col-span-2 card p-6">
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h2 className="text-lg font-semibold mb-1">Обзор бюджета</h2>
-                <p className="text-sm text-muted-foreground">
-                  {Math.round(budgetProgress)}% от запланированного бюджета использовано
+          <div className="lg:col-span-2 card p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-4 mb-4 sm:mb-6">
+              <div className="min-w-0">
+                <h2 className="text-base sm:text-lg font-semibold mb-1">Обзор бюджета</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  {Math.round(budgetProgress)}% использовано
                 </p>
               </div>
               <CircularProgress
                 value={summary.totalPaid}
                 max={summary.totalPlanned || 1}
-                size={80}
+                size={60}
                 color={budgetProgress > 90 ? "warning" : "success"}
               />
             </div>
@@ -169,39 +169,39 @@ export default function BudgetPage() {
               max={summary.totalPlanned || 1}
               color={budgetProgress > 90 ? "warning" : "success"}
               size="lg"
-              className="mb-6"
+              className="mb-4 sm:mb-6"
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-blue-50">
-                <div className="flex items-center gap-2 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+              <div className="p-3 sm:p-4 rounded-xl bg-blue-50">
+                <div className="flex items-center gap-2 mb-1 sm:mb-2">
                   <Target className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm text-blue-600 font-medium">Запланировано</span>
+                  <span className="text-xs sm:text-sm text-blue-600 font-medium">Запланировано</span>
                 </div>
-                <div className="text-2xl font-bold text-blue-700">
+                <div className="text-lg sm:text-2xl font-bold text-blue-700">
                   {formatCurrency(summary.totalPlanned)}
                 </div>
               </div>
-              <div className="p-4 rounded-xl bg-emerald-50">
-                <div className="flex items-center gap-2 mb-2">
+              <div className="p-3 sm:p-4 rounded-xl bg-emerald-50">
+                <div className="flex items-center gap-2 mb-1 sm:mb-2">
                   <CreditCard className="w-4 h-4 text-emerald-600" />
-                  <span className="text-sm text-emerald-600 font-medium">Оплачено</span>
+                  <span className="text-xs sm:text-sm text-emerald-600 font-medium">Оплачено</span>
                 </div>
-                <div className="text-2xl font-bold text-emerald-700">
+                <div className="text-lg sm:text-2xl font-bold text-emerald-700">
                   {formatCurrency(summary.totalPaid)}
                 </div>
               </div>
               <div className={cn(
-                "p-4 rounded-xl",
+                "p-3 sm:p-4 rounded-xl",
                 remaining >= 0 ? "bg-amber-50" : "bg-red-50"
               )}>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-1 sm:mb-2">
                   <Wallet className={cn("w-4 h-4", remaining >= 0 ? "text-amber-600" : "text-red-600")} />
-                  <span className={cn("text-sm font-medium", remaining >= 0 ? "text-amber-600" : "text-red-600")}>
+                  <span className={cn("text-xs sm:text-sm font-medium", remaining >= 0 ? "text-amber-600" : "text-red-600")}>
                     {remaining >= 0 ? "Осталось" : "Перерасход"}
                   </span>
                 </div>
-                <div className={cn("text-2xl font-bold", remaining >= 0 ? "text-amber-700" : "text-red-700")}>
+                <div className={cn("text-lg sm:text-2xl font-bold", remaining >= 0 ? "text-amber-700" : "text-red-700")}>
                   {formatCurrency(Math.abs(remaining))}
                 </div>
               </div>
@@ -209,8 +209,8 @@ export default function BudgetPage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold mb-4">Статистика</h3>
+          <div className="card p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Статистика</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Всего расходов</span>
@@ -243,20 +243,20 @@ export default function BudgetPage() {
       )}
 
       {/* Categories */}
-      <div className="card p-6">
-        <h2 className="text-lg font-semibold mb-4">По категориям</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="card p-4 sm:p-6">
+        <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">По категориям</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
           <button
             onClick={() => setSelectedCategory(null)}
             className={cn(
-              "p-4 rounded-xl border-2 text-left transition-all duration-150",
+              "p-3 sm:p-4 rounded-xl border-2 text-left transition-all duration-150",
               selectedCategory === null
                 ? "border-primary bg-primary/5 shadow-sm"
                 : "border-transparent bg-secondary hover:bg-secondary/80"
             )}
           >
-            <p className="font-semibold">Все</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm sm:text-base font-semibold">Все</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {expensesList.length} расходов
             </p>
           </button>

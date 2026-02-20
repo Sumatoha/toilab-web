@@ -84,40 +84,38 @@ export default function EventDetailPage() {
   return (
     <div className="space-y-8">
       {/* Hero Section */}
-      <div className="hero-gradient rounded-2xl p-6 md:p-8 relative overflow-hidden">
+      <div className="hero-gradient rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 relative overflow-hidden">
         <div className="relative z-10">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex flex-col gap-4">
             <div>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-xl bg-white/80 backdrop-blur flex items-center justify-center text-2xl shadow-sm">
+              <div className="flex items-center gap-2 sm:gap-3 mb-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/80 backdrop-blur flex items-center justify-center text-xl sm:text-2xl shadow-sm flex-shrink-0">
                   {emoji}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="badge-default">{typeLabel}</span>
-                    <StatusBadge status={event.status} />
-                  </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="badge-default text-xs">{typeLabel}</span>
+                  <StatusBadge status={event.status} />
                 </div>
               </div>
-              <h1 className="text-display">{event.title}</h1>
+              <h1 className="text-display break-words">{event.title}</h1>
               {event.person1 && event.person2 && (
-                <p className="text-lg text-muted-foreground mt-1">{event.person1} & {event.person2}</p>
+                <p className="text-sm sm:text-lg text-muted-foreground mt-1">{event.person1} & {event.person2}</p>
               )}
             </div>
 
             {event.status === "active" && (
               <div className="flex gap-2">
-                <button onClick={copyLink} className="btn-outline btn-sm glass">
+                <button onClick={copyLink} className="btn-outline btn-sm glass flex-1 sm:flex-none">
                   <Copy className="w-4 h-4" />
-                  Ссылка
+                  <span className="hidden sm:inline">Ссылка</span>
                 </button>
                 <Link
                   href={`/i/${event.slug}`}
                   target="_blank"
-                  className="btn-primary btn-sm"
+                  className="btn-primary btn-sm flex-1 sm:flex-none"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Открыть
+                  <span className="hidden sm:inline">Открыть</span>
                 </Link>
               </div>
             )}
@@ -125,9 +123,9 @@ export default function EventDetailPage() {
 
           {/* Countdown */}
           {daysUntil !== null && daysUntil > 0 && (
-            <div className="mt-6 inline-flex items-center gap-3 bg-white/60 backdrop-blur rounded-xl px-4 py-3">
-              <div className="text-3xl font-bold text-primary">{daysUntil}</div>
-              <div className="text-sm text-muted-foreground">
+            <div className="mt-4 sm:mt-6 inline-flex items-center gap-3 bg-white/60 backdrop-blur rounded-xl px-3 sm:px-4 py-2 sm:py-3">
+              <div className="text-2xl sm:text-3xl font-bold text-primary">{daysUntil}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">
                 дней до<br />мероприятия
               </div>
             </div>
@@ -136,7 +134,7 @@ export default function EventDetailPage() {
       </div>
 
       {/* Quick Info Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <InfoCard
           href={`/dashboard/events/${eventId}/settings`}
           icon={Calendar}
@@ -160,22 +158,22 @@ export default function EventDetailPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         {/* Guests Card */}
         <Link
           href={`/dashboard/events/${eventId}/guests`}
-          className="card-interactive p-6 group"
+          className="card-interactive p-4 sm:p-6 group"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-              <Users className="w-6 h-6 text-blue-600" />
+          <div className="flex items-start justify-between mb-3 sm:mb-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
             </div>
-            <ArrowRight className="w-5 h-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            <ArrowRight className="w-5 h-5 text-muted-foreground" />
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <div>
-              <div className="text-3xl font-bold">{stats?.confirmedGuests || 0}</div>
-              <div className="text-sm text-muted-foreground">гостей подтвердили</div>
+              <div className="text-2xl sm:text-3xl font-bold">{stats?.confirmedGuests || 0}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">гостей подтвердили</div>
             </div>
             <ProgressBar
               value={stats?.confirmedGuests || 0}
@@ -192,18 +190,18 @@ export default function EventDetailPage() {
         {/* Budget Card */}
         <Link
           href={`/dashboard/events/${eventId}/budget`}
-          className="card-interactive p-6 group"
+          className="card-interactive p-4 sm:p-6 group"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <Wallet className="w-6 h-6 text-emerald-600" />
+          <div className="flex items-start justify-between mb-3 sm:mb-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+              <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
             </div>
-            <ArrowRight className="w-5 h-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            <ArrowRight className="w-5 h-5 text-muted-foreground" />
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <div>
-              <div className="text-3xl font-bold">{formatCurrency(stats?.paidAmount || 0)}</div>
-              <div className="text-sm text-muted-foreground">потрачено</div>
+              <div className="text-xl sm:text-3xl font-bold">{formatCurrency(stats?.paidAmount || 0)}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">потрачено</div>
             </div>
             <ProgressBar
               value={stats?.paidAmount || 0}
@@ -220,20 +218,20 @@ export default function EventDetailPage() {
         {/* Tasks Card */}
         <Link
           href={`/dashboard/events/${eventId}/checklist`}
-          className="card-interactive p-6 group"
+          className="card-interactive p-4 sm:p-6 group"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-              <CheckSquare className="w-6 h-6 text-purple-600" />
+          <div className="flex items-start justify-between mb-3 sm:mb-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+              <CheckSquare className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
             </div>
-            <ArrowRight className="w-5 h-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            <ArrowRight className="w-5 h-5 text-muted-foreground" />
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             <div>
-              <div className="text-3xl font-bold">
+              <div className="text-2xl sm:text-3xl font-bold">
                 {stats?.checklistDone || 0}/{stats?.checklistTotal || 0}
               </div>
-              <div className="text-sm text-muted-foreground">задач выполнено</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">задач выполнено</div>
             </div>
             <ProgressBar
               value={stats?.checklistDone || 0}
@@ -249,26 +247,27 @@ export default function EventDetailPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="card p-4">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
+      <div className="card p-3 sm:p-4">
+        <h3 className="text-xs sm:text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
           Быстрые действия
         </h3>
-        <div className="flex flex-wrap gap-2">
-          <Link href={`/dashboard/events/${eventId}/guests`} className="btn-outline btn-sm">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+          <Link href={`/dashboard/events/${eventId}/guests`} className="btn-outline btn-sm justify-center">
             <Users className="w-4 h-4" />
-            Добавить гостей
+            <span className="hidden sm:inline">Добавить</span> гостей
           </Link>
-          <Link href={`/dashboard/events/${eventId}/budget`} className="btn-outline btn-sm">
+          <Link href={`/dashboard/events/${eventId}/budget`} className="btn-outline btn-sm justify-center">
             <Wallet className="w-4 h-4" />
-            Добавить расход
+            <span className="hidden sm:inline">Добавить</span> расход
           </Link>
-          <Link href={`/dashboard/events/${eventId}/checklist`} className="btn-outline btn-sm">
+          <Link href={`/dashboard/events/${eventId}/checklist`} className="btn-outline btn-sm justify-center">
             <CheckSquare className="w-4 h-4" />
-            Добавить задачу
+            <span className="hidden sm:inline">Добавить</span> задачу
           </Link>
-          <Link href={`/dashboard/events/${eventId}/settings`} className="btn-outline btn-sm">
+          <Link href={`/dashboard/events/${eventId}/settings`} className="btn-outline btn-sm justify-center">
             <Pencil className="w-4 h-4" />
-            Редактировать
+            <span className="sm:hidden">Изменить</span>
+            <span className="hidden sm:inline">Редактировать</span>
           </Link>
         </div>
       </div>
@@ -294,14 +293,14 @@ function InfoCard({
   return (
     <Link
       href={href}
-      className={cn("card group hover:border-primary/20 transition-colors", className)}
+      className={cn("card group hover:border-primary/20 transition-colors p-3 sm:p-4", className)}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-1 sm:mb-2">
         <Icon className="w-4 h-4 text-muted-foreground" />
-        <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Pencil className="w-3 h-3 text-muted-foreground" />
       </div>
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="font-medium truncate">{value}</p>
+      <p className="text-xs sm:text-sm text-muted-foreground">{label}</p>
+      <p className="text-sm sm:text-base font-medium truncate">{value}</p>
       {sublabel && (
         <p className="text-xs text-muted-foreground mt-1 truncate">{sublabel}</p>
       )}

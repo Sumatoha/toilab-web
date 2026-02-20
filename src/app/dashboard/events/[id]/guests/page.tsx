@@ -185,7 +185,7 @@ export default function GuestsPage() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
           <StatCard
             icon={Users}
             label="Всего"
@@ -211,9 +211,9 @@ export default function GuestsPage() {
             value={stats.pending}
             color="amber"
           />
-          <div className="card p-4">
-            <div className="text-sm text-muted-foreground mb-2">Отклик</div>
-            <div className="text-2xl font-bold mb-2">{responseRate}%</div>
+          <div className="card p-3 sm:p-4 col-span-2 sm:col-span-1">
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">Отклик</div>
+            <div className="text-xl sm:text-2xl font-bold mb-2">{responseRate}%</div>
             <ProgressBar
               value={stats.accepted + stats.declined}
               max={stats.total || 1}
@@ -363,19 +363,19 @@ function StatCard({
   const styles = colorStyles[color];
 
   return (
-    <div className="card p-4">
-      <div className="flex items-center gap-3">
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", styles.bg)}>
-          <Icon className={cn("w-5 h-5", styles.text)} />
+    <div className="card p-3 sm:p-4">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className={cn("w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0", styles.bg)}>
+          <Icon className={cn("w-4 h-4 sm:w-5 sm:h-5", styles.text)} />
         </div>
-        <div>
+        <div className="min-w-0">
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold">{value}</span>
+            <span className="text-xl sm:text-2xl font-bold">{value}</span>
             {sublabel && (
-              <span className="text-sm text-emerald-600 font-medium">{sublabel}</span>
+              <span className="text-xs sm:text-sm text-emerald-600 font-medium">{sublabel}</span>
             )}
           </div>
-          <div className="text-sm text-muted-foreground">{label}</div>
+          <div className="text-xs sm:text-sm text-muted-foreground truncate">{label}</div>
         </div>
       </div>
     </div>
@@ -462,9 +462,9 @@ function RsvpBadge({ status, label }: { status: string; label: string }) {
   const { className, icon: Icon } = config[status as keyof typeof config] || config.pending;
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5", className)}>
+    <span className={cn("inline-flex items-center gap-1 sm:gap-1.5 text-xs flex-shrink-0", className)}>
       <Icon className="w-3 h-3" />
-      {label}
+      <span className="hidden sm:inline">{label}</span>
     </span>
   );
 }

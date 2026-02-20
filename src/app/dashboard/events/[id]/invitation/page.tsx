@@ -117,34 +117,34 @@ export default function InvitationPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-display font-bold">Приглашение</h1>
-        <p className="text-muted-foreground">
-          Добавьте ссылку на приглашение и отправьте гостям через WhatsApp
+        <h1 className="text-h1">Приглашение</h1>
+        <p className="text-caption mt-1">
+          Добавьте ссылку и отправьте гостям
         </p>
       </div>
 
       {/* External URL */}
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+      <div className="card p-4 sm:p-6">
+        <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
           <Link2 className="w-5 h-5 text-primary" />
           Ссылка на приглашение
         </h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Вставьте ссылку на ваше приглашение (Canva, Tilda, Google Sites и т.д.)
+        <p className="text-xs sm:text-sm text-muted-foreground mb-4">
+          Вставьте ссылку (Canva, Tilda и т.д.)
         </p>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
           <input
             type="url"
             value={externalUrl}
             onChange={(e) => setExternalUrl(e.target.value)}
             placeholder="https://www.canva.com/design/..."
-            className="flex-1 px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 px-3 sm:px-4 py-2 sm:py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
           />
           <button
             onClick={handleSaveUrl}
             disabled={isSaving}
-            className="btn-primary px-6"
+            className="btn-primary px-4 sm:px-6 h-10 sm:h-auto"
           >
             {isSaving ? "..." : "Сохранить"}
           </button>
@@ -159,8 +159,8 @@ export default function InvitationPage() {
               }}
               className="btn-outline btn-sm"
             >
-              <Copy className="w-4 h-4 mr-2" />
-              Копировать
+              <Copy className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Копировать</span>
             </button>
             <a
               href={externalUrl}
@@ -168,21 +168,22 @@ export default function InvitationPage() {
               rel="noopener noreferrer"
               className="btn-outline btn-sm"
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Открыть
+              <ExternalLink className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Открыть</span>
             </a>
           </div>
         )}
       </div>
 
       {/* Guests for WhatsApp */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
+      <div className="card p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            Рассылка по WhatsApp
+            <span className="hidden sm:inline">Рассылка по WhatsApp</span>
+            <span className="sm:hidden">WhatsApp</span>
           </h3>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-xs sm:text-sm text-muted-foreground">
             {guests.length} гостей
           </span>
         </div>
@@ -203,7 +204,7 @@ export default function InvitationPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Поиск гостя..."
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
               />
             </div>
 
@@ -212,33 +213,33 @@ export default function InvitationPage() {
               {filteredGuests.map((guest) => (
                 <div
                   key={guest.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                  className="flex items-center justify-between gap-2 p-2 sm:p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-sm font-medium text-primary">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs sm:text-sm font-medium text-primary">
                         {guest.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <div>
-                      <p className="font-medium">{guest.name}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm sm:text-base font-medium truncate">{guest.name}</p>
                       {guest.phone ? (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Phone className="w-3 h-3" />
-                          {guest.phone}
+                        <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                          <Phone className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">{guest.phone}</span>
                         </p>
                       ) : (
-                        <p className="text-sm text-muted-foreground italic">
+                        <p className="text-xs sm:text-sm text-muted-foreground italic">
                           Нет номера
                         </p>
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                     <button
                       onClick={() => copyWhatsAppMessage(guest)}
                       className={cn(
-                        "btn-outline btn-sm",
+                        "btn-outline btn-sm p-2",
                         copiedGuestId === guest.id && "bg-green-50 border-green-500 text-green-600"
                       )}
                       title="Копировать сообщение"
@@ -252,7 +253,7 @@ export default function InvitationPage() {
                     {guest.phone && (
                       <button
                         onClick={() => openWhatsApp(guest)}
-                        className="btn-sm bg-green-500 hover:bg-green-600 text-white"
+                        className="btn-sm bg-green-500 hover:bg-green-600 text-white p-2"
                         title="Открыть WhatsApp"
                       >
                         <MessageCircle className="w-4 h-4" />

@@ -10,7 +10,6 @@ import {
   Banknote,
   Package,
   Download,
-  Calendar,
   UserPlus,
 } from "lucide-react";
 import { gifts, guests } from "@/lib/api";
@@ -132,33 +131,33 @@ export default function GiftsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-h1">Подарки</h1>
           <p className="text-caption mt-1">
-            Учёт подарков и көрімдік от гостей
+            Учёт подарков и көрімдік
           </p>
         </div>
         <div className="flex gap-2">
           {giftList.length > 0 && (
             <button onClick={handleExport} className="btn-outline btn-sm">
               <Download className="w-4 h-4" />
-              Экспорт
+              <span className="hidden sm:inline">Экспорт</span>
             </button>
           )}
           <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
             <Plus className="w-4 h-4" />
-            Добавить
+            <span className="hidden sm:inline">Добавить</span>
           </button>
         </div>
       </div>
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
           <StatCard
             icon={GiftIcon}
-            label="Всего подарков"
+            label="Всего"
             value={stats.totalGifts}
             color="indigo"
           />
@@ -166,7 +165,6 @@ export default function GiftsPage() {
             icon={Banknote}
             label="Деньги"
             value={stats.moneyGifts}
-            sublabel={formatCurrency(stats.totalAmount)}
             color="emerald"
           />
           <StatCard
@@ -175,12 +173,11 @@ export default function GiftsPage() {
             value={stats.itemGifts}
             color="amber"
           />
-          <div className="card p-4">
-            <div className="text-sm text-muted-foreground mb-2">Общая сумма</div>
-            <div className="text-2xl font-bold text-emerald-600">
+          <div className="card p-3 sm:p-4">
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Сумма</div>
+            <div className="text-lg sm:text-2xl font-bold text-emerald-600 truncate">
               {formatCurrency(stats.totalAmount)}
             </div>
-            <div className="text-xs text-muted-foreground mt-1">көрімдік/сыбаға</div>
           </div>
         </div>
       )}
@@ -284,13 +281,11 @@ function StatCard({
   icon: Icon,
   label,
   value,
-  sublabel,
   color,
 }: {
   icon: typeof GiftIcon;
   label: string;
   value: number;
-  sublabel?: string;
   color: "indigo" | "emerald" | "amber";
 }) {
   const colorStyles = {
@@ -302,19 +297,14 @@ function StatCard({
   const styles = colorStyles[color];
 
   return (
-    <div className="card p-4">
-      <div className="flex items-center gap-3">
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", styles.bg)}>
-          <Icon className={cn("w-5 h-5", styles.text)} />
+    <div className="card p-3 sm:p-4">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className={cn("w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0", styles.bg)}>
+          <Icon className={cn("w-4 h-4 sm:w-5 sm:h-5", styles.text)} />
         </div>
-        <div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold">{value}</span>
-          </div>
-          <div className="text-sm text-muted-foreground">{label}</div>
-          {sublabel && (
-            <div className="text-xs text-emerald-600 font-medium">{sublabel}</div>
-          )}
+        <div className="min-w-0">
+          <div className="text-xl sm:text-2xl font-bold">{value}</div>
+          <div className="text-xs sm:text-sm text-muted-foreground truncate">{label}</div>
         </div>
       </div>
     </div>
@@ -328,23 +318,19 @@ function GiftRow({ gift, onDelete, className }: { gift: Gift; onDelete: () => vo
   });
 
   return (
-    <div className={cn("flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors group", className)}>
-      <Avatar name={gift.guestName} size="md" />
+    <div className={cn("flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-3 hover:bg-secondary/50 transition-colors group", className)}>
+      <Avatar name={gift.guestName} size="md" className="hidden sm:flex" />
       <div className="flex-1 min-w-0">
-        <p className="font-medium truncate">{gift.guestName}</p>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {gift.description && <span className="truncate max-w-[200px]">{gift.description}</span>}
-          {gift.note && <span className="truncate max-w-[150px]">• {gift.note}</span>}
+        <p className="text-sm sm:text-base font-medium truncate">{gift.guestName}</p>
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+          {gift.description && <span className="truncate">{gift.description}</span>}
+          <span className="hidden sm:inline">{formattedDate}</span>
         </div>
-      </div>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Calendar className="w-3.5 h-3.5" />
-        {formattedDate}
       </div>
       <GiftTypeBadge type={gift.type} amount={gift.amount} />
       <button
         onClick={onDelete}
-        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
         title="Удалить"
       >
         <Trash2 className="w-4 h-4" />

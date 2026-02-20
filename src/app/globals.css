@@ -60,29 +60,29 @@
 }
 
 @layer components {
-  /* Typography Scale */
+  /* Typography Scale - Mobile First */
   .text-display {
-    @apply text-4xl font-bold tracking-tight;
+    @apply text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight;
   }
 
   .text-h1 {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-xl sm:text-2xl font-semibold tracking-tight;
   }
 
   .text-h2 {
-    @apply text-xl font-semibold;
+    @apply text-lg sm:text-xl font-semibold;
   }
 
   .text-h3 {
-    @apply text-lg font-medium;
+    @apply text-base sm:text-lg font-medium;
   }
 
   .text-body {
-    @apply text-base;
+    @apply text-sm sm:text-base;
   }
 
   .text-caption {
-    @apply text-sm text-muted-foreground;
+    @apply text-xs sm:text-sm text-muted-foreground;
   }
 
   .text-small {

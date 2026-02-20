@@ -137,30 +137,31 @@ export default function ChecklistPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-h1">Чек-лист</h1>
           <p className="text-caption mt-1">
-            Отслеживайте задачи по подготовке к свадьбе
+            Отслеживайте задачи по подготовке
           </p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
           <Plus className="w-4 h-4" />
-          Добавить задачу
+          <span className="hidden sm:inline">Добавить задачу</span>
+          <span className="sm:hidden">Добавить</span>
         </button>
       </div>
 
       {/* Progress */}
       {progress && progress.total > 0 && (
-        <div className="card p-5">
+        <div className="card p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-sm text-muted-foreground">Прогресс</p>
-              <p className="text-2xl font-bold">
+              <p className="text-xs sm:text-sm text-muted-foreground">Прогресс</p>
+              <p className="text-xl sm:text-2xl font-bold">
                 {progress.completed} из {progress.total}
               </p>
             </div>
-            <div className="text-3xl font-bold text-primary">
+            <div className="text-2xl sm:text-3xl font-bold text-primary">
               {Math.round(progress.percent)}%
             </div>
           </div>
@@ -174,7 +175,7 @@ export default function ChecklistPage() {
       )}
 
       {/* Filters */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
         {[
           { key: "all", label: "Все" },
           { key: "pending", label: "Не выполнено" },
@@ -260,7 +261,7 @@ function ChecklistRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-4 p-4 transition-colors group",
+        "flex items-center gap-3 sm:gap-4 p-3 sm:p-4 transition-colors group",
         item.isCompleted
           ? "bg-emerald-50/50"
           : "hover:bg-secondary/50"
@@ -280,25 +281,25 @@ function ChecklistRow({
       <div className="flex-1 min-w-0">
         <p
           className={cn(
-            "font-medium",
+            "text-sm sm:text-base font-medium",
             item.isCompleted && "line-through text-muted-foreground"
           )}
         >
           {item.title}
         </p>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{categoryLabel?.ru || item.category}</span>
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+          <span className="truncate">{categoryLabel?.ru || item.category}</span>
           {item.dueDate && (
             <>
               <span>•</span>
-              <span>{formatShortDate(item.dueDate)}</span>
+              <span className="flex-shrink-0">{formatShortDate(item.dueDate)}</span>
             </>
           )}
         </div>
       </div>
       <button
         onClick={onDelete}
-        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
         title="Удалить"
       >
         <Trash2 className="w-4 h-4" />
