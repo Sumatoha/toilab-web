@@ -15,9 +15,12 @@ import {
   Pencil,
   ArrowRight,
   AlertCircle,
+  CalendarDays,
+  Bell,
 } from "lucide-react";
-import { events, checklist } from "@/lib/api";
-import { Event, EventStats, ChecklistItem } from "@/lib/types";
+import { events, checklist, calendar } from "@/lib/api";
+import { Event, EventStats, ChecklistItem, CalendarEvent } from "@/lib/types";
+import { calendarEventTypeLabels } from "@/lib/utils";
 import { formatDate, formatCurrency, getDaysUntil, eventTypeLabels, cn } from "@/lib/utils";
 import { PageLoader, ProgressBar } from "@/components/ui";
 import toast from "react-hot-toast";
@@ -36,18 +39,21 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [stats, setStats] = useState<EventStats | null>(null);
   const [upcomingTasks, setUpcomingTasks] = useState<ChecklistItem[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [eventData, statsData, checklistData] = await Promise.all([
+        const [eventData, statsData, checklistData, calendarData] = await Promise.all([
           events.get(eventId),
           events.getStats(eventId).catch(() => null),
           checklist.list(eventId).catch(() => []),
+          calendar.getUpcoming(eventId, 3).catch(() => []),
         ]);
         setEvent(eventData);
         setStats(statsData);
+        setUpcomingEvents(calendarData || []);
 
         // Filter and sort upcoming deadlines
         const now = new Date();
@@ -331,6 +337,87 @@ export default function EventDetailPage() {
         </div>
       )}
 
+      {/* Upcoming Calendar Events */}
+      {upcomingEvents.length > 0 && (
+        <div className="card p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-blue-500" />
+              Предстоящие события
+            </h3>
+            <Link
+              href={`/dashboard/events/${eventId}/calendar`}
+              className="text-xs text-primary hover:underline"
+            >
+              Календарь
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {upcomingEvents.map((calEvent) => {
+              const eventDate = new Date(calEvent.date);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const diffDays = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              const isToday = diffDays === 0;
+              const isTomorrow = diffDays === 1;
+              const typeInfo = calendarEventTypeLabels[calEvent.type] || calendarEventTypeLabels.other;
+
+              const bgColorClass = {
+                blue: "bg-blue-100 text-blue-600",
+                red: "bg-red-100 text-red-600",
+                amber: "bg-amber-100 text-amber-600",
+                slate: "bg-slate-100 text-slate-600",
+              }[typeInfo.color] || "bg-slate-100 text-slate-600";
+
+              const EventIcon = calEvent.type === "meeting" ? Users
+                : calEvent.type === "deadline" ? AlertCircle
+                : calEvent.type === "reminder" ? Bell
+                : CalendarDays;
+
+              return (
+                <Link
+                  key={calEvent.id}
+                  href={`/dashboard/events/${eventId}/calendar`}
+                  className={cn(
+                    "flex items-center gap-3 p-2 sm:p-3 rounded-lg transition-colors",
+                    isToday ? "bg-blue-50 hover:bg-blue-100" : "bg-secondary/50 hover:bg-secondary"
+                  )}
+                >
+                  <div className={cn(
+                    "w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                    bgColorClass
+                  )}>
+                    <EventIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{calEvent.title}</p>
+                    <p className={cn(
+                      "text-xs",
+                      isToday ? "text-blue-600 font-medium" : "text-muted-foreground"
+                    )}>
+                      {isToday
+                        ? "Сегодня"
+                        : isTomorrow
+                          ? "Завтра"
+                          : `Через ${diffDays} дн.`
+                      }
+                      {calEvent.time && ` • ${calEvent.time}`}
+                      {" • "}
+                      {eventDate.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" })}
+                    </p>
+                  </div>
+                  {isToday && (
+                    <div className="flex-shrink-0">
+                      <span className="badge-info text-xs">Сегодня</span>
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Quick Actions */}
       <div className="card p-3 sm:p-4">
         <h3 className="text-xs sm:text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider">
@@ -348,6 +435,10 @@ export default function EventDetailPage() {
           <Link href={`/dashboard/events/${eventId}/checklist`} className="btn-outline btn-sm justify-center">
             <CheckSquare className="w-4 h-4" />
             <span className="hidden sm:inline">Добавить</span> задачу
+          </Link>
+          <Link href={`/dashboard/events/${eventId}/calendar`} className="btn-outline btn-sm justify-center">
+            <CalendarDays className="w-4 h-4" />
+            Календарь
           </Link>
           <Link href={`/dashboard/events/${eventId}/settings`} className="btn-outline btn-sm justify-center">
             <Pencil className="w-4 h-4" />

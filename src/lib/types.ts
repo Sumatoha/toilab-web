@@ -212,6 +212,48 @@ export interface ChecklistProgress {
   percent: number;
 }
 
+// Calendar
+export type CalendarEventType = "meeting" | "deadline" | "reminder" | "other";
+
+export interface CalendarEvent {
+  id: string;
+  eventId: string;
+  checklistItemId?: string;
+  title: string;
+  description?: string;
+  type: CalendarEventType;
+  date: string;
+  time?: string;
+  endTime?: string;
+  location?: string;
+  autoCompleteTask: boolean;
+  isCompleted: boolean;
+  createdAt: string;
+}
+
+export interface CreateCalendarEventRequest {
+  title: string;
+  description?: string;
+  type: CalendarEventType;
+  date: string;
+  time?: string;
+  endTime?: string;
+  location?: string;
+  checklistItemId?: string;
+  autoCompleteTask?: boolean;
+}
+
+export interface UpdateCalendarEventRequest {
+  title?: string;
+  description?: string;
+  type?: CalendarEventType;
+  date?: string;
+  time?: string;
+  endTime?: string;
+  location?: string;
+  isCompleted?: boolean;
+  autoCompleteTask?: boolean;
+}
 
 // API Request types
 export interface CreateEventRequest {

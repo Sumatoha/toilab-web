@@ -10,6 +10,9 @@ import type {
   VendorSummary,
   ChecklistItem,
   ChecklistProgress,
+  CalendarEvent,
+  CreateCalendarEventRequest,
+  UpdateCalendarEventRequest,
   Gift,
   GiftStats,
   GiftSummary,
@@ -378,6 +381,40 @@ export const checklist = {
     fetchApi<ChecklistProgress>(`/events/${eventId}/checklist/progress`),
 
   getCategories: () => fetchApi<ChecklistCategory[]>("/checklist-categories"),
+};
+
+// Calendar
+export const calendar = {
+  list: (eventId: string) =>
+    fetchApi<CalendarEvent[]>(`/events/${eventId}/calendar`),
+
+  get: (eventId: string, calendarEventId: string) =>
+    fetchApi<CalendarEvent>(`/events/${eventId}/calendar/${calendarEventId}`),
+
+  create: (eventId: string, data: CreateCalendarEventRequest) =>
+    fetchApi<CalendarEvent>(`/events/${eventId}/calendar`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (eventId: string, calendarEventId: string, data: UpdateCalendarEventRequest) =>
+    fetchApi<CalendarEvent>(`/events/${eventId}/calendar/${calendarEventId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (eventId: string, calendarEventId: string) =>
+    fetchApi<void>(`/events/${eventId}/calendar/${calendarEventId}`, {
+      method: "DELETE",
+    }),
+
+  complete: (eventId: string, calendarEventId: string) =>
+    fetchApi<CalendarEvent>(`/events/${eventId}/calendar/${calendarEventId}/complete`, {
+      method: "POST",
+    }),
+
+  getUpcoming: (eventId: string, limit: number = 5) =>
+    fetchApi<CalendarEvent[]>(`/events/${eventId}/calendar/upcoming?limit=${limit}`),
 };
 
 // Gifts

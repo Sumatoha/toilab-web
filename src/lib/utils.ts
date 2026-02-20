@@ -151,3 +151,11 @@ export const giftTypeLabels: Record<string, { ru: string; kz: string }> = {
   money: { ru: "Деньги", kz: "Ақша" },
   item: { ru: "Подарок", kz: "Сыйлық" },
 };
+
+// Calendar event type labels
+export const calendarEventTypeLabels: Record<string, { ru: string; kz: string; icon: string; color: string }> = {
+  meeting: { ru: "Встреча", kz: "Кездесу", icon: "Users", color: "blue" },
+  deadline: { ru: "Дедлайн", kz: "Мерзім", icon: "AlertCircle", color: "red" },
+  reminder: { ru: "Напоминание", kz: "Еске салу", icon: "Bell", color: "amber" },
+  other: { ru: "Другое", kz: "Басқа", icon: "Calendar", color: "slate" },
+};

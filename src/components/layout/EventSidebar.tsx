@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
-import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings, Gift, Clock, LayoutGrid, Sparkles, LucideIcon, Menu, X } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings, Gift, Clock, LayoutGrid, Sparkles, LucideIcon, Menu, X, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store";
 import { Plan } from "@/lib/types";
@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
   { href: "/program", label: "Программа", icon: Clock },
   { href: "/budget", label: "Расходы", icon: Wallet },
   { href: "/checklist", label: "Задачи", icon: CheckSquare },
+  { href: "/calendar", label: "Календарь", icon: CalendarDays },
   { href: "/invitation", label: "Приглашение", icon: Mail, feature: "invitation" },
   { href: "/settings", label: "Настройки", icon: Settings },
 ];

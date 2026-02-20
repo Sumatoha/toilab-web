@@ -8,9 +8,10 @@ import {
   CheckSquare,
   Trash2,
   Sparkles,
+  CalendarDays,
 } from "lucide-react";
-import { checklist as checklistApi } from "@/lib/api";
-import { ChecklistItem, ChecklistProgress, ChecklistCategory } from "@/lib/types";
+import { checklist as checklistApi, calendar as calendarApi } from "@/lib/api";
+import { ChecklistItem, ChecklistProgress, ChecklistCategory, CreateCalendarEventRequest } from "@/lib/types";
 import { cn, formatShortDate, checklistCategoryLabels } from "@/lib/utils";
 import { PageLoader, ConfirmDialog, Modal, ProgressBar } from "@/components/ui";
 import toast from "react-hot-toast";
@@ -225,6 +226,7 @@ export default function ChecklistPage() {
       {/* Add Modal */}
       {showAddModal && (
         <AddTaskModal
+          eventId={eventId}
           onClose={() => setShowAddModal(false)}
           onAdd={handleAdd}
           suggestions={availableSuggestions}
@@ -350,10 +352,12 @@ function ChecklistRow({
 }
 
 function AddTaskModal({
+  eventId,
   onClose,
   onAdd,
   suggestions,
 }: {
+  eventId: string;
   onClose: () => void;
   onAdd: (data: { title: string; category: ChecklistCategory; dueDate?: string }) => void;
   suggestions: { title: string; category: ChecklistCategory }[];
@@ -363,6 +367,10 @@ function AddTaskModal({
   const [category, setCategory] = useState<ChecklistCategory>("other");
   const [dueDate, setDueDate] = useState("");
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set());
+  const [addToCalendar, setAddToCalendar] = useState(false);
+  const [calendarTime, setCalendarTime] = useState("");
+  const [autoCompleteTask, setAutoCompleteTask] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddSuggestion = (suggestion: { title: string; category: ChecklistCategory }) => {
     onAdd({ title: suggestion.title, category: suggestion.category });
@@ -373,15 +381,39 @@ function AddTaskModal({
     });
   };
 
-  const handleSubmitCustom = (e: React.FormEvent) => {
+  const handleSubmitCustom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onAdd({
-      title: title.trim(),
-      category,
-      dueDate: dueDate || undefined,
-    });
-    onClose(); // Close modal after adding custom task
+
+    setIsSubmitting(true);
+    try {
+      // Add the task
+      onAdd({
+        title: title.trim(),
+        category,
+        dueDate: dueDate || undefined,
+      });
+
+      // Create calendar event if checkbox is checked and date is set
+      if (addToCalendar && dueDate) {
+        const calendarData: CreateCalendarEventRequest = {
+          title: title.trim(),
+          type: "meeting",
+          date: dueDate,
+          time: calendarTime || undefined,
+          autoCompleteTask,
+        };
+        await calendarApi.create(eventId, calendarData);
+        toast.success("Событие добавлено в календарь");
+      }
+
+      onClose(); // Close modal after adding custom task
+    } catch (error) {
+      console.error("Failed to create calendar event:", error);
+      // Task was still added, just calendar event failed
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const categories: ChecklistCategory[] = [
@@ -512,10 +544,52 @@ function AddTaskModal({
               className="input"
             />
           </div>
+
+          {/* Add to Calendar option */}
+          {dueDate && (
+            <div className="space-y-3 p-3 bg-secondary/50 rounded-lg">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={addToCalendar}
+                  onChange={(e) => setAddToCalendar(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Добавить в календарь</span>
+              </label>
+
+              {addToCalendar && (
+                <>
+                  <div>
+                    <label className="block text-sm text-muted-foreground mb-1">Время встречи</label>
+                    <input
+                      type="time"
+                      value={calendarTime}
+                      onChange={(e) => setCalendarTime(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoCompleteTask}
+                      onChange={(e) => setAutoCompleteTask(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      Автоматически закрыть задачу после события
+                    </span>
+                  </label>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-2">
-            <button type="submit" className="btn-primary btn-md">
+            <button type="submit" disabled={isSubmitting} className="btn-primary btn-md">
               <Plus className="w-4 h-4" />
-              Добавить
+              {isSubmitting ? "Добавление..." : "Добавить"}
             </button>
           </div>
         </form>
