@@ -4,39 +4,39 @@
 
 @layer base {
   :root {
-    /* Modern warm background */
-    --background: 240 20% 98%;
-    --foreground: 240 10% 10%;
+    /* Clean white background */
+    --background: 210 20% 98%;
+    --foreground: 220 20% 10%;
 
-    /* Crisp white cards */
+    /* Pure white cards */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 10%;
+    --card-foreground: 220 20% 10%;
 
-    /* Vibrant violet primary - modern and bold */
-    --primary: 262 83% 58%;
+    /* Deep navy blue primary - professional and elegant */
+    --primary: 220 70% 25%;
     --primary-foreground: 0 0% 100%;
 
-    /* Soft lavender secondary */
-    --secondary: 262 30% 96%;
-    --secondary-foreground: 262 20% 30%;
+    /* Cool gray secondary */
+    --secondary: 220 15% 95%;
+    --secondary-foreground: 220 15% 35%;
 
-    /* Subtle muted tones */
-    --muted: 240 15% 94%;
-    --muted-foreground: 240 5% 46%;
+    /* Subtle neutral muted tones */
+    --muted: 220 10% 94%;
+    --muted-foreground: 220 10% 45%;
 
-    /* Accent - rose pink for highlights */
-    --accent: 330 80% 60%;
+    /* Accent - slate blue for subtle highlights */
+    --accent: 220 60% 50%;
     --accent-foreground: 0 0% 100%;
 
-    /* Status colors - vibrant but balanced */
-    --destructive: 0 72% 51%;
-    --success: 152 69% 40%;
-    --warning: 38 92% 50%;
+    /* Status colors - muted and professional */
+    --destructive: 0 65% 50%;
+    --success: 160 60% 40%;
+    --warning: 40 85% 50%;
 
     /* Clean borders */
-    --border: 240 15% 90%;
-    --input: 240 15% 90%;
-    --ring: 262 83% 58%;
+    --border: 220 15% 90%;
+    --input: 220 15% 90%;
+    --ring: 220 70% 25%;
 
     /* Larger, softer radius */
     --radius: 0.75rem;
@@ -47,8 +47,8 @@
     --shadow-lg: 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.03);
     --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.1);
 
-    /* Primary glow */
-    --shadow-glow: 0 0 20px hsl(262 83% 58% / 0.3);
+    /* Primary glow - subtle navy */
+    --shadow-glow: 0 0 20px hsl(220 70% 25% / 0.2);
   }
 
   * {
@@ -99,69 +99,145 @@
     @apply text-xs text-muted-foreground;
   }
 
-  /* Buttons - Modern with gradients */
+  /* Buttons - Modern with better touch targets */
   .btn {
     @apply inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-semibold;
     @apply rounded-xl;
     @apply transition-all duration-200 ease-out;
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
     @apply disabled:pointer-events-none disabled:opacity-50;
-    @apply active:scale-[0.97];
+    @apply select-none touch-manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .btn-primary {
     @apply btn text-white;
-    background: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(280 80% 55%) 100%);
-    box-shadow: 0 2px 8px hsl(262 83% 58% / 0.35), inset 0 1px 0 hsl(0 0% 100% / 0.1);
+    background: hsl(220 70% 25%);
+    box-shadow: 0 2px 8px hsl(220 70% 25% / 0.25);
   }
 
   .btn-primary:hover {
-    background: linear-gradient(135deg, hsl(262 83% 52%) 0%, hsl(280 80% 50%) 100%);
-    box-shadow: 0 4px 16px hsl(262 83% 58% / 0.4), inset 0 1px 0 hsl(0 0% 100% / 0.15);
-    transform: translateY(-1px);
+    background: hsl(220 70% 20%);
+    box-shadow: 0 4px 12px hsl(220 70% 25% / 0.3);
+  }
+
+  @media (hover: hover) {
+    .btn-primary:hover {
+      transform: translateY(-1px);
+    }
   }
 
   .btn-primary:active {
     transform: translateY(0) scale(0.98);
-    box-shadow: 0 1px 4px hsl(262 83% 58% / 0.3);
+    box-shadow: 0 1px 4px hsl(220 70% 25% / 0.2);
+    background: hsl(220 70% 22%);
   }
 
   .btn-secondary {
     @apply btn bg-secondary text-secondary-foreground;
-    @apply hover:bg-secondary/80;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-secondary/70;
+  }
+
+  .btn-secondary:active {
+    @apply bg-secondary/90;
+    transform: scale(0.98);
   }
 
   .btn-outline {
-    @apply btn border-2 border-border bg-white/80;
-    @apply hover:bg-secondary hover:border-primary/30;
+    @apply btn border-2 border-border bg-white;
+  }
+
+  .btn-outline:hover {
+    @apply bg-secondary border-primary/30;
+  }
+
+  .btn-outline:active {
+    @apply bg-secondary/80;
+    transform: scale(0.98);
   }
 
   .btn-ghost {
     @apply btn text-muted-foreground;
-    @apply hover:bg-secondary hover:text-foreground;
+  }
+
+  .btn-ghost:hover {
+    @apply bg-secondary text-foreground;
+  }
+
+  .btn-ghost:active {
+    @apply bg-secondary/80;
+    transform: scale(0.98);
   }
 
   .btn-danger {
     @apply btn text-white;
-    background: linear-gradient(135deg, hsl(0 72% 51%) 0%, hsl(350 80% 50%) 100%);
+    background: hsl(0 72% 51%);
     box-shadow: 0 2px 8px hsl(0 72% 51% / 0.3);
   }
 
   .btn-danger:hover {
-    box-shadow: 0 4px 16px hsl(0 72% 51% / 0.4);
-    transform: translateY(-1px);
+    background: hsl(0 72% 45%);
+    box-shadow: 0 4px 12px hsl(0 72% 51% / 0.35);
   }
 
+  .btn-danger:active {
+    transform: scale(0.98);
+    box-shadow: 0 1px 4px hsl(0 72% 51% / 0.2);
+  }
+
+  /* Button sizes - better mobile touch targets */
   .btn-sm {
-    @apply h-9 px-4 text-xs;
+    @apply h-9 px-3.5 text-xs;
+    @apply min-w-[2.25rem];
   }
 
   .btn-md {
-    @apply h-10 px-5;
+    @apply h-11 px-5;
+    @apply min-w-[2.75rem];
   }
 
   .btn-lg {
     @apply h-12 px-6 text-base;
+    @apply min-w-[3rem];
+  }
+
+  /* Icon button variant */
+  .btn-icon {
+    @apply btn p-0 aspect-square;
+  }
+
+  .btn-icon.btn-sm {
+    @apply h-9 w-9;
+  }
+
+  .btn-icon.btn-md {
+    @apply h-11 w-11;
+  }
+
+  .btn-icon.btn-lg {
+    @apply h-12 w-12;
+  }
+
+  /* Loading state for buttons */
+  .btn-loading {
+    @apply relative text-transparent pointer-events-none;
+  }
+
+  .btn-loading::after {
+    content: '';
+    @apply absolute inset-0 m-auto w-5 h-5 border-2 border-current border-t-transparent rounded-full;
+    animation: btn-spin 0.6s linear infinite;
+  }
+
+  .btn-primary.btn-loading::after {
+    @apply border-white/30 border-t-white;
+  }
+
+  @keyframes btn-spin {
+    to { transform: rotate(360deg); }
   }
 
   /* Inputs - Clean and modern */
@@ -204,7 +280,7 @@
 
   .card-gradient {
     @apply card relative overflow-hidden border-0;
-    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(262 30% 98%) 100%);
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(220 20% 98%) 100%);
   }
 
   .card-interactive {
@@ -320,6 +396,46 @@
     }
   }
 
+  /* Modal animations */
+  .animate-fade-in {
+    animation: fade-in 0.2s ease-out;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .animate-slide-up {
+    animation: modal-slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  @keyframes modal-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-scale-in {
+    animation: modal-scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes modal-scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   /* Staggered animations */
   .stagger-1 { animation-delay: 0.05s; }
   .stagger-2 { animation-delay: 0.1s; }
@@ -327,18 +443,18 @@
   .stagger-4 { animation-delay: 0.2s; }
   .stagger-5 { animation-delay: 0.25s; }
 
-  /* Hero section gradient - modern mesh */
+  /* Hero section gradient - clean navy */
   .hero-gradient {
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(262 83% 58% / 0.15), transparent),
-      radial-gradient(ellipse 60% 40% at 80% 0%, hsl(330 80% 60% / 0.1), transparent),
-      linear-gradient(180deg, hsl(262 30% 98%) 0%, hsl(var(--background)) 100%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, hsl(220 70% 25% / 0.08), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 0%, hsl(220 60% 50% / 0.05), transparent),
+      linear-gradient(180deg, hsl(220 20% 98%) 0%, hsl(var(--background)) 100%);
   }
 
   /* Gradient text */
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(330 80% 60%) 100%);
+    background-image: linear-gradient(135deg, hsl(220 70% 25%) 0%, hsl(220 60% 45%) 100%);
   }
 
   /* Glass effect */
@@ -399,18 +515,16 @@
   }
 
   .chip-active {
-    @apply chip border-primary;
-    background: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(280 80% 55%) 100%);
-    @apply text-white;
+    @apply chip border-primary bg-primary text-white;
   }
 
   /* Glow effects */
   .glow {
-    box-shadow: 0 0 30px hsl(262 83% 58% / 0.3);
+    box-shadow: 0 0 30px hsl(220 70% 25% / 0.2);
   }
 
   .glow-sm {
-    box-shadow: 0 0 15px hsl(262 83% 58% / 0.2);
+    box-shadow: 0 0 15px hsl(220 70% 25% / 0.15);
   }
 
   /* Pulse animation */
@@ -420,14 +534,14 @@
 
   .pulse-dot::after {
     content: '';
-    @apply absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-accent;
+    @apply absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary;
     animation: pulse-ring 2s infinite;
   }
 
   @keyframes pulse-ring {
-    0% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 hsl(330 80% 60% / 0.5); }
-    70% { opacity: 0.5; transform: scale(1); box-shadow: 0 0 0 8px hsl(330 80% 60% / 0); }
-    100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 hsl(330 80% 60% / 0); }
+    0% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 hsl(220 70% 25% / 0.4); }
+    70% { opacity: 0.5; transform: scale(1); box-shadow: 0 0 0 8px hsl(220 70% 25% / 0); }
+    100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 hsl(220 70% 25% / 0); }
   }
 
   /* Shimmer effect for loading */
@@ -480,7 +594,7 @@ a, button {
 
 /* Selection */
 ::selection {
-  background: hsl(262 83% 58% / 0.15);
+  background: hsl(220 70% 25% / 0.15);
 }
 
 /* Page transitions */
@@ -573,7 +687,7 @@ main {
 /* Focus states */
 .focus-ring:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px hsl(262 83% 58% / 0.3);
+  box-shadow: 0 0 0 3px hsl(220 70% 25% / 0.2);
 }
 
 /* Smooth image loading */

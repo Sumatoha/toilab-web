@@ -119,9 +119,19 @@ export default function GiftsPage() {
     }
   };
 
-  const handleExport = () => {
-    const url = gifts.getExportUrl(eventId);
-    window.open(url, "_blank");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      await gifts.export(eventId);
+      toast.success("Экспорт завершён");
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "Не удалось экспортировать");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (isLoading) {
@@ -140,9 +150,9 @@ export default function GiftsPage() {
         </div>
         <div className="flex gap-2">
           {giftList.length > 0 && (
-            <button onClick={handleExport} className="btn-outline btn-sm">
+            <button onClick={handleExport} disabled={isExporting} className="btn-outline btn-sm">
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Экспорт</span>
+              <span className="hidden sm:inline">{isExporting ? "..." : "Экспорт"}</span>
             </button>
           )}
           <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">

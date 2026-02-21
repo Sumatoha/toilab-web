@@ -16,13 +16,24 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { program, events } from "@/lib/api";
-import { ProgramItem, ProgramTemplate, Event } from "@/lib/types";
-import { cn, eventTypeLabels, formatDate } from "@/lib/utils";
-import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog } from "@/components/ui";
+import { program, events, vendors as vendorsApi } from "@/lib/api";
+import { ProgramItem, ProgramTemplate, Event, Vendor } from "@/lib/types";
+import { cn, eventTypeLabels, formatDate, vendorTypeLabels } from "@/lib/utils";
+import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog, TimeInput } from "@/components/ui";
 import toast from "react-hot-toast";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+
+// Sort items by startTime (HH:MM format)
+function sortByTime(items: ProgramItem[]): ProgramItem[] {
+  return [...items].sort((a, b) => {
+    const timeA = a.startTime.split(":").map(Number);
+    const timeB = b.startTime.split(":").map(Number);
+    const minutesA = timeA[0] * 60 + (timeA[1] || 0);
+    const minutesB = timeB[0] * 60 + (timeB[1] || 0);
+    return minutesA - minutesB;
+  });
+}
 
 export default function ProgramPage() {
   const params = useParams();
@@ -31,6 +42,7 @@ export default function ProgramPage() {
   const [items, setItems] = useState<ProgramItem[]>([]);
   const [event, setEvent] = useState<Event | null>(null);
   const [templates, setTemplates] = useState<ProgramTemplate[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -48,14 +60,16 @@ export default function ProgramPage() {
 
   async function loadData() {
     try {
-      const [itemsData, eventData, templatesData] = await Promise.all([
+      const [itemsData, eventData, templatesData, vendorsData] = await Promise.all([
         program.list(eventId),
         events.get(eventId),
         program.getTemplates(),
+        vendorsApi.list(eventId).catch(() => []),
       ]);
       setItems(itemsData || []);
       setEvent(eventData);
       setTemplates(templatesData || []);
+      setVendors(vendorsData || []);
     } catch (error) {
       console.error("Failed to load program:", error);
       toast.error("Не удалось загрузить программу");
@@ -74,7 +88,7 @@ export default function ProgramPage() {
   }) => {
     try {
       const newItem = await program.create(eventId, data);
-      setItems((prev) => [...prev, newItem]);
+      setItems((prev) => sortByTime([...prev, newItem]));
       setShowAddModal(false);
       toast.success("Пункт добавлен");
     } catch (error) {
@@ -93,7 +107,7 @@ export default function ProgramPage() {
   }) => {
     try {
       const updatedItem = await program.update(eventId, itemId, data);
-      setItems((prev) => prev.map((item) => (item.id === itemId ? updatedItem : item)));
+      setItems((prev) => sortByTime(prev.map((item) => (item.id === itemId ? updatedItem : item))));
       setEditingItem(null);
       toast.success("Пункт обновлён");
     } catch (error) {
@@ -368,6 +382,7 @@ export default function ProgramPage() {
               <ProgramItemRow
                 key={item.id}
                 item={item}
+                vendors={vendors}
                 isEditing={editingItem?.id === item.id}
                 isDragging={draggedId === item.id}
                 isDragOver={dragOverId === item.id}
@@ -449,6 +464,7 @@ export default function ProgramPage() {
         <AddProgramItemModal
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddItem}
+          vendors={vendors}
         />
       )}
 
@@ -480,6 +496,7 @@ export default function ProgramPage() {
 
 function ProgramItemRow({
   item,
+  vendors,
   isEditing,
   isDragging,
   isDragOver,
@@ -495,6 +512,7 @@ function ProgramItemRow({
   className,
 }: {
   item: ProgramItem;
+  vendors: Vendor[];
   isEditing: boolean;
   isDragging: boolean;
   isDragOver: boolean;
@@ -509,6 +527,10 @@ function ProgramItemRow({
   onDragEnd: () => void;
   className?: string;
 }) {
+  // Check if responsible is a known vendor
+  const isKnownVendor = item.responsible
+    ? vendors.some(v => v.name === item.responsible)
+    : true;
   const [editData, setEditData] = useState({
     startTime: item.startTime,
     title: item.title,
@@ -522,11 +544,10 @@ function ProgramItemRow({
       <div className={cn("px-4 py-3 bg-secondary/30", className)}>
         <div className="grid grid-cols-12 gap-3">
           <div className="col-span-2">
-            <input
-              type="time"
+            <TimeInput
               value={editData.startTime}
-              onChange={(e) => setEditData({ ...editData, startTime: e.target.value })}
-              className="input text-sm"
+              onChange={(value) => setEditData({ ...editData, startTime: value })}
+              className="text-sm"
             />
           </div>
           <div className="col-span-3">
@@ -603,9 +624,17 @@ function ProgramItemRow({
         )}
       </div>
       {item.responsible && (
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <div className={cn(
+          "flex items-center gap-1.5 text-sm",
+          isKnownVendor ? "text-muted-foreground" : "text-amber-600"
+        )}>
           <User className="w-3.5 h-3.5" />
-          {item.responsible}
+          <span>{item.responsible}</span>
+          {!isKnownVendor && vendors.length > 0 && (
+            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded" title="Подрядчик не найден">
+              ?
+            </span>
+          )}
         </div>
       )}
       {item.duration > 0 && (
@@ -637,6 +666,7 @@ function ProgramItemRow({
 function AddProgramItemModal({
   onClose,
   onAdd,
+  vendors,
 }: {
   onClose: () => void;
   onAdd: (data: {
@@ -647,11 +677,13 @@ function AddProgramItemModal({
     responsible?: string;
     duration?: number;
   }) => void;
+  vendors: Vendor[];
 }) {
   const [startTime, setStartTime] = useState("18:00");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [responsible, setResponsible] = useState("");
+  const [customResponsible, setCustomResponsible] = useState("");
   const [duration, setDuration] = useState("30");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -660,11 +692,12 @@ function AddProgramItemModal({
       toast.error("Укажите время и название");
       return;
     }
+    const finalResponsible = responsible === "custom" ? customResponsible.trim() : responsible;
     onAdd({
       startTime,
       title: title.trim(),
       description: description.trim() || undefined,
-      responsible: responsible.trim() || undefined,
+      responsible: finalResponsible || undefined,
       duration: parseInt(duration) || 30,
     });
   };
@@ -675,12 +708,9 @@ function AddProgramItemModal({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium mb-1.5">Время начала *</label>
-            <input
-              type="time"
+            <TimeInput
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="input"
-              required
+              onChange={setStartTime}
             />
           </div>
           <div>
@@ -717,14 +747,41 @@ function AddProgramItemModal({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">Ответственный</label>
-          <input
-            type="text"
-            value={responsible}
-            onChange={(e) => setResponsible(e.target.value)}
-            className="input"
-            placeholder="Ведущий, DJ, Ресторан..."
-          />
+          <label className="block text-sm font-medium mb-1.5">Исполнитель</label>
+          {vendors.length > 0 ? (
+            <>
+              <select
+                value={responsible}
+                onChange={(e) => setResponsible(e.target.value)}
+                className="input"
+              >
+                <option value="">Не указан</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.name}>
+                    {v.name} ({vendorTypeLabels[v.category]?.ru || v.category})
+                  </option>
+                ))}
+                <option value="custom">Другой...</option>
+              </select>
+              {responsible === "custom" && (
+                <input
+                  type="text"
+                  value={customResponsible}
+                  onChange={(e) => setCustomResponsible(e.target.value)}
+                  className="input mt-2"
+                  placeholder="Введите имя исполнителя"
+                />
+              )}
+            </>
+          ) : (
+            <input
+              type="text"
+              value={responsible}
+              onChange={(e) => setResponsible(e.target.value)}
+              className="input"
+              placeholder="Ведущий, DJ, Ресторан..."
+            />
+          )}
         </div>
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">

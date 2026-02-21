@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Trash2, Check, Link2, Plus, Copy, RefreshCw, Eye, Edit3, Lock, X } from "lucide-react";
 import { events, shares } from "@/lib/api";
 import { Event, UpdateEventRequest, ShareLink, ShareAccessLevel, ShareWidget } from "@/lib/types";
-import { PageLoader, ConfirmDialog, SuccessDialog, Modal, ModalFooter } from "@/components/ui";
+import { PageLoader, ConfirmDialog, SuccessDialog, Modal, ModalFooter, TimeInput } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
@@ -227,11 +227,9 @@ export default function EventSettingsPage() {
           </div>
           <div>
             <label className="block text-xs sm:text-sm mb-1.5">Время</label>
-            <input
-              type="time"
+            <TimeInput
               value={formData.time || ""}
-              onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-              className="input"
+              onChange={(value) => setFormData({ ...formData, time: value })}
             />
           </div>
         </div>

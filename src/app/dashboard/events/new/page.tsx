@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Heart } from "lucide-react";
 import { events } from "@/lib/api";
+import { TimeInput } from "@/components/ui";
 import { CreateEventRequest } from "@/lib/types";
 import toast from "react-hot-toast";
 
@@ -134,16 +135,14 @@ export default function NewEventPage() {
               <label className="block text-sm font-medium mb-2">
                 Время начала
               </label>
-              <input
-                type="time"
+              <TimeInput
                 value={formData.time || ""}
-                onChange={(e) =>
+                onChange={(value) =>
                   setFormData((prev) => ({
                     ...prev,
-                    time: e.target.value,
+                    time: value,
                   }))
                 }
-                className="input"
               />
             </div>
           </div>

@@ -49,6 +49,7 @@ import type {
   SeatingStats,
   CreateTableRequest,
   UpdateTableRequest,
+  ActivityLog,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -462,9 +463,27 @@ export const gifts = {
   search: (eventId: string, query: string) =>
     fetchApi<Gift[]>(`/events/${eventId}/gifts/search?q=${encodeURIComponent(query)}`),
 
-  getExportUrl: (eventId: string) => {
+  export: async (eventId: string): Promise<void> => {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : "";
-    return `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/events/${eventId}/gifts/export?token=${token}`;
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/events/${eventId}/gifts/export`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Не удалось экспортировать подарки");
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `gifts-${eventId}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   },
 
   getTypes: () => fetchApi<GiftTypeInfo[]>("/gift-types"),
@@ -587,6 +606,12 @@ export const seating = {
     fetchApi<{ message: string }>(`/events/${eventId}/seating/tables/${tableId}/guests/${guestId}`, {
       method: "DELETE",
     }),
+};
+
+// Activity
+export const activity = {
+  list: (eventId: string, limit?: number) =>
+    fetchApi<ActivityLog[]>(`/events/${eventId}/activity${limit ? `?limit=${limit}` : ""}`),
 };
 
 export { ApiError };

@@ -17,8 +17,8 @@ import {
   Pencil,
   LayoutGrid,
 } from "lucide-react";
-import { guests, seating } from "@/lib/api";
-import { Guest, GuestStats, SeatingTable } from "@/lib/types";
+import { guests, seating, gifts } from "@/lib/api";
+import { Guest, GuestStats, SeatingTable, Gift } from "@/lib/types";
 import { cn, rsvpStatusLabels, formatTableName } from "@/lib/utils";
 import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog, Avatar, ProgressBar } from "@/components/ui";
 import toast from "react-hot-toast";
@@ -38,6 +38,7 @@ export default function GuestsPage() {
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [deleteGuestId, setDeleteGuestId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [allGifts, setAllGifts] = useState<Gift[]>([]);
 
   useEffect(() => {
     loadData();
@@ -45,15 +46,17 @@ export default function GuestsPage() {
 
   async function loadData() {
     try {
-      const [guestsData, statsData, tablesData] = await Promise.all([
+      const [guestsData, statsData, tablesData, giftsData] = await Promise.all([
         guests.list(eventId),
         guests.getStats(eventId),
         seating.getTables(eventId).catch(() => []), // Tables might not exist yet
+        gifts.list(eventId).catch(() => []), // Load gifts to track relationships
       ]);
       setGuestList(guestsData || []);
       setStats(statsData || { total: 0, accepted: 0, declined: 0, pending: 0, plusOnes: 0, attending: 0 });
       // Filter out scene elements
       setTables((tablesData || []).filter(t => t.shape !== "scene"));
+      setAllGifts(giftsData || []);
     } catch (error) {
       console.error("Failed to load guests:", error);
       toast.error("Не удалось загрузить гостей");
@@ -137,9 +140,26 @@ export default function GuestsPage() {
     if (!deleteGuestId) return;
     setIsDeleting(true);
     try {
+      const guest = guestList.find(g => g.id === deleteGuestId);
+
+      // Remove guest from their table if assigned
+      if (guest?.tableId) {
+        await seating.removeGuest(eventId, guest.tableId, deleteGuestId).catch(() => {});
+      }
+
+      // Update associated gifts to clear guestId (backend should handle, but ensure frontend state is correct)
+      const linkedGifts = allGifts.filter(g => g.guestId === deleteGuestId);
+      for (const gift of linkedGifts) {
+        await gifts.update(eventId, gift.id, { guestName: gift.guestName }).catch(() => {});
+      }
+
       await guests.delete(eventId, deleteGuestId);
       setGuestList((prev) => prev.filter((g) => g.id !== deleteGuestId));
       setDeleteGuestId(null);
+      toast.success(linkedGifts.length > 0
+        ? "Гость удалён, подарки сохранены"
+        : "Гость удалён"
+      );
       loadData();
     } catch (error) {
       const err = error as Error;
@@ -266,25 +286,28 @@ export default function GuestsPage() {
       </div>
 
       {/* Guest list */}
-      <div className="card p-0 overflow-hidden">
-        {filteredGuests.length === 0 ? (
+      {filteredGuests.length === 0 ? (
+        <div className="card">
           <EmptyState
             icon={Users}
             title={guestList.length === 0 ? "Список гостей пуст" : "Нет гостей по заданным фильтрам"}
             description={guestList.length === 0 ? "Добавьте первого гостя" : "Попробуйте изменить фильтры"}
             action={
               guestList.length === 0 ? (
-                <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
+                <button onClick={() => setShowAddModal(true)} className="btn-primary btn-md">
                   <Plus className="w-4 h-4" />
                   Добавить гостя
                 </button>
               ) : undefined
             }
           />
-        ) : (
-          <div className="divide-y divide-border">
+        </div>
+      ) : (
+        <>
+          {/* Mobile: Card layout */}
+          <div className="sm:hidden space-y-3">
             {filteredGuests.map((guest, index) => (
-              <GuestRow
+              <GuestCard
                 key={guest.id}
                 guest={guest}
                 tableName={guest.tableId ? tableNameMap.get(guest.tableId) : undefined}
@@ -294,8 +317,24 @@ export default function GuestsPage() {
               />
             ))}
           </div>
-        )}
-      </div>
+
+          {/* Desktop: Row layout */}
+          <div className="hidden sm:block card p-0 overflow-hidden">
+            <div className="divide-y divide-border">
+              {filteredGuests.map((guest, index) => (
+                <GuestRow
+                  key={guest.id}
+                  guest={guest}
+                  tableName={guest.tableId ? tableNameMap.get(guest.tableId) : undefined}
+                  onEdit={() => setEditingGuest(guest)}
+                  onDelete={() => setDeleteGuestId(guest.id)}
+                  className={`animate-in stagger-${Math.min(index + 1, 4)}`}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Add Guest Modal */}
       {showAddModal && (
@@ -330,7 +369,15 @@ export default function GuestsPage() {
         onClose={() => setDeleteGuestId(null)}
         onConfirm={handleDeleteGuest}
         title="Удалить гостя?"
-        description="Гость будет удалён из списка"
+        description={(() => {
+          if (!deleteGuestId) return "Гость будет удалён из списка";
+          const guest = guestList.find(g => g.id === deleteGuestId);
+          const linkedGifts = allGifts.filter(g => g.guestId === deleteGuestId).length;
+          const parts = ["Гость будет удалён из списка"];
+          if (guest?.tableId) parts.push("снят со стола");
+          if (linkedGifts > 0) parts.push(`${linkedGifts} подарков сохранятся`);
+          return parts.join(", ");
+        })()}
         confirmText="Удалить"
         cancelText="Отмена"
         variant="danger"
@@ -382,6 +429,83 @@ function StatCard({
   );
 }
 
+// Mobile card component
+function GuestCard({
+  guest,
+  tableName,
+  onEdit,
+  onDelete,
+  className
+}: {
+  guest: Guest;
+  tableName?: string;
+  onEdit: () => void;
+  onDelete: () => void;
+  className?: string;
+}) {
+  const statusConfig = rsvpStatusLabels[guest.rsvpStatus] || { ru: "Неизвестно", color: "gray" };
+
+  return (
+    <div
+      className={cn("card p-4 active:scale-[0.99] transition-transform touch-manipulation", className)}
+      onClick={onEdit}
+    >
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar name={guest.name} size="md" />
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{guest.name}</p>
+            {guest.phone && (
+              <p className="text-sm text-muted-foreground truncate">{guest.phone}</p>
+            )}
+          </div>
+        </div>
+        <RsvpBadge status={guest.rsvpStatus} label={statusConfig.ru} showLabel />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex flex-wrap gap-2">
+          {guest.plusCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium">
+              <UserPlus className="w-3.5 h-3.5" />
+              +{guest.plusCount}
+            </span>
+          )}
+          {tableName && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-medium">
+              <LayoutGrid className="w-3.5 h-3.5" />
+              {tableName}
+            </span>
+          )}
+          {guest.group && (
+            <span className="px-2.5 py-1 bg-secondary text-muted-foreground rounded-lg text-xs">
+              {guest.group}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="p-2.5 text-muted-foreground hover:text-primary active:bg-primary/10 rounded-xl transition-colors"
+            aria-label="Редактировать"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-2.5 text-muted-foreground hover:text-red-500 active:bg-red-50 rounded-xl transition-colors"
+            aria-label="Удалить"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Desktop row component
 function GuestRow({
   guest,
   tableName,
@@ -399,15 +523,15 @@ function GuestRow({
 
   return (
     <div
-      className={cn("flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 hover:bg-secondary/50 transition-colors group cursor-pointer", className)}
+      className={cn("flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors group cursor-pointer", className)}
       onClick={onEdit}
     >
-      <Avatar name={guest.name} size="md" className="hidden sm:flex" />
+      <Avatar name={guest.name} size="md" />
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{guest.name}</p>
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
-          {guest.phone && <span className="hidden sm:inline">{guest.phone}</span>}
-          {guest.group && <span className="hidden sm:inline">• {guest.group}</span>}
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          {guest.phone && <span>{guest.phone}</span>}
+          {guest.group && <span>• {guest.group}</span>}
           {guest.plusCount > 0 && (
             <span className="inline-flex items-center gap-1 text-emerald-600">
               <UserPlus className="w-3 h-3" />
@@ -422,18 +546,18 @@ function GuestRow({
           )}
         </div>
       </div>
-      <RsvpBadge status={guest.rsvpStatus} label={statusConfig.ru} />
+      <RsvpBadge status={guest.rsvpStatus} label={statusConfig.ru} showLabel />
       <div className="flex items-center gap-1">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
           title="Редактировать"
         >
           <Pencil className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
           title="Удалить"
         >
           <Trash2 className="w-4 h-4" />
@@ -443,7 +567,7 @@ function GuestRow({
   );
 }
 
-function RsvpBadge({ status, label }: { status: string; label: string }) {
+function RsvpBadge({ status, label, showLabel = false }: { status: string; label: string; showLabel?: boolean }) {
   const config = {
     accepted: {
       className: "badge-success",
@@ -462,9 +586,9 @@ function RsvpBadge({ status, label }: { status: string; label: string }) {
   const { className, icon: Icon } = config[status as keyof typeof config] || config.pending;
 
   return (
-    <span className={cn("inline-flex items-center gap-1 sm:gap-1.5 text-xs flex-shrink-0", className)}>
+    <span className={cn("inline-flex items-center gap-1.5 text-xs flex-shrink-0", className)}>
       <Icon className="w-3 h-3" />
-      <span className="hidden sm:inline">{label}</span>
+      {showLabel && <span>{label}</span>}
     </span>
   );
 }

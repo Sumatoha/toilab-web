@@ -13,7 +13,7 @@ import {
 import { checklist as checklistApi, calendar as calendarApi } from "@/lib/api";
 import { ChecklistItem, ChecklistProgress, ChecklistCategory, CreateCalendarEventRequest } from "@/lib/types";
 import { cn, formatShortDate, checklistCategoryLabels } from "@/lib/utils";
-import { PageLoader, ConfirmDialog, Modal, ProgressBar } from "@/components/ui";
+import { PageLoader, ConfirmDialog, Modal, ProgressBar, TimeInput } from "@/components/ui";
 import toast from "react-hot-toast";
 
 // Suggested wedding tasks
@@ -203,16 +203,17 @@ export default function ChecklistPage() {
           <p className="text-muted-foreground mb-6">
             Добавьте первую задачу из предложенных или создайте свою
           </p>
-          <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
+          <button onClick={() => setShowAddModal(true)} className="btn-primary btn-md">
             <Plus className="w-4 h-4" />
             Добавить задачу
           </button>
         </div>
       ) : (
-        <div className="card p-0 overflow-hidden">
-          <div className="divide-y divide-border">
+        <>
+          {/* Mobile: Card layout */}
+          <div className="sm:hidden space-y-3">
             {filteredItems.map((item) => (
-              <ChecklistRow
+              <ChecklistCard
                 key={item.id}
                 item={item}
                 onToggle={() => handleToggle(item)}
@@ -220,7 +221,21 @@ export default function ChecklistPage() {
               />
             ))}
           </div>
-        </div>
+
+          {/* Desktop: Row layout */}
+          <div className="hidden sm:block card p-0 overflow-hidden">
+            <div className="divide-y divide-border">
+              {filteredItems.map((item) => (
+                <ChecklistRow
+                  key={item.id}
+                  item={item}
+                  onToggle={() => handleToggle(item)}
+                  onDelete={() => setDeleteItemId(item.id)}
+                />
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Add Modal */}
@@ -249,6 +264,119 @@ export default function ChecklistPage() {
   );
 }
 
+// Mobile card component
+function ChecklistCard({
+  item,
+  onToggle,
+  onDelete,
+}: {
+  item: ChecklistItem;
+  onToggle: () => void;
+  onDelete: () => void;
+}) {
+  const categoryLabel = checklistCategoryLabels[item.category];
+
+  // Calculate days until deadline
+  let daysUntil: number | null = null;
+  let isOverdue = false;
+  let isUrgent = false;
+
+  if (item.dueDate && !item.isCompleted) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(item.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+    daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    isOverdue = daysUntil < 0;
+    isUrgent = daysUntil >= 0 && daysUntil <= 3;
+  }
+
+  const getDeadlineLabel = () => {
+    if (daysUntil === null) return null;
+    if (isOverdue) return `Просрочено на ${Math.abs(daysUntil)} дн.`;
+    if (daysUntil === 0) return "Сегодня";
+    if (daysUntil === 1) return "Завтра";
+    return formatShortDate(item.dueDate!);
+  };
+
+  return (
+    <div
+      className={cn(
+        "card p-4 transition-all touch-manipulation",
+        item.isCompleted
+          ? "bg-emerald-50/80 border-emerald-200"
+          : isOverdue
+            ? "bg-red-50/80 border-red-200"
+            : isUrgent
+              ? "bg-amber-50/80 border-amber-200"
+              : ""
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <button
+          onClick={onToggle}
+          className={cn(
+            "w-7 h-7 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all mt-0.5",
+            item.isCompleted
+              ? "bg-emerald-500 border-emerald-500 text-white"
+              : "border-muted-foreground/30 active:border-primary active:bg-primary/10"
+          )}
+        >
+          {item.isCompleted && <Check className="w-4 h-4" />}
+        </button>
+        <div className="flex-1 min-w-0">
+          <p
+            className={cn(
+              "font-semibold",
+              item.isCompleted && "line-through text-muted-foreground"
+            )}
+          >
+            {item.title}
+          </p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {categoryLabel?.ru || item.category}
+          </p>
+        </div>
+        <button
+          onClick={onDelete}
+          className="p-2.5 text-muted-foreground hover:text-red-500 active:bg-red-50 rounded-xl transition-colors"
+          aria-label="Удалить"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Deadline badge */}
+      {item.dueDate && (
+        <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
+          <span className={cn(
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium",
+            item.isCompleted
+              ? "bg-emerald-100 text-emerald-700"
+              : isOverdue
+                ? "bg-red-100 text-red-700"
+                : isUrgent
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-secondary text-muted-foreground"
+          )}>
+            <CalendarDays className="w-3.5 h-3.5" />
+            {getDeadlineLabel()}
+          </span>
+          {!item.isCompleted && (isOverdue || isUrgent) && (
+            <span className={cn(
+              "text-xs font-medium",
+              isOverdue ? "text-red-600" : "text-amber-600"
+            )}>
+              {isOverdue ? "Просрочено" : "Скоро срок"}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Desktop row component
 function ChecklistRow({
   item,
   onToggle,
@@ -286,7 +414,7 @@ function ChecklistRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 sm:gap-4 p-3 sm:p-4 transition-colors group",
+        "flex items-center gap-4 p-4 transition-colors group",
         item.isCompleted
           ? "bg-emerald-50/50"
           : isOverdue
@@ -310,13 +438,13 @@ function ChecklistRow({
       <div className="flex-1 min-w-0">
         <p
           className={cn(
-            "text-sm sm:text-base font-medium",
+            "font-medium",
             item.isCompleted && "line-through text-muted-foreground"
           )}
         >
           {item.title}
         </p>
-        <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="truncate">{categoryLabel?.ru || item.category}</span>
           {item.dueDate && (
             <>
@@ -334,7 +462,7 @@ function ChecklistRow({
       </div>
       {!item.isCompleted && (isOverdue || isUrgent) && (
         <span className={cn(
-          "text-xs px-2 py-0.5 rounded-full flex-shrink-0 hidden sm:inline",
+          "text-xs px-2 py-0.5 rounded-full flex-shrink-0",
           isOverdue ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
         )}>
           {isOverdue ? "Просрочено" : "Скоро"}
@@ -342,7 +470,7 @@ function ChecklistRow({
       )}
       <button
         onClick={onDelete}
-        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+        className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
         title="Удалить"
       >
         <Trash2 className="w-4 h-4" />
@@ -563,11 +691,9 @@ function AddTaskModal({
                 <>
                   <div>
                     <label className="block text-sm text-muted-foreground mb-1">Время встречи</label>
-                    <input
-                      type="time"
+                    <TimeInput
                       value={calendarTime}
-                      onChange={(e) => setCalendarTime(e.target.value)}
-                      className="input"
+                      onChange={setCalendarTime}
                     />
                   </div>
                   <label className="flex items-center gap-2 cursor-pointer">

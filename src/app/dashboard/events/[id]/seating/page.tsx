@@ -17,6 +17,9 @@ import {
   GripVertical,
   Theater,
   Move,
+  ChevronRight,
+  Check,
+  X,
 } from "lucide-react";
 import { seating, guests as guestsApi } from "@/lib/api";
 import {
@@ -26,7 +29,7 @@ import {
   TableShape,
   CreateTableRequest,
 } from "@/lib/types";
-import { PageLoader, Modal, ModalFooter } from "@/components/ui";
+import { PageLoader, Modal, ModalFooter, ProgressBar } from "@/components/ui";
 import { cn, formatTableName } from "@/lib/utils";
 import toast from "react-hot-toast";
 
@@ -63,6 +66,10 @@ export default function SeatingPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
 
+  // Mobile-specific state
+  const [mobileSelectedTable, setMobileSelectedTable] = useState<TableWithGuests | null>(null);
+  const [showMobileAssignModal, setShowMobileAssignModal] = useState(false);
+
   // Drag state using refs to avoid stale closure issues
   const draggingRef = useRef<string | null>(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
@@ -96,9 +103,9 @@ export default function SeatingPage() {
     loadData();
   }, [eventId]);
 
-  // Global mouse move/up listeners for dragging
+  // Global mouse/touch move/up listeners for dragging
   useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => {
+    const handleMove = (clientX: number, clientY: number) => {
       if (!draggingRef.current) return;
 
       const rect = canvasRef.current?.getBoundingClientRect();
@@ -106,12 +113,12 @@ export default function SeatingPage() {
 
       const tableId = draggingRef.current;
 
-      // Check if mouse is over canvas area
+      // Check if pointer is over canvas area
       const isOverCanvas =
-        e.clientX >= rect.left &&
-        e.clientX <= rect.right &&
-        e.clientY >= rect.top &&
-        e.clientY <= rect.bottom;
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom;
 
       if (isOverCanvas) {
         setTables((prev) => {
@@ -121,11 +128,11 @@ export default function SeatingPage() {
 
           const newX = Math.max(
             0,
-            Math.min(canvasSize.width - tableWidth, (e.clientX - rect.left) / zoom - dragOffsetRef.current.x)
+            Math.min(canvasSize.width - tableWidth, (clientX - rect.left) / zoom - dragOffsetRef.current.x)
           );
           const newY = Math.max(
             0,
-            Math.min(canvasSize.height - tableHeight, (e.clientY - rect.top) / zoom - dragOffsetRef.current.y)
+            Math.min(canvasSize.height - tableHeight, (clientY - rect.top) / zoom - dragOffsetRef.current.y)
           );
 
           return prev.map((t) =>
@@ -135,7 +142,18 @@ export default function SeatingPage() {
       }
     };
 
-    const handleGlobalMouseUp = async () => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      handleMove(e.clientX, e.clientY);
+    };
+
+    const handleGlobalTouchMove = (e: TouchEvent) => {
+      if (!draggingRef.current) return;
+      e.preventDefault(); // Prevent scrolling while dragging
+      const touch = e.touches[0];
+      handleMove(touch.clientX, touch.clientY);
+    };
+
+    const handleEnd = async () => {
       if (draggingRef.current) {
         const tableId = draggingRef.current;
         draggingRef.current = null;
@@ -159,10 +177,16 @@ export default function SeatingPage() {
     };
 
     window.addEventListener("mousemove", handleGlobalMouseMove);
-    window.addEventListener("mouseup", handleGlobalMouseUp);
+    window.addEventListener("mouseup", handleEnd);
+    window.addEventListener("touchmove", handleGlobalTouchMove, { passive: false });
+    window.addEventListener("touchend", handleEnd);
+    window.addEventListener("touchcancel", handleEnd);
     return () => {
       window.removeEventListener("mousemove", handleGlobalMouseMove);
-      window.removeEventListener("mouseup", handleGlobalMouseUp);
+      window.removeEventListener("mouseup", handleEnd);
+      window.removeEventListener("touchmove", handleGlobalTouchMove);
+      window.removeEventListener("touchend", handleEnd);
+      window.removeEventListener("touchcancel", handleEnd);
     };
   }, [eventId, zoom, canvasSize]);
 
@@ -240,11 +264,7 @@ export default function SeatingPage() {
     }
   };
 
-  const handleTableMouseDown = (e: React.MouseEvent, tableId: string, fromStaging = false) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-
+  const handleTableDragStart = (clientX: number, clientY: number, tableId: string, fromStaging = false) => {
     const table = tables.find((t) => t.id === tableId);
     if (!table) return;
 
@@ -263,10 +283,24 @@ export default function SeatingPage() {
       if (!rect) return;
 
       dragOffsetRef.current = {
-        x: (e.clientX - rect.left) / zoom - table.positionX,
-        y: (e.clientY - rect.top) / zoom - table.positionY,
+        x: (clientX - rect.left) / zoom - table.positionX,
+        y: (clientY - rect.top) / zoom - table.positionY,
       };
     }
+  };
+
+  const handleTableMouseDown = (e: React.MouseEvent, tableId: string, fromStaging = false) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    handleTableDragStart(e.clientX, e.clientY, tableId, fromStaging);
+  };
+
+  const handleTableTouchStart = (e: React.TouchEvent, tableId: string, fromStaging = false) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const touch = e.touches[0];
+    handleTableDragStart(touch.clientX, touch.clientY, tableId, fromStaging);
   };
 
   const handleGuestDragStart = (e: React.DragEvent, guest: Guest) => {
@@ -294,189 +328,320 @@ export default function SeatingPage() {
     return <PageLoader />;
   }
 
+  const totalGuests = (stats?.seatedGuests || 0) + (stats?.unseatedGuests || 0);
+  const seatedPercent = totalGuests > 0 ? Math.round(((stats?.seatedGuests || 0) / totalGuests) * 100) : 0;
+
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Рассадка гостей</h1>
-          <p className="text-muted-foreground">
-            {stats?.seatedGuests || 0} из {(stats?.seatedGuests || 0) + (stats?.unseatedGuests || 0)} гостей рассажены
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
-            <button
-              onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
-              className="btn-ghost btn-sm"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-            <span className="text-sm w-12 text-center">{Math.round(zoom * 100)}%</span>
-            <button
-              onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
-              className="btn-ghost btn-sm"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setZoom(1)}
-              className="btn-ghost btn-sm"
-            >
-              <Maximize2 className="w-4 h-4" />
-            </button>
+    <>
+      {/* ===== MOBILE VIEW ===== */}
+      <div className="lg:hidden space-y-4">
+        {/* Mobile Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold">Рассадка</h1>
+            <p className="text-sm text-muted-foreground">
+              {stats?.seatedGuests || 0} из {totalGuests} рассажены
+            </p>
           </div>
-          <button onClick={() => setShowCreateModal(true)} className="btn-primary btn-md">
+          <button onClick={() => setShowCreateModal(true)} className="btn-primary btn-sm">
             <Plus className="w-4 h-4" />
-            Добавить
+            Стол
           </button>
+        </div>
+
+        {/* Progress */}
+        <div className="card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Прогресс рассадки</span>
+            <span className="text-sm text-muted-foreground">{seatedPercent}%</span>
+          </div>
+          <ProgressBar value={seatedPercent} max={100} />
+        </div>
+
+        {/* Unseated Guests Section */}
+        {unseatedGuests.length > 0 && (
+          <div className="card overflow-hidden">
+            <div className="p-3 bg-amber-50 border-b border-amber-200">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-amber-600" />
+                <span className="font-medium text-sm text-amber-700">
+                  Нераспределённые: {unseatedGuests.length}
+                </span>
+              </div>
+            </div>
+            <div className="max-h-32 overflow-auto">
+              <div className="flex flex-wrap gap-1.5 p-3">
+                {unseatedGuests.slice(0, 12).map((guest) => (
+                  <span
+                    key={guest.id}
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-secondary rounded-full text-xs"
+                  >
+                    {guest.name}
+                    {guest.plusCount > 0 && (
+                      <span className="text-muted-foreground">+{guest.plusCount}</span>
+                    )}
+                  </span>
+                ))}
+                {unseatedGuests.length > 12 && (
+                  <span className="px-2 py-1 text-xs text-muted-foreground">
+                    и ещё {unseatedGuests.length - 12}...
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tables List */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider px-1">
+            Столы ({tables.filter(t => t.shape !== "scene").length})
+          </h2>
+
+          {tables.filter(t => t.shape !== "scene").length === 0 ? (
+            <div className="card p-8 text-center">
+              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                <Circle className="w-7 h-7 text-primary" />
+              </div>
+              <h3 className="font-semibold mb-1">Нет столов</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Создайте столы для рассадки гостей
+              </p>
+              <button onClick={() => setShowCreateModal(true)} className="btn-primary btn-sm">
+                <Plus className="w-4 h-4" /> Создать стол
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {tables.filter(t => t.shape !== "scene").map((table) => (
+                <MobileTableCard
+                  key={table.id}
+                  table={table}
+                  onSelect={() => setMobileSelectedTable(table)}
+                  onDelete={() => handleDeleteTable(table.id)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Scenes */}
+          {tables.filter(t => t.shape === "scene").length > 0 && (
+            <>
+              <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider px-1 mt-6">
+                Сцены и декорации
+              </h2>
+              <div className="space-y-2">
+                {tables.filter(t => t.shape === "scene").map((table) => (
+                  <div
+                    key={table.id}
+                    className="card p-3 flex items-center justify-between bg-amber-50 border-amber-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                        <Theater className="w-5 h-5 text-amber-600" />
+                      </div>
+                      <span className="font-medium">{table.name || "Сцена"}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTable(table.id)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="flex-1 flex gap-4 min-h-0">
-        {/* Canvas area with staging */}
-        <div className="flex-1 flex flex-col gap-3 min-w-0">
-          {/* Staging area */}
-          {stagedTables.length > 0 && (
-            <div className="bg-amber-50 border-2 border-dashed border-amber-300 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Move className="w-4 h-4 text-amber-600" />
-                <span className="text-sm font-medium text-amber-700">
-                  Перетащите на план рассадки
-                </span>
+      {/* ===== DESKTOP VIEW ===== */}
+      <div className="hidden lg:flex h-full flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-semibold">Рассадка гостей</h1>
+            <p className="text-muted-foreground">
+              {stats?.seatedGuests || 0} из {totalGuests} гостей рассажены
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-secondary rounded-lg p-1">
+              <button
+                onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}
+                className="btn-ghost btn-sm"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-sm w-12 text-center">{Math.round(zoom * 100)}%</span>
+              <button
+                onClick={() => setZoom((z) => Math.min(2, z + 0.1))}
+                className="btn-ghost btn-sm"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setZoom(1)}
+                className="btn-ghost btn-sm"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
+            </div>
+            <button onClick={() => setShowCreateModal(true)} className="btn-primary btn-md">
+              <Plus className="w-4 h-4" />
+              Добавить
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 flex gap-4 min-h-0">
+          {/* Canvas area with staging */}
+          <div className="flex-1 flex flex-col gap-3 min-w-0">
+            {/* Staging area */}
+            {stagedTables.length > 0 && (
+              <div className="bg-amber-50 border-2 border-dashed border-amber-300 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Move className="w-4 h-4 text-amber-600" />
+                  <span className="text-sm font-medium text-amber-700">
+                    Перетащите на план рассадки
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  {stagedTables.map((table) => (
+                    <StagedTableElement
+                      key={table.id}
+                      table={table}
+                      isSelected={selectedTable === table.id}
+                      onMouseDown={(e) => handleTableMouseDown(e, table.id, true)}
+                      onTouchStart={(e) => handleTableTouchStart(e, table.id, true)}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                {stagedTables.map((table) => (
-                  <StagedTableElement
+            )}
+
+            {/* Canvas */}
+            <div ref={containerRef} className="flex-1 bg-secondary/50 rounded-lg overflow-auto relative">
+              <div
+                ref={canvasRef}
+                className={cn(
+                  "relative select-none",
+                  isDragging ? "cursor-grabbing" : "cursor-default"
+                )}
+                style={{
+                  width: canvasSize.width * zoom,
+                  height: canvasSize.height * zoom,
+                  backgroundImage: `
+                    linear-gradient(to right, var(--border) 1px, transparent 1px),
+                    linear-gradient(to bottom, var(--border) 1px, transparent 1px)
+                  `,
+                  backgroundSize: `${50 * zoom}px ${50 * zoom}px`,
+                }}
+                onClick={() => setSelectedTable(null)}
+              >
+                {placedTables.map((table) => (
+                  <TableElement
                     key={table.id}
                     table={table}
+                    zoom={zoom}
                     isSelected={selectedTable === table.id}
-                    onMouseDown={(e) => handleTableMouseDown(e, table.id, true)}
+                    isDragging={draggingRef.current === table.id}
+                    onMouseDown={(e) => handleTableMouseDown(e, table.id)}
+                    onTouchStart={(e) => handleTableTouchStart(e, table.id)}
+                    onDrop={(e) => handleTableDrop(e, table.id)}
+                    onDragOver={handleTableDragOver}
                   />
                 ))}
               </div>
             </div>
-          )}
-
-          {/* Canvas */}
-          <div ref={containerRef} className="flex-1 bg-secondary/50 rounded-lg overflow-auto relative">
-            <div
-              ref={canvasRef}
-              className={cn(
-                "relative select-none",
-                isDragging ? "cursor-grabbing" : "cursor-default"
-              )}
-              style={{
-                width: canvasSize.width * zoom,
-                height: canvasSize.height * zoom,
-                backgroundImage: `
-                  linear-gradient(to right, var(--border) 1px, transparent 1px),
-                  linear-gradient(to bottom, var(--border) 1px, transparent 1px)
-                `,
-                backgroundSize: `${50 * zoom}px ${50 * zoom}px`,
-              }}
-              onClick={() => setSelectedTable(null)}
-            >
-              {placedTables.map((table) => (
-                <TableElement
-                  key={table.id}
-                  table={table}
-                  zoom={zoom}
-                  isSelected={selectedTable === table.id}
-                  isDragging={draggingRef.current === table.id}
-                  onMouseDown={(e) => handleTableMouseDown(e, table.id)}
-                  onDrop={(e) => handleTableDrop(e, table.id)}
-                  onDragOver={handleTableDragOver}
-                />
-              ))}
-            </div>
           </div>
-        </div>
 
-        {/* Sidebar */}
-        <div className="w-80 flex flex-col gap-4">
-          {/* Selected table info */}
-          {selectedTableData && (
-            <div className="card p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">
-                  {formatTableName(selectedTableData.number, selectedTableData.name, isSelectedScene)}
-                </h3>
-                <button
-                  onClick={() => handleDeleteTable(selectedTableData.id)}
-                  className="btn-ghost btn-sm text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-              {!isSelectedScene && (
-                <>
-                  <div className="text-sm text-muted-foreground">
-                    {selectedTableData.guests.length} / {selectedTableData.capacity} мест
-                  </div>
-                  <div className="space-y-2">
-                    {selectedTableData.guests.map((guest) => (
-                      <div
-                        key={guest.id}
-                        className="flex items-center justify-between p-2 bg-secondary rounded-lg"
-                      >
-                        <span className="text-sm">{guest.name}</span>
-                        <button
-                          onClick={() => handleRemoveGuest(selectedTableData.id, guest.id)}
-                          className="btn-ghost btn-sm text-red-600"
-                        >
-                          <UserMinus className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {selectedTableData.guests.length < selectedTableData.capacity && (
-                    <button
-                      onClick={() => setShowAssignModal(true)}
-                      className="btn-ghost btn-sm w-full"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      Добавить гостя
-                    </button>
-                  )}
-                </>
-              )}
-              {isSelectedScene && (
-                <div className="text-sm text-muted-foreground">
-                  Сцена / декорация
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Unseated guests */}
-          <div className="card p-4 flex-1 overflow-hidden flex flex-col">
-            <div className="flex items-center gap-2 mb-3">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <h3 className="font-medium">Нераспределённые</h3>
-              <span className="badge-default text-xs">{unseatedGuests.length}</span>
-            </div>
-            <div className="flex-1 overflow-auto space-y-1">
-              {unseatedGuests.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Все гости рассажены
-                </p>
-              ) : (
-                unseatedGuests.map((guest) => (
-                  <div
-                    key={guest.id}
-                    draggable
-                    onDragStart={(e) => handleGuestDragStart(e, guest)}
-                    className="flex items-center gap-2 p-2 bg-secondary rounded-lg cursor-grab hover:bg-secondary/80 transition-colors"
+          {/* Sidebar */}
+          <div className="w-80 flex flex-col gap-4">
+            {/* Selected table info */}
+            {selectedTableData && (
+              <div className="card p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">
+                    {formatTableName(selectedTableData.number, selectedTableData.name, isSelectedScene)}
+                  </h3>
+                  <button
+                    onClick={() => handleDeleteTable(selectedTableData.id)}
+                    className="btn-ghost btn-sm text-red-600"
                   >
-                    <GripVertical className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-sm flex-1">{guest.name}</span>
-                    {guest.plusCount > 0 && (
-                      <span className="text-xs text-muted-foreground">+{guest.plusCount}</span>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                {!isSelectedScene && (
+                  <>
+                    <div className="text-sm text-muted-foreground">
+                      {selectedTableData.guests.length} / {selectedTableData.capacity} мест
+                    </div>
+                    <div className="space-y-2">
+                      {selectedTableData.guests.map((guest) => (
+                        <div
+                          key={guest.id}
+                          className="flex items-center justify-between p-2 bg-secondary rounded-lg"
+                        >
+                          <span className="text-sm">{guest.name}</span>
+                          <button
+                            onClick={() => handleRemoveGuest(selectedTableData.id, guest.id)}
+                            className="btn-ghost btn-sm text-red-600"
+                          >
+                            <UserMinus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedTableData.guests.length < selectedTableData.capacity && (
+                      <button
+                        onClick={() => setShowAssignModal(true)}
+                        className="btn-ghost btn-sm w-full"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        Добавить гостя
+                      </button>
                     )}
+                  </>
+                )}
+                {isSelectedScene && (
+                  <div className="text-sm text-muted-foreground">
+                    Сцена / декорация
                   </div>
-                ))
-              )}
+                )}
+              </div>
+            )}
+
+            {/* Unseated guests */}
+            <div className="card p-4 flex-1 overflow-hidden flex flex-col">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <h3 className="font-medium">Нераспределённые</h3>
+                <span className="badge-default text-xs">{unseatedGuests.length}</span>
+              </div>
+              <div className="flex-1 overflow-auto space-y-1">
+                {unseatedGuests.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Все гости рассажены
+                  </p>
+                ) : (
+                  unseatedGuests.map((guest) => (
+                    <div
+                      key={guest.id}
+                      draggable
+                      onDragStart={(e) => handleGuestDragStart(e, guest)}
+                      className="flex items-center gap-2 p-2 bg-secondary rounded-lg cursor-grab hover:bg-secondary/80 transition-colors"
+                    >
+                      <GripVertical className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-sm flex-1">{guest.name}</span>
+                      {guest.plusCount > 0 && (
+                        <span className="text-xs text-muted-foreground">+{guest.plusCount}</span>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -490,7 +655,7 @@ export default function SeatingPage() {
         nextTableNumber={Math.max(0, ...tables.filter(t => t.shape !== "scene").map(t => t.number)) + 1}
       />
 
-      {/* Assign Guest Modal */}
+      {/* Desktop Assign Guest Modal */}
       {selectedTableData && !isSelectedScene && (
         <AssignGuestModal
           isOpen={showAssignModal}
@@ -503,7 +668,33 @@ export default function SeatingPage() {
           table={selectedTableData}
         />
       )}
-    </div>
+
+      {/* Mobile Table Detail Modal */}
+      {mobileSelectedTable && (
+        <MobileTableDetailModal
+          table={mobileSelectedTable}
+          onClose={() => setMobileSelectedTable(null)}
+          onRemoveGuest={(guestId) => handleRemoveGuest(mobileSelectedTable.id, guestId)}
+          onAddGuest={() => setShowMobileAssignModal(true)}
+          unseatedGuests={unseatedGuests}
+        />
+      )}
+
+      {/* Mobile Assign Guest Modal */}
+      {mobileSelectedTable && (
+        <MobileAssignGuestModal
+          isOpen={showMobileAssignModal}
+          onClose={() => setShowMobileAssignModal(false)}
+          onAssign={(guestId) => {
+            handleAssignGuest(mobileSelectedTable.id, guestId);
+            setShowMobileAssignModal(false);
+            // Refresh table data
+            loadData();
+          }}
+          unseatedGuests={unseatedGuests}
+        />
+      )}
+    </>
   );
 }
 
@@ -512,19 +703,21 @@ interface StagedTableElementProps {
   table: TableWithGuests;
   isSelected: boolean;
   onMouseDown: (e: React.MouseEvent) => void;
+  onTouchStart: (e: React.TouchEvent) => void;
 }
 
-function StagedTableElement({ table, isSelected, onMouseDown }: StagedTableElementProps) {
+function StagedTableElement({ table, isSelected, onMouseDown, onTouchStart }: StagedTableElementProps) {
   const isScene = table.shape === "scene";
 
   return (
     <div
       className={cn(
-        "cursor-grab select-none p-3 rounded-lg border-2 transition-all hover:shadow-md",
+        "cursor-grab select-none p-3 rounded-lg border-2 transition-all hover:shadow-md touch-none",
         isSelected ? "border-primary ring-2 ring-primary/20" : "border-border",
         isScene ? "bg-amber-100" : "bg-white"
       )}
       onMouseDown={onMouseDown}
+      onTouchStart={onTouchStart}
     >
       <div className="flex items-center gap-2">
         {isScene ? (
@@ -551,6 +744,7 @@ interface TableElementProps {
   isSelected: boolean;
   isDragging: boolean;
   onMouseDown: (e: React.MouseEvent) => void;
+  onTouchStart: (e: React.TouchEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
 }
@@ -561,6 +755,7 @@ function TableElement({
   isSelected,
   isDragging,
   onMouseDown,
+  onTouchStart,
   onDrop,
   onDragOver,
 }: TableElementProps) {
@@ -576,7 +771,7 @@ function TableElement({
   return (
     <div
       className={cn(
-        "absolute cursor-grab transition-shadow",
+        "absolute cursor-grab transition-shadow touch-none",
         isSelected && "ring-2 ring-primary ring-offset-2",
         isDragging && "opacity-70 cursor-grabbing",
         isScene ? "bg-amber-100 border-amber-400" : isFull ? "bg-emerald-100" : "bg-white"
@@ -592,6 +787,7 @@ function TableElement({
         boxShadow: isSelected ? undefined : "0 2px 4px rgba(0,0,0,0.1)",
       }}
       onMouseDown={onMouseDown}
+      onTouchStart={onTouchStart}
       onDrop={isScene ? undefined : onDrop}
       onDragOver={isScene ? undefined : onDragOver}
     >
@@ -800,6 +996,269 @@ function AssignGuestModal({
         <ModalFooter>
           <button onClick={onClose} className="btn-ghost btn-md">
             Закрыть
+          </button>
+        </ModalFooter>
+      </div>
+    </Modal>
+  );
+}
+
+// ===== MOBILE COMPONENTS =====
+
+interface MobileTableCardProps {
+  table: TableWithGuests;
+  onSelect: () => void;
+  onDelete: () => void;
+}
+
+function MobileTableCard({ table, onSelect }: MobileTableCardProps) {
+  const isFull = table.guests.length >= table.capacity;
+  const fillPercent = Math.round((table.guests.length / table.capacity) * 100);
+
+  const ShapeIcon = tableShapeIcons[table.shape] || Circle;
+
+  return (
+    <div
+      onClick={onSelect}
+      className={cn(
+        "card p-4 active:scale-[0.98] transition-all cursor-pointer",
+        isFull && "border-emerald-200 bg-emerald-50/50"
+      )}
+    >
+      <div className="flex items-center gap-3">
+        {/* Icon */}
+        <div className={cn(
+          "w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0",
+          isFull ? "bg-emerald-100" : "bg-primary/10"
+        )}>
+          <ShapeIcon className={cn("w-6 h-6", isFull ? "text-emerald-600" : "text-primary")} />
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold truncate">
+              {formatTableName(table.number, table.name)}
+            </h3>
+            {isFull && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700">
+                <Check className="w-3 h-3" />
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  isFull ? "bg-emerald-500" : "bg-primary"
+                )}
+                style={{ width: `${fillPercent}%` }}
+              />
+            </div>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
+              {table.guests.length}/{table.capacity}
+            </span>
+          </div>
+        </div>
+
+        {/* Arrow */}
+        <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+      </div>
+
+      {/* Guest preview */}
+      {table.guests.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="flex flex-wrap gap-1">
+            {table.guests.slice(0, 4).map((guest) => (
+              <span
+                key={guest.id}
+                className="px-2 py-0.5 bg-secondary rounded text-xs truncate max-w-[100px]"
+              >
+                {guest.name}
+              </span>
+            ))}
+            {table.guests.length > 4 && (
+              <span className="px-2 py-0.5 text-xs text-muted-foreground">
+                +{table.guests.length - 4}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface MobileTableDetailModalProps {
+  table: TableWithGuests;
+  onClose: () => void;
+  onRemoveGuest: (guestId: string) => void;
+  onAddGuest: () => void;
+  unseatedGuests: Guest[];
+}
+
+function MobileTableDetailModal({
+  table,
+  onClose,
+  onRemoveGuest,
+  onAddGuest,
+  unseatedGuests,
+}: MobileTableDetailModalProps) {
+  const isFull = table.guests.length >= table.capacity;
+  const ShapeIcon = tableShapeIcons[table.shape] || Circle;
+
+  return (
+    <Modal isOpen onClose={onClose} title={formatTableName(table.number, table.name)}>
+      <div className="space-y-4">
+        {/* Stats */}
+        <div className="flex items-center gap-4 p-3 bg-secondary/50 rounded-xl">
+          <div className={cn(
+            "w-12 h-12 rounded-xl flex items-center justify-center",
+            isFull ? "bg-emerald-100" : "bg-primary/10"
+          )}>
+            <ShapeIcon className={cn("w-6 h-6", isFull ? "text-emerald-600" : "text-primary")} />
+          </div>
+          <div>
+            <div className="text-2xl font-bold">
+              {table.guests.length}
+              <span className="text-base font-normal text-muted-foreground">/{table.capacity}</span>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {isFull ? "Стол заполнен" : `Свободно ${table.capacity - table.guests.length} мест`}
+            </div>
+          </div>
+        </div>
+
+        {/* Guest List */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-medium text-sm">Гости за столом</h4>
+            {!isFull && unseatedGuests.length > 0 && (
+              <button onClick={onAddGuest} className="btn-primary btn-sm">
+                <UserPlus className="w-4 h-4" />
+                Добавить
+              </button>
+            )}
+          </div>
+
+          {table.guests.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Нет гостей за этим столом</p>
+              {unseatedGuests.length > 0 && (
+                <button onClick={onAddGuest} className="btn-primary btn-sm mt-3">
+                  <UserPlus className="w-4 h-4" />
+                  Добавить гостя
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-60 overflow-auto">
+              {table.guests.map((guest) => (
+                <div
+                  key={guest.id}
+                  className="flex items-center justify-between p-3 bg-secondary rounded-xl"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                      {guest.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <span className="font-medium text-sm">{guest.name}</span>
+                      {guest.plusCount > 0 && (
+                        <span className="text-xs text-muted-foreground ml-1">+{guest.plusCount}</span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onRemoveGuest(guest.id)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <ModalFooter>
+          <button onClick={onClose} className="btn-outline btn-md flex-1">
+            Закрыть
+          </button>
+        </ModalFooter>
+      </div>
+    </Modal>
+  );
+}
+
+interface MobileAssignGuestModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAssign: (guestId: string) => void;
+  unseatedGuests: Guest[];
+}
+
+function MobileAssignGuestModal({
+  isOpen,
+  onClose,
+  onAssign,
+  unseatedGuests,
+}: MobileAssignGuestModalProps) {
+  const [search, setSearch] = useState("");
+
+  const filteredGuests = unseatedGuests.filter((g) =>
+    g.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (!isOpen) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Выбрать гостя">
+      <div className="space-y-4">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="input"
+          placeholder="Поиск по имени..."
+          autoFocus
+        />
+
+        <div className="max-h-72 overflow-auto space-y-1">
+          {filteredGuests.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">
+                {search ? "Гость не найден" : "Нет свободных гостей"}
+              </p>
+            </div>
+          ) : (
+            filteredGuests.map((guest) => (
+              <button
+                key={guest.id}
+                onClick={() => onAssign(guest.id)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-secondary active:scale-[0.98] transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary flex-shrink-0">
+                  {guest.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium block truncate">{guest.name}</span>
+                  {guest.plusCount > 0 && (
+                    <span className="text-xs text-muted-foreground">+{guest.plusCount} гостей</span>
+                  )}
+                </div>
+                <Plus className="w-5 h-5 text-primary flex-shrink-0" />
+              </button>
+            ))
+          )}
+        </div>
+
+        <ModalFooter>
+          <button onClick={onClose} className="btn-outline btn-md flex-1">
+            Отмена
           </button>
         </ModalFooter>
       </div>

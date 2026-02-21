@@ -12,8 +12,9 @@ import {
   Target,
   CreditCard,
 } from "lucide-react";
-import { expenses as expensesApi } from "@/lib/api";
-import { Expense, BudgetSummary, ExpenseCategory, ExpenseStatus, UpdateExpenseRequest } from "@/lib/types";
+import { expenses as expensesApi, vendors as vendorsApi } from "@/lib/api";
+import { Expense, BudgetSummary, ExpenseCategory, ExpenseStatus, UpdateExpenseRequest, Vendor } from "@/lib/types";
+import { vendorTypeLabels } from "@/lib/utils";
 import { cn, formatCurrency, expenseCategoryLabels } from "@/lib/utils";
 import { PageLoader, ConfirmDialog, Modal, ModalFooter, ProgressBar, CircularProgress } from "@/components/ui";
 import toast from "react-hot-toast";
@@ -38,6 +39,7 @@ export default function BudgetPage() {
   const eventId = params.id as string;
 
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
+  const [vendorsList, setVendorsList] = useState<Vendor[]>([]);
   const [summary, setSummary] = useState<BudgetSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -52,12 +54,14 @@ export default function BudgetPage() {
 
   async function loadData() {
     try {
-      const [expensesData, summaryData] = await Promise.all([
+      const [expensesData, summaryData, vendorsData] = await Promise.all([
         expensesApi.list(eventId),
         expensesApi.getBudgetSummary(eventId),
+        vendorsApi.list(eventId).catch(() => []),
       ]);
       setExpensesList(expensesData || []);
       setSummary(summaryData || { totalPlanned: 0, totalActual: 0, totalPaid: 0, byCategory: [] });
+      setVendorsList(vendorsData || []);
     } catch (error) {
       console.error("Failed to load budget:", error);
       toast.error("Не удалось загрузить бюджет");
@@ -70,6 +74,7 @@ export default function BudgetPage() {
     category: ExpenseCategory;
     title: string;
     plannedAmount: number;
+    vendorId?: string;
   }) => {
     try {
       const newExpense = await expensesApi.create(eventId, data);
@@ -305,35 +310,57 @@ export default function BudgetPage() {
       </div>
 
       {/* Expenses list */}
-      <div className="card p-0 overflow-hidden">
-        <div className="p-4 border-b border-border">
+      <div>
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">
             {selectedCategory
               ? expenseCategoryLabels[selectedCategory]?.ru || selectedCategory
               : "Все расходы"}
           </h2>
+          <span className="text-sm text-muted-foreground">
+            {filteredExpenses.length} позиций
+          </span>
         </div>
+
         {filteredExpenses.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="card text-center py-12">
             <PieChart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">Нет расходов</p>
-            <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
+            <button onClick={() => setShowAddModal(true)} className="btn-primary btn-md">
               <Plus className="w-4 h-4" />
               Добавить расход
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {filteredExpenses.map((expense, index) => (
-              <ExpenseRow
-                key={expense.id}
-                expense={expense}
-                onEdit={() => setEditingExpense(expense)}
-                onDelete={() => setDeleteExpenseId(expense.id)}
-                className={`animate-in stagger-${Math.min(index + 1, 4)}`}
-              />
-            ))}
-          </div>
+          <>
+            {/* Mobile: Card layout */}
+            <div className="sm:hidden space-y-3">
+              {filteredExpenses.map((expense, index) => (
+                <ExpenseCard
+                  key={expense.id}
+                  expense={expense}
+                  onEdit={() => setEditingExpense(expense)}
+                  onDelete={() => setDeleteExpenseId(expense.id)}
+                  className={`animate-in stagger-${Math.min(index + 1, 4)}`}
+                />
+              ))}
+            </div>
+
+            {/* Desktop: Row layout */}
+            <div className="hidden sm:block card p-0 overflow-hidden">
+              <div className="divide-y divide-border">
+                {filteredExpenses.map((expense, index) => (
+                  <ExpenseRow
+                    key={expense.id}
+                    expense={expense}
+                    onEdit={() => setEditingExpense(expense)}
+                    onDelete={() => setDeleteExpenseId(expense.id)}
+                    className={`animate-in stagger-${Math.min(index + 1, 4)}`}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
         )}
       </div>
 
@@ -342,6 +369,7 @@ export default function BudgetPage() {
         <AddExpenseModal
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddExpense}
+          vendors={vendorsList}
         />
       )}
 
@@ -351,6 +379,7 @@ export default function BudgetPage() {
           expense={editingExpense}
           onClose={() => setEditingExpense(null)}
           onSave={handleUpdateExpense}
+          vendors={vendorsList}
         />
       )}
 
@@ -370,6 +399,106 @@ export default function BudgetPage() {
   );
 }
 
+// Mobile card component
+function ExpenseCard({
+  expense,
+  onEdit,
+  onDelete,
+  className,
+}: {
+  expense: Expense;
+  onEdit: () => void;
+  onDelete: () => void;
+  className?: string;
+}) {
+  const label = expenseCategoryLabels[expense.category];
+  const colors = categoryColors[expense.category] || categoryColors.other;
+  const plannedAmount = Number(expense.plannedAmount) || 0;
+  const paidAmount = Number(expense.paidAmount) || 0;
+  const paidPercent = plannedAmount > 0 ? Math.round((paidAmount / plannedAmount) * 100) : 0;
+
+  const statusLabels: Record<ExpenseStatus, { text: string; class: string; icon: typeof Check }> = {
+    planned: { text: "План", class: "bg-slate-100 text-slate-700", icon: Target },
+    booked: { text: "Бронь", class: "bg-blue-100 text-blue-700", icon: CreditCard },
+    paid: { text: "Оплачено", class: "bg-emerald-100 text-emerald-700", icon: Check },
+  };
+
+  const status = statusLabels[expense.status] || statusLabels.planned;
+  const StatusIcon = status.icon;
+
+  return (
+    <div
+      className={cn("card p-4 active:scale-[0.99] transition-transform touch-manipulation", className)}
+      onClick={onEdit}
+    >
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", colors.bg)}>
+            <span className={cn("text-sm font-bold", colors.text)}>
+              {(label?.ru || expense.category).charAt(0)}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold truncate">{expense.title}</p>
+            <p className="text-sm text-muted-foreground">{label?.ru || expense.category}</p>
+          </div>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="font-bold text-lg">{formatCurrency(plannedAmount)}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium", status.class)}>
+            <StatusIcon className="w-3.5 h-3.5" />
+            {status.text}
+          </span>
+          {paidAmount > 0 && paidAmount < plannedAmount && (
+            <span className="text-xs text-muted-foreground">
+              {paidPercent}% оплачено
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="p-2.5 text-muted-foreground hover:text-primary active:bg-primary/10 rounded-xl transition-colors"
+            aria-label="Редактировать"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-2.5 text-muted-foreground hover:text-red-500 active:bg-red-50 rounded-xl transition-colors"
+            aria-label="Удалить"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      {plannedAmount > 0 && (
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+            <span>Оплачено</span>
+            <span>{formatCurrency(paidAmount)}</span>
+          </div>
+          <ProgressBar
+            value={paidAmount}
+            max={plannedAmount}
+            size="sm"
+            color={paidPercent >= 100 ? "success" : "primary"}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Desktop row component
 function ExpenseRow({
   expense,
   onEdit,
@@ -402,13 +531,13 @@ function ExpenseRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-4 hover:bg-secondary/50 transition-colors cursor-pointer group",
+        "flex items-center gap-4 px-4 py-4 hover:bg-secondary/50 transition-colors cursor-pointer group",
         className
       )}
       onClick={onEdit}
     >
       <div className={cn(
-        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 hidden sm:flex",
+        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
         colors.bg
       )}>
         <span className={cn("text-sm font-bold", colors.text)}>
@@ -419,26 +548,25 @@ function ExpenseRow({
         <div className="flex items-center gap-2 mb-1">
           <p className="font-medium truncate">{expense.title}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted-foreground">
             {label?.ru || expense.category}
           </span>
           <span className={cn("inline-flex items-center gap-1", status.class)}>
             <StatusIcon className="w-3 h-3" />
-            <span className="hidden sm:inline">{status.text}</span>
+            {status.text}
           </span>
         </div>
       </div>
       <div className="text-right">
-        <p className="font-semibold text-sm sm:text-base">{formatCurrency(plannedAmount)}</p>
+        <p className="font-semibold">{formatCurrency(plannedAmount)}</p>
         {paidAmount > 0 && (
-          <p className="text-xs sm:text-sm text-emerald-600">
-            <span className="hidden sm:inline">{formatCurrency(paidAmount)} оплачено</span>
-            <span className="sm:hidden">{formatCurrency(paidAmount)}</span>
+          <p className="text-sm text-emerald-600">
+            {formatCurrency(paidAmount)} оплачено
           </p>
         )}
         {paidAmount === 0 && plannedAmount > 0 && (
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {paidPercent}%
           </p>
         )}
@@ -446,14 +574,14 @@ function ExpenseRow({
       <div className="flex items-center gap-1">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
           title="Редактировать"
         >
           <Pencil className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
+          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
           title="Удалить"
         >
           <Trash2 className="w-4 h-4" />
@@ -466,13 +594,16 @@ function ExpenseRow({
 function AddExpenseModal({
   onClose,
   onAdd,
+  vendors,
 }: {
   onClose: () => void;
-  onAdd: (data: { category: ExpenseCategory; title: string; plannedAmount: number }) => void;
+  onAdd: (data: { category: ExpenseCategory; title: string; plannedAmount: number; vendorId?: string }) => void;
+  vendors: Vendor[];
 }) {
   const [category, setCategory] = useState<ExpenseCategory>("venue");
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
+  const [vendorId, setVendorId] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -481,6 +612,7 @@ function AddExpenseModal({
       category,
       title: title.trim(),
       plannedAmount: parseInt(amount) || 0,
+      vendorId: vendorId || undefined,
     });
   };
 
@@ -537,6 +669,23 @@ function AddExpenseModal({
             autoFocus
           />
         </div>
+        {vendors.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Подрядчик</label>
+            <select
+              value={vendorId}
+              onChange={(e) => setVendorId(e.target.value)}
+              className="input"
+            >
+              <option value="">Не выбран</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name} ({vendorTypeLabels[v.category]?.ru || v.category})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium mb-1.5">Сумма (тенге)</label>
           <input
@@ -564,13 +713,16 @@ function EditExpenseModal({
   expense,
   onClose,
   onSave,
+  vendors,
 }: {
   expense: Expense;
   onClose: () => void;
   onSave: (data: UpdateExpenseRequest) => void;
+  vendors: Vendor[];
 }) {
   const [title, setTitle] = useState(expense.title);
   const [category, setCategory] = useState<ExpenseCategory>(expense.category);
+  const [vendorId, setVendorId] = useState(expense.vendorId || "");
   const [plannedAmount, setPlannedAmount] = useState(expense.plannedAmount.toString());
   const [actualAmount, setActualAmount] = useState(expense.actualAmount.toString());
   const [paidAmount, setPaidAmount] = useState(expense.paidAmount.toString());
@@ -581,6 +733,7 @@ function EditExpenseModal({
     onSave({
       title: title.trim(),
       category,
+      vendorId: vendorId || undefined,
       plannedAmount: parseInt(plannedAmount) || 0,
       actualAmount: parseInt(actualAmount) || 0,
       paidAmount: parseInt(paidAmount) || 0,
@@ -627,6 +780,23 @@ function EditExpenseModal({
               ))}
             </select>
           </div>
+          {vendors.length > 0 && (
+            <div className="col-span-2">
+              <label className="block text-sm font-medium mb-1.5">Подрядчик</label>
+              <select
+                value={vendorId}
+                onChange={(e) => setVendorId(e.target.value)}
+                className="input"
+              >
+                <option value="">Не выбран</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} ({vendorTypeLabels[v.category]?.ru || v.category})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-border pt-4">

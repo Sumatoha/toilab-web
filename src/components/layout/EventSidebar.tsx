@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
-import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings, Gift, Clock, LayoutGrid, Sparkles, LucideIcon, Menu, X, CalendarDays } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings, Gift, Clock, LayoutGrid, Sparkles, LucideIcon, Menu, X, CalendarDays, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store";
 import { Plan } from "@/lib/types";
@@ -17,17 +17,21 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "", label: "Обзор", icon: LayoutDashboard },
+  { href: "", label: "Главная", icon: LayoutDashboard },
   { href: "/guests", label: "Гости", icon: Users, feature: "guests" },
   { href: "/seating", label: "Рассадка", icon: LayoutGrid, feature: "seating" },
   { href: "/gifts", label: "Подарки", icon: Gift, feature: "gifts" },
   { href: "/program", label: "Программа", icon: Clock },
+  { href: "/vendors", label: "Подрядчики", icon: Briefcase, feature: "vendors" },
   { href: "/budget", label: "Расходы", icon: Wallet },
   { href: "/checklist", label: "Задачи", icon: CheckSquare },
   { href: "/calendar", label: "Календарь", icon: CalendarDays },
   { href: "/invitation", label: "Приглашение", icon: Mail, feature: "invitation" },
   { href: "/settings", label: "Настройки", icon: Settings },
 ];
+
+// Plans that can have multiple events (show "All events" link)
+const multiEventPlans: Plan[] = ["pro", "trial"];
 
 const planFeatures: Record<Plan, string[]> = {
   free: ["budget", "checklist", "program"],
@@ -84,17 +88,10 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
     return item.href === "" ? pathname === basePath : pathname.startsWith(href);
   });
 
+  const canHaveMultipleEvents = multiEventPlans.includes(userPlan);
+
   const SidebarContent = () => (
     <>
-      {/* Back link */}
-      <Link
-        href="/dashboard"
-        className="group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-        <span>Все мероприятия</span>
-      </Link>
-
       {/* Navigation */}
       <nav className="space-y-1">
         {navItems.map((item) => {
@@ -175,6 +172,18 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
           </p>
         </Link>
       )}
+
+      {/* All events link - only for multi-event plans (pro/trial) */}
+      {canHaveMultipleEvents && (
+        <Link
+          href="/dashboard"
+          onClick={() => setIsOpen(false)}
+          className="mt-6 pt-4 border-t border-border group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
+          <span>Все мероприятия</span>
+        </Link>
+      )}
     </>
   );
 
@@ -185,6 +194,7 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
         <button
           onClick={() => setIsOpen(true)}
           className="flex items-center gap-2 text-sm font-medium"
+          aria-label="Открыть меню навигации"
         >
           <Menu className="w-5 h-5" />
           <span>{currentItem?.label || "Меню"}</span>
@@ -212,6 +222,7 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
             <button
               onClick={() => setIsOpen(false)}
               className="p-2 hover:bg-secondary rounded-lg transition-colors"
+              aria-label="Закрыть меню"
             >
               <X className="w-5 h-5" />
             </button>

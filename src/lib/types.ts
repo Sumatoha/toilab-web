@@ -4,6 +4,7 @@ export type EventStatus = "draft" | "active" | "completed" | "archived";
 export type RSVPStatus = "pending" | "accepted" | "declined";
 export type ExpenseStatus = "planned" | "booked" | "paid";
 export type VendorStatus = "contacted" | "booked" | "deposit_paid" | "paid" | "cancelled";
+export type VendorType = "photographer" | "videographer" | "mc" | "dj" | "stylist" | "florist" | "restaurant" | "band" | "decor" | "transport" | "other";
 export type Plan = "free" | "single" | "pro" | "trial";
 
 // User
@@ -616,4 +617,28 @@ export interface UpdateTableRequest {
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
+}
+
+// Activity Log
+export type ActivityAction =
+  | "guest_added" | "guest_updated" | "guest_deleted" | "guest_rsvp"
+  | "expense_added" | "expense_updated" | "expense_paid" | "expense_deleted"
+  | "task_completed" | "task_added" | "task_updated" | "task_deleted"
+  | "program_item_added" | "program_item_updated" | "program_item_deleted"
+  | "vendor_added" | "vendor_updated" | "vendor_paid" | "vendor_deleted"
+  | "table_added" | "table_updated" | "table_deleted" | "guest_seated"
+  | "gift_added" | "gift_deleted"
+  | "calendar_event_added" | "calendar_event_completed"
+  | "event_updated" | "share_link_created";
+
+export interface ActivityLog {
+  id: string;
+  eventId: string;
+  action: ActivityAction;
+  entityType: string;
+  entityId?: string;
+  entityName?: string;
+  details?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
 }

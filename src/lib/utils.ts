@@ -159,3 +159,27 @@ export const calendarEventTypeLabels: Record<string, { ru: string; kz: string; i
   reminder: { ru: "Напоминание", kz: "Еске салу", icon: "Bell", color: "amber" },
   other: { ru: "Другое", kz: "Басқа", icon: "Calendar", color: "slate" },
 };
+
+// Vendor type labels
+export const vendorTypeLabels: Record<string, { ru: string; kz: string; icon: string }> = {
+  photographer: { ru: "Фотограф", kz: "Фотограф", icon: "Camera" },
+  videographer: { ru: "Видеограф", kz: "Видеограф", icon: "Video" },
+  mc: { ru: "Ведущий", kz: "Жүргізуші", icon: "Mic" },
+  dj: { ru: "DJ", kz: "DJ", icon: "Music" },
+  stylist: { ru: "Стилист", kz: "Стилист", icon: "Sparkles" },
+  florist: { ru: "Флорист", kz: "Гүлші", icon: "Flower2" },
+  restaurant: { ru: "Ресторан", kz: "Мейрамхана", icon: "UtensilsCrossed" },
+  band: { ru: "Музыканты", kz: "Музыканттар", icon: "Guitar" },
+  decor: { ru: "Декоратор", kz: "Декоратор", icon: "Palette" },
+  transport: { ru: "Транспорт", kz: "Көлік", icon: "Car" },
+  other: { ru: "Другое", kz: "Басқа", icon: "MoreHorizontal" },
+};
+
+// Vendor status labels
+export const vendorStatusLabels: Record<string, { ru: string; kz: string; color: string }> = {
+  contacted: { ru: "На связи", kz: "Байланыста", color: "gray" },
+  booked: { ru: "Забронирован", kz: "Брондалған", color: "blue" },
+  deposit_paid: { ru: "Задаток оплачен", kz: "Алдын ала төлем", color: "amber" },
+  paid: { ru: "Оплачен", kz: "Төленді", color: "green" },
+  cancelled: { ru: "Отменён", kz: "Болдырылмады", color: "red" },
+};

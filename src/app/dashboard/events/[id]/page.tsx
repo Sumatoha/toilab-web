@@ -12,27 +12,26 @@ import {
   CheckSquare,
   Copy,
   ExternalLink,
-  Pencil,
   ArrowRight,
   AlertCircle,
   CalendarDays,
   Bell,
-  Sparkles,
-  TrendingUp,
+  ChevronRight,
+  UserPlus,
+  UserCheck,
+  CreditCard,
+  LayoutGrid,
+  Gift as GiftIcon,
+  FileText,
+  Settings,
+  Link2,
+  LucideIcon,
 } from "lucide-react";
-import { events, checklist, calendar } from "@/lib/api";
-import { Event, EventStats, ChecklistItem, CalendarEvent } from "@/lib/types";
-import { calendarEventTypeLabels } from "@/lib/utils";
+import { events, checklist, calendar, activity } from "@/lib/api";
+import { Event, EventStats, ChecklistItem, CalendarEvent, ActivityLog } from "@/lib/types";
 import { formatDate, formatCurrency, getDaysUntil, eventTypeLabels, cn } from "@/lib/utils";
 import { PageLoader } from "@/components/ui";
 import toast from "react-hot-toast";
-
-const eventTypeEmojis: Record<string, string> = {
-  wedding: "\u{1F48D}",
-  birthday: "\u{1F382}",
-  corporate: "\u{1F4BC}",
-  other: "\u{1F389}",
-};
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -42,22 +41,24 @@ export default function EventDetailPage() {
   const [stats, setStats] = useState<EventStats | null>(null);
   const [upcomingTasks, setUpcomingTasks] = useState<ChecklistItem[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [eventData, statsData, checklistData, calendarData] = await Promise.all([
+        const [eventData, statsData, checklistData, calendarData, activityData] = await Promise.all([
           events.get(eventId),
           events.getStats(eventId).catch(() => null),
           checklist.list(eventId).catch(() => []),
           calendar.getUpcoming(eventId, 5).catch(() => []),
+          activity.list(eventId, 5).catch(() => []),
         ]);
         setEvent(eventData);
         setStats(statsData);
         setUpcomingEvents(calendarData || []);
+        setRecentActivity(activityData || []);
 
-        // Filter and sort upcoming deadlines
         const now = new Date();
         now.setHours(0, 0, 0, 0);
         const upcoming = (checklistData || [])
@@ -69,7 +70,7 @@ export default function EventDetailPage() {
           .sort((a: ChecklistItem, b: ChecklistItem) =>
             new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
           )
-          .slice(0, 3);
+          .slice(0, 5);
         setUpcomingTasks(upcoming);
       } catch (error) {
         console.error("Failed to load event:", error);
@@ -104,514 +105,409 @@ export default function EventDetailPage() {
 
   const daysUntil = getDaysUntil(event.date);
   const typeLabel = eventTypeLabels[event.type]?.ru || event.type;
-  const emoji = eventTypeEmojis[event.type] || eventTypeEmojis.other;
-  const taskProgress = stats?.checklistTotal ? (stats.checklistDone / stats.checklistTotal) * 100 : 0;
-  const budgetProgress = event.totalBudget ? ((stats?.paidAmount || 0) / event.totalBudget) * 100 : 0;
+  const taskProgress = stats?.checklistTotal ? Math.round((stats.checklistDone / stats.checklistTotal) * 100) : 0;
+  const budgetProgress = event.totalBudget > 0 ? Math.round(((stats?.paidAmount || 0) / event.totalBudget) * 100) : 0;
+  const guestProgress = stats?.totalGuests ? Math.round(((stats?.confirmedGuests || 0) / stats.totalGuests) * 100) : 0;
 
   return (
-    <div className="space-y-6">
-      {/* Hero Section with Glassmorphism */}
-      <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden">
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/80 to-accent animate-gradient" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-transparent" />
-
-        <div className="relative z-10 p-5 sm:p-8">
-          <div className="flex flex-col gap-5">
-            {/* Header */}
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/90 backdrop-blur-sm flex items-center justify-center text-2xl sm:text-3xl shadow-lg shadow-black/10">
-                  {emoji}
-                </div>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm">
-                      {typeLabel}
-                    </span>
-                    <StatusBadge status={event.status} />
-                  </div>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                    {event.title}
-                  </h1>
-                  {event.person1 && event.person2 && (
-                    <p className="text-white/80 text-sm sm:text-base mt-0.5">
-                      {event.person1} & {event.person2}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Countdown Badge */}
-            {daysUntil !== null && daysUntil > 0 && (
-              <div className="flex items-center gap-4">
-                <div className="glass-card rounded-2xl px-5 py-3 inline-flex items-center gap-4">
-                  <div className="text-center">
-                    <div className="text-3xl sm:text-4xl font-extrabold text-white">{daysUntil}</div>
-                    <div className="text-xs text-white/70 uppercase tracking-wider">дней</div>
-                  </div>
-                  <div className="h-10 w-px bg-white/20" />
-                  <div className="text-sm text-white/80">
-                    до мероприятия
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            {event.status === "active" && (
-              <div className="flex gap-2">
-                <button
-                  onClick={copyLink}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white text-sm font-medium backdrop-blur-sm transition-all duration-200"
-                >
-                  <Copy className="w-4 h-4" />
-                  <span className="hidden sm:inline">Копировать ссылку</span>
-                  <span className="sm:hidden">Ссылка</span>
-                </button>
-                <Link
-                  href={`/i/${event.slug}`}
-                  target="_blank"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-primary text-sm font-medium shadow-lg shadow-black/10 hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span className="hidden sm:inline">Открыть приглашение</span>
-                  <span className="sm:hidden">Открыть</span>
-                </Link>
-              </div>
-            )}
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Header - Clean & Minimal */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{event.title}</h1>
+            <StatusBadge status={event.status} />
           </div>
+          <p className="text-muted-foreground">
+            {typeLabel}
+            {event.person1 && event.person2 && ` • ${event.person1} & ${event.person2}`}
+          </p>
         </div>
-      </div>
 
-      {/* Quick Info Pills */}
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href={`/dashboard/events/${eventId}/settings`}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border hover:border-primary/30 hover:shadow-md transition-all duration-200 group"
-        >
-          <Calendar className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">{event.date ? formatDate(event.date) : "Дата не указана"}</span>
-        </Link>
-        <Link
-          href={`/dashboard/events/${eventId}/settings`}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border hover:border-primary/30 hover:shadow-md transition-all duration-200 group"
-        >
-          <Clock className="w-4 h-4 text-primary" />
-          <span className="text-sm font-medium">{event.time || "Время не указано"}</span>
-        </Link>
-        {event.venue?.name && (
-          <Link
-            href={`/dashboard/events/${eventId}/settings`}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border hover:border-primary/30 hover:shadow-md transition-all duration-200 group"
-          >
-            <MapPin className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium">{event.venue.name}</span>
-          </Link>
+        {event.status === "active" && (
+          <div className="flex gap-2">
+            <button
+              onClick={copyLink}
+              className="btn-outline btn-sm"
+            >
+              <Copy className="w-4 h-4" />
+              <span className="hidden sm:inline">Скопировать</span>
+            </button>
+            <Link
+              href={`/i/${event.slug}`}
+              target="_blank"
+              className="btn-primary btn-sm"
+            >
+              <ExternalLink className="w-4 h-4" />
+              <span className="hidden sm:inline">Открыть</span>
+            </Link>
+          </div>
         )}
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Stats */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Stats Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Guests Card */}
-            <Link
-              href={`/dashboard/events/${eventId}/guests`}
-              className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-5 text-white shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 hover:scale-[1.02] transition-all duration-300"
-            >
-              <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-              <Users className="w-8 h-8 mb-3 opacity-80" />
-              <div className="text-3xl font-bold">{stats?.confirmedGuests || 0}</div>
-              <div className="text-blue-100 text-sm">из {stats?.totalGuests || 0} гостей</div>
-              <div className="mt-3 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-white rounded-full transition-all duration-500"
-                  style={{ width: `${stats?.totalGuests ? (stats.confirmedGuests / stats.totalGuests) * 100 : 0}%` }}
-                />
-              </div>
-            </Link>
+      {/* Event Info Bar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg text-sm">
+          <Calendar className="w-4 h-4 text-muted-foreground" />
+          <span>{event.date ? formatDate(event.date) : "Дата не указана"}</span>
+        </div>
+        {event.time && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg text-sm">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span>{event.time}</span>
+          </div>
+        )}
+        {event.venue?.name && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg text-sm">
+            <MapPin className="w-4 h-4 text-muted-foreground" />
+            <span>{event.venue.name}</span>
+          </div>
+        )}
+        {daysUntil !== null && daysUntil > 0 && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium">
+            <span>{daysUntil} {daysUntil === 1 ? "день" : daysUntil < 5 ? "дня" : "дней"} до события</span>
+          </div>
+        )}
+      </div>
 
-            {/* Budget Card */}
-            <Link
-              href={`/dashboard/events/${eventId}/budget`}
-              className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 text-white shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-[1.02] transition-all duration-300"
-            >
-              <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-              <Wallet className="w-8 h-8 mb-3 opacity-80" />
-              <div className="text-2xl sm:text-3xl font-bold">{formatCurrency(stats?.paidAmount || 0)}</div>
-              <div className="text-emerald-100 text-sm">из {formatCurrency(event.totalBudget)}</div>
-              <div className="mt-3 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-white rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(budgetProgress, 100)}%` }}
-                />
-              </div>
-            </Link>
+      {/* Stats Cards - Monochrome */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard
+          href={`/dashboard/events/${eventId}/guests`}
+          icon={Users}
+          value={stats?.confirmedGuests || 0}
+          total={stats?.totalGuests || 0}
+          label="Гости"
+          progress={guestProgress}
+        />
+        <StatCard
+          href={`/dashboard/events/${eventId}/budget`}
+          icon={Wallet}
+          value={formatCurrency(stats?.paidAmount || 0)}
+          total={formatCurrency(event.totalBudget)}
+          label="Бюджет"
+          progress={budgetProgress}
+        />
+        <StatCard
+          href={`/dashboard/events/${eventId}/checklist`}
+          icon={CheckSquare}
+          value={stats?.checklistDone || 0}
+          total={stats?.checklistTotal || 0}
+          label="Задачи"
+          progress={taskProgress}
+        />
+        <StatCard
+          href={`/dashboard/events/${eventId}/calendar`}
+          icon={CalendarDays}
+          value={upcomingEvents.length}
+          label="События"
+          sublabel="предстоящих"
+        />
+      </div>
 
-            {/* Tasks Card */}
+      {/* Main Content */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Upcoming Tasks - Clean Timeline */}
+        <div className="card">
+          <div className="flex items-center justify-between p-4 border-b border-border">
+            <h2 className="font-semibold">Предстоящие этапы</h2>
             <Link
               href={`/dashboard/events/${eventId}/checklist`}
-              className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 p-5 text-white shadow-lg shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/30 hover:scale-[1.02] transition-all duration-300"
+              className="text-sm text-primary hover:underline"
             >
-              <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-              <CheckSquare className="w-8 h-8 mb-3 opacity-80" />
-              <div className="text-3xl font-bold">{Math.round(taskProgress)}%</div>
-              <div className="text-violet-100 text-sm">{stats?.checklistDone || 0} из {stats?.checklistTotal || 0} задач</div>
-              <div className="mt-3 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-white rounded-full transition-all duration-500"
-                  style={{ width: `${taskProgress}%` }}
-                />
-              </div>
+              Все задачи
             </Link>
           </div>
 
-          {/* Upcoming Deadlines */}
-          {upcomingTasks.length > 0 && (
-            <div className="card p-5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                    <AlertCircle className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <h3 className="font-semibold">Ближайшие дедлайны</h3>
-                </div>
-                <Link
-                  href={`/dashboard/events/${eventId}/checklist`}
-                  className="text-sm text-primary hover:underline font-medium"
-                >
-                  Все задачи
-                </Link>
-              </div>
+          <div className="p-4">
+            {upcomingTasks.length > 0 ? (
               <div className="space-y-3">
                 {upcomingTasks.map((task) => {
                   const dueDate = new Date(task.dueDate!);
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
                   const diffDays = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                  const isUrgent = diffDays <= 3;
                   const isToday = diffDays === 0;
+                  const isUrgent = diffDays <= 3 && diffDays > 0;
+                  const isPast = diffDays < 0;
+
+                  return (
+                    <div
+                      key={task.id}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-xl transition-colors hover:bg-secondary/50",
+                        isToday && "bg-primary/5",
+                        isPast && "bg-destructive/5"
+                      )}
+                    >
+                      {/* Status indicator */}
+                      <div className={cn(
+                        "w-2 h-2 rounded-full flex-shrink-0",
+                        isToday ? "bg-primary" :
+                        isPast ? "bg-destructive" :
+                        isUrgent ? "bg-warning" :
+                        "bg-muted-foreground/30"
+                      )} />
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <p className={cn(
+                          "font-medium text-sm truncate",
+                          isPast && "text-destructive"
+                        )}>
+                          {task.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {task.category && `${task.category} • `}
+                          {isToday ? "Сегодня" :
+                           diffDays === 1 ? "Завтра" :
+                           isPast ? `${Math.abs(diffDays)} дн. назад` :
+                           `Через ${diffDays} дн.`}
+                        </p>
+                      </div>
+
+                      {/* Date badge */}
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {dueDate.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground text-sm mb-3">Нет предстоящих задач</p>
+                <Link
+                  href={`/dashboard/events/${eventId}/checklist`}
+                  className="btn-primary btn-sm inline-flex"
+                >
+                  Добавить задачу
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Recent Activity & Calendar */}
+        <div className="space-y-6">
+          {/* Recent Activity */}
+          <div className="card">
+            <div className="p-4 border-b border-border">
+              <h2 className="font-semibold">Последние действия</h2>
+            </div>
+            <div className="p-4">
+              {recentActivity.length > 0 ? (
+                <div className="space-y-3">
+                  {recentActivity.slice(0, 3).map((log) => (
+                    <ActivityItem key={log.id} log={log} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Пока нет действий
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Upcoming Calendar Events */}
+          {upcomingEvents.length > 0 && (
+            <div className="card">
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <h2 className="font-semibold">Ближайшие события</h2>
+                <Link
+                  href={`/dashboard/events/${eventId}/calendar`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Все
+                </Link>
+              </div>
+
+              <div className="divide-y divide-border">
+                {upcomingEvents.slice(0, 3).map((calEvent) => {
+                  const eventDate = new Date(calEvent.date);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const diffDays = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                  const isToday = diffDays === 0;
+
+                  const EventIcon = calEvent.type === "meeting" ? Users
+                    : calEvent.type === "deadline" ? AlertCircle
+                    : calEvent.type === "reminder" ? Bell
+                    : CalendarDays;
 
                   return (
                     <Link
-                      key={task.id}
-                      href={`/dashboard/events/${eventId}/checklist`}
-                      className={cn(
-                        "flex items-center gap-4 p-3 rounded-xl transition-all duration-200 hover:scale-[1.01]",
-                        isUrgent
-                          ? "bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50"
-                          : "bg-secondary/50 hover:bg-secondary"
-                      )}
+                      key={calEvent.id}
+                      href={`/dashboard/events/${eventId}/calendar`}
+                      className="flex items-center gap-3 p-4 hover:bg-secondary/50 transition-colors"
                     >
                       <div className={cn(
                         "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
-                        isUrgent ? "bg-amber-500 text-white" : "bg-primary/10 text-primary"
+                        isToday ? "bg-primary text-white" : "bg-secondary"
                       )}>
-                        <CheckSquare className="w-5 h-5" />
+                        <EventIcon className="w-5 h-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{task.title}</p>
-                        <p className={cn(
-                          "text-sm",
-                          isUrgent ? "text-amber-600" : "text-muted-foreground"
-                        )}>
-                          {isToday
-                            ? "Сегодня"
-                            : diffDays === 1
-                              ? "Завтра"
-                              : `Через ${diffDays} дн.`
-                          }
-                          {" • "}
-                          {dueDate.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" })}
+                        <p className="font-medium text-sm truncate">{calEvent.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {isToday ? "Сегодня" :
+                           diffDays === 1 ? "Завтра" :
+                           eventDate.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" })}
+                          {calEvent.time && ` • ${calEvent.time}`}
                         </p>
                       </div>
-                      {isUrgent && (
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-amber-500 text-white">
-                          Срочно
-                        </span>
-                      )}
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
                     </Link>
                   );
                 })}
               </div>
             </div>
           )}
-
-          {/* Quick Actions */}
-          <div className="card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-primary" />
-              </div>
-              <h3 className="font-semibold">Быстрые действия</h3>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <QuickActionButton
-                href={`/dashboard/events/${eventId}/guests`}
-                icon={Users}
-                label="Гости"
-                color="blue"
-              />
-              <QuickActionButton
-                href={`/dashboard/events/${eventId}/budget`}
-                icon={Wallet}
-                label="Бюджет"
-                color="emerald"
-              />
-              <QuickActionButton
-                href={`/dashboard/events/${eventId}/checklist`}
-                icon={CheckSquare}
-                label="Задачи"
-                color="violet"
-              />
-              <QuickActionButton
-                href={`/dashboard/events/${eventId}/calendar`}
-                icon={CalendarDays}
-                label="Календарь"
-                color="rose"
-              />
-            </div>
-            <div className="mt-3 flex gap-2">
-              <Link
-                href={`/dashboard/events/${eventId}/settings`}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border hover:border-primary/30 hover:bg-secondary/50 text-sm font-medium transition-all duration-200"
-              >
-                <Pencil className="w-4 h-4" />
-                Редактировать
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column - Timeline */}
-        <div className="space-y-6">
-          {/* Timeline Widget */}
-          <div className="card p-5">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <CalendarDays className="w-4 h-4 text-white" />
-                </div>
-                <h3 className="font-semibold">Предстоящие события</h3>
-              </div>
-              <Link
-                href={`/dashboard/events/${eventId}/calendar`}
-                className="text-sm text-primary hover:underline font-medium"
-              >
-                Все
-              </Link>
-            </div>
-
-            {upcomingEvents.length > 0 ? (
-              <div className="relative">
-                {/* Timeline line */}
-                <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gradient-to-b from-primary via-accent to-transparent rounded-full" />
-
-                <div className="space-y-4">
-                  {upcomingEvents.map((calEvent) => {
-                    const eventDate = new Date(calEvent.date);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const diffDays = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                    const isToday = diffDays === 0;
-                    const isTomorrow = diffDays === 1;
-                    const typeInfo = calendarEventTypeLabels[calEvent.type] || calendarEventTypeLabels.other;
-
-                    const EventIcon = calEvent.type === "meeting" ? Users
-                      : calEvent.type === "deadline" ? AlertCircle
-                      : calEvent.type === "reminder" ? Bell
-                      : CalendarDays;
-
-                    const colorClasses = {
-                      blue: "bg-blue-500",
-                      red: "bg-red-500",
-                      amber: "bg-amber-500",
-                      slate: "bg-slate-500",
-                    };
-
-                    return (
-                      <Link
-                        key={calEvent.id}
-                        href={`/dashboard/events/${eventId}/calendar`}
-                        className="relative flex items-start gap-4 pl-10 group"
-                      >
-                        {/* Timeline dot */}
-                        <div className={cn(
-                          "absolute left-2 top-1 w-5 h-5 rounded-full flex items-center justify-center ring-4 ring-background transition-transform duration-200 group-hover:scale-110",
-                          colorClasses[typeInfo.color as keyof typeof colorClasses] || "bg-slate-500"
-                        )}>
-                          <div className="w-2 h-2 rounded-full bg-white" />
-                        </div>
-
-                        {/* Content */}
-                        <div className={cn(
-                          "flex-1 p-3 rounded-xl transition-all duration-200 group-hover:shadow-md",
-                          isToday
-                            ? "bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20"
-                            : "bg-secondary/50 group-hover:bg-secondary"
-                        )}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{calEvent.title}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className={cn(
-                                  "text-xs font-medium",
-                                  isToday ? "text-primary" : "text-muted-foreground"
-                                )}>
-                                  {isToday
-                                    ? "Сегодня"
-                                    : isTomorrow
-                                      ? "Завтра"
-                                      : eventDate.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" })
-                                  }
-                                </span>
-                                {calEvent.time && (
-                                  <>
-                                    <span className="text-muted-foreground">•</span>
-                                    <span className="text-xs text-muted-foreground">{calEvent.time}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                            <div className={cn(
-                              "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
-                              `bg-${typeInfo.color}-100 text-${typeInfo.color}-600`
-                            )}>
-                              <EventIcon className="w-4 h-4" />
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="w-16 h-16 rounded-2xl bg-secondary/80 flex items-center justify-center mx-auto mb-3">
-                  <CalendarDays className="w-8 h-8 text-muted-foreground/50" />
-                </div>
-                <p className="text-muted-foreground text-sm">Нет предстоящих событий</p>
-                <Link
-                  href={`/dashboard/events/${eventId}/calendar`}
-                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2 font-medium"
-                >
-                  Добавить событие
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Budget Summary Mini */}
-          <Link
-            href={`/dashboard/events/${eventId}/budget`}
-            className="card p-5 group hover:shadow-lg transition-all duration-300"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-              </div>
-              <h3 className="font-semibold">Бюджет</h3>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <div className="flex items-baseline justify-between mb-1">
-                  <span className="text-2xl font-bold">{formatCurrency(stats?.paidAmount || 0)}</span>
-                  <span className="text-sm text-muted-foreground">/ {formatCurrency(event.totalBudget)}</span>
-                </div>
-                <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all duration-500",
-                      budgetProgress > 90 ? "bg-red-500" : budgetProgress > 70 ? "bg-amber-500" : "bg-emerald-500"
-                    )}
-                    style={{ width: `${Math.min(budgetProgress, 100)}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Осталось</span>
-                <span className={cn(
-                  "font-medium",
-                  (event.totalBudget - (stats?.paidAmount || 0)) < 0 ? "text-red-500" : "text-emerald-600"
-                )}>
-                  {formatCurrency(event.totalBudget - (stats?.paidAmount || 0))}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1 text-sm text-primary mt-4 font-medium group-hover:gap-2 transition-all duration-200">
-              Подробнее
-              <ArrowRight className="w-4 h-4" />
-            </div>
-          </Link>
         </div>
       </div>
     </div>
   );
 }
 
-function QuickActionButton({
+function StatCard({
   href,
   icon: Icon,
+  value,
+  total,
   label,
-  color,
+  sublabel,
+  progress,
 }: {
   href: string;
   icon: typeof Users;
+  value: string | number;
+  total?: string | number;
   label: string;
-  color: "blue" | "emerald" | "violet" | "rose";
+  sublabel?: string;
+  progress?: number;
 }) {
-  const colorClasses = {
-    blue: "bg-blue-100 text-blue-600 group-hover:bg-blue-500 group-hover:text-white",
-    emerald: "bg-emerald-100 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white",
-    violet: "bg-violet-100 text-violet-600 group-hover:bg-violet-500 group-hover:text-white",
-    rose: "bg-rose-100 text-rose-600 group-hover:bg-rose-500 group-hover:text-white",
-  };
-
   return (
     <Link
       href={href}
-      className="group flex flex-col items-center gap-2 p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-all duration-200 hover:shadow-md hover:scale-[1.02]"
+      className="card p-4 hover:shadow-md hover:border-primary/20 transition-all group"
     >
-      <div className={cn(
-        "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
-        colorClasses[color]
-      )}>
-        <Icon className="w-5 h-5" />
+      <div className="flex items-center justify-between mb-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Icon className="w-5 h-5 text-primary" />
+        </div>
+        <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
-      <span className="text-sm font-medium">{label}</span>
+      <div className="space-y-1">
+        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-xs text-muted-foreground">
+          {label}
+          {total !== undefined && <span className="opacity-60"> из {total}</span>}
+          {sublabel && <span className="opacity-60"> {sublabel}</span>}
+        </div>
+      </div>
+      {progress !== undefined && (
+        <div className="mt-3 h-1 bg-secondary rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all"
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          />
+        </div>
+      )}
     </Link>
+  );
+}
+
+// Activity action configurations
+const activityConfig: Record<string, { icon: LucideIcon; color: string; getText: (log: ActivityLog) => string }> = {
+  guest_added: { icon: UserPlus, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Добавлен гость: ${log.entityName || ""}` },
+  guest_updated: { icon: Users, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлён гость: ${log.entityName || ""}` },
+  guest_deleted: { icon: Users, color: "text-red-600 bg-red-100", getText: (log) => `Удалён гость: ${log.entityName || ""}` },
+  guest_rsvp: { icon: UserCheck, color: "text-emerald-600 bg-emerald-100", getText: (log) => `RSVP: ${log.entityName || ""} ${log.details || ""}` },
+  expense_added: { icon: Wallet, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Добавлен расход: ${log.entityName || ""}` },
+  expense_updated: { icon: Wallet, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлён расход: ${log.entityName || ""}` },
+  expense_paid: { icon: CreditCard, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Оплачено: ${log.entityName || ""} ${log.details || ""}` },
+  expense_deleted: { icon: Wallet, color: "text-red-600 bg-red-100", getText: (log) => `Удалён расход: ${log.entityName || ""}` },
+  task_completed: { icon: CheckSquare, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Выполнено: ${log.entityName || ""}` },
+  task_added: { icon: CheckSquare, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Добавлена задача: ${log.entityName || ""}` },
+  task_updated: { icon: CheckSquare, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлена задача: ${log.entityName || ""}` },
+  task_deleted: { icon: CheckSquare, color: "text-red-600 bg-red-100", getText: (log) => `Удалена задача: ${log.entityName || ""}` },
+  program_item_added: { icon: FileText, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Программа: добавлено "${log.entityName || ""}"` },
+  program_item_updated: { icon: FileText, color: "text-blue-600 bg-blue-100", getText: (log) => `Программа: изменено "${log.entityName || ""}"` },
+  program_item_deleted: { icon: FileText, color: "text-red-600 bg-red-100", getText: (log) => `Программа: удалено "${log.entityName || ""}"` },
+  vendor_added: { icon: Users, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Добавлен подрядчик: ${log.entityName || ""}` },
+  vendor_updated: { icon: Users, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлён подрядчик: ${log.entityName || ""}` },
+  vendor_paid: { icon: CreditCard, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Оплата подрядчику: ${log.entityName || ""} ${log.details || ""}` },
+  vendor_deleted: { icon: Users, color: "text-red-600 bg-red-100", getText: (log) => `Удалён подрядчик: ${log.entityName || ""}` },
+  table_added: { icon: LayoutGrid, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Рассадка: добавлен ${log.entityName || "стол"}` },
+  table_updated: { icon: LayoutGrid, color: "text-blue-600 bg-blue-100", getText: (log) => `Рассадка: изменён ${log.entityName || "стол"}` },
+  table_deleted: { icon: LayoutGrid, color: "text-red-600 bg-red-100", getText: (log) => `Рассадка: удалён ${log.entityName || "стол"}` },
+  guest_seated: { icon: LayoutGrid, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Рассажен гость: ${log.entityName || ""}` },
+  gift_added: { icon: GiftIcon, color: "text-pink-600 bg-pink-100", getText: (log) => `Подарок от ${log.entityName || ""}` },
+  gift_deleted: { icon: GiftIcon, color: "text-red-600 bg-red-100", getText: (log) => `Удалён подарок: ${log.entityName || ""}` },
+  calendar_event_added: { icon: CalendarDays, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Событие: ${log.entityName || ""}` },
+  calendar_event_completed: { icon: CalendarDays, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Завершено: ${log.entityName || ""}` },
+  event_updated: { icon: Settings, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлены настройки ${log.details || ""}` },
+  share_link_created: { icon: Link2, color: "text-indigo-600 bg-indigo-100", getText: () => `Создана ссылка для доступа` },
+};
+
+function ActivityItem({ log }: { log: ActivityLog }) {
+  const config = activityConfig[log.action] || {
+    icon: Clock,
+    color: "text-gray-600 bg-gray-100",
+    getText: () => log.action,
+  };
+  const Icon = config.icon;
+  const text = config.getText(log);
+
+  // Format relative time
+  const formatRelativeTime = (date: string) => {
+    const now = new Date();
+    const then = new Date(date);
+    const diffMs = now.getTime() - then.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "только что";
+    if (diffMins < 60) return `${diffMins} мин назад`;
+    if (diffHours < 24) return `${diffHours} ч назад`;
+    if (diffDays < 7) return `${diffDays} дн назад`;
+    return then.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" });
+  };
+
+  return (
+    <div className="flex items-start gap-3">
+      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0", config.color.split(" ")[1])}>
+        <Icon className={cn("w-4 h-4", config.color.split(" ")[0])} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{text}</p>
+        <p className="text-xs text-muted-foreground">{formatRelativeTime(log.createdAt)}</p>
+      </div>
+    </div>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
   if (status === "active") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-100 backdrop-blur-sm">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
+        <span className="w-1.5 h-1.5 rounded-full bg-success" />
         Активно
       </span>
     );
   }
   if (status === "draft") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-100 backdrop-blur-sm">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning">
+        <span className="w-1.5 h-1.5 rounded-full bg-warning" />
         Черновик
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/20 text-white/80 backdrop-blur-sm">
-      <span className="w-1.5 h-1.5 rounded-full bg-white/60" />
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
       Завершено
     </span>
   );
