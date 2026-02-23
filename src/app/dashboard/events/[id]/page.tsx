@@ -82,14 +82,6 @@ export default function EventDetailPage() {
     loadData();
   }, [eventId]);
 
-// TODO: Uncomment when /i/[slug] public invitation page is implemented
-  // const copyLink = () => {
-  //   if (event) {
-  //     navigator.clipboard.writeText(`${window.location.origin}/i/${event.slug}`);
-  //     toast.success("Ссылка скопирована");
-  //   }
-  // };
-
   if (isLoading) {
     return <PageLoader />;
   }
