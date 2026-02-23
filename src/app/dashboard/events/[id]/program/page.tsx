@@ -228,18 +228,22 @@ export default function ProgramPage() {
 
     setIsGeneratingPdf(true);
     try {
+      // Higher scale for better quality (3x = ~216 DPI)
       const canvas = await html2canvas(printRef.current, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
+        windowWidth: 595, // A4 width at 72 DPI
       });
 
-      const imgData = canvas.toDataURL("image/png");
+      // Use JPEG with high quality for smaller file size
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
         format: "a4",
+        compress: true,
       });
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -250,7 +254,7 @@ export default function ProgramPage() {
       const imgX = (pdfWidth - imgWidth * ratio) / 2;
       const imgY = 10;
 
-      pdf.addImage(imgData, "PNG", imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      pdf.addImage(imgData, "JPEG", imgX, imgY, imgWidth * ratio, imgHeight * ratio, undefined, "FAST");
 
       const eventTitle = event?.title || "Программа";
       pdf.save(`${eventTitle} - Программа.pdf`);
@@ -538,6 +542,7 @@ function ProgramItemRow({
     responsible: item.responsible || "",
     duration: item.duration,
   });
+  const [isCustomResponsible, setIsCustomResponsible] = useState(!isKnownVendor && !!item.responsible);
 
   if (isEditing) {
     return (
@@ -569,13 +574,48 @@ function ProgramItemRow({
             />
           </div>
           <div className="col-span-2">
-            <input
-              type="text"
-              value={editData.responsible}
-              onChange={(e) => setEditData({ ...editData, responsible: e.target.value })}
-              className="input text-sm"
-              placeholder="Ответственный"
-            />
+            {vendors.length > 0 && !isCustomResponsible ? (
+              <select
+                value={vendors.some(v => v.name === editData.responsible) ? editData.responsible : ""}
+                onChange={(e) => {
+                  if (e.target.value === "custom") {
+                    setIsCustomResponsible(true);
+                    setEditData({ ...editData, responsible: "" });
+                  } else {
+                    setEditData({ ...editData, responsible: e.target.value });
+                  }
+                }}
+                className="input text-sm"
+              >
+                <option value="">Не указан</option>
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.name}>
+                    {v.name}
+                  </option>
+                ))}
+                <option value="custom">Другой...</option>
+              </select>
+            ) : (
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  value={editData.responsible}
+                  onChange={(e) => setEditData({ ...editData, responsible: e.target.value })}
+                  className="input text-sm flex-1"
+                  placeholder="Исполнитель"
+                />
+                {vendors.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomResponsible(false)}
+                    className="p-2 text-muted-foreground hover:bg-secondary rounded-lg"
+                    title="Выбрать из списка"
+                  >
+                    <User className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           <div className="col-span-2 flex items-center gap-2">
             <button

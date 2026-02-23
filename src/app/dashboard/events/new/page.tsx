@@ -6,11 +6,18 @@ import Link from "next/link";
 import { ArrowLeft, Heart } from "lucide-react";
 import { events } from "@/lib/api";
 import { TimeInput } from "@/components/ui";
-import { CreateEventRequest } from "@/lib/types";
+import { CreateEventRequest, Country } from "@/lib/types";
+import { getExampleNames, currencyConfigs } from "@/lib/utils";
+import { useAuthStore } from "@/lib/store";
 import toast from "react-hot-toast";
 
 export default function NewEventPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
+  const userCountry: Country = user?.country || "kz";
+  const { person1: examplePerson1, person2: examplePerson2 } = getExampleNames(userCountry);
+  const currencyName = currencyConfigs[userCountry]?.name?.toLowerCase() || "тенге";
+
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<CreateEventRequest>({
     type: "wedding",
@@ -74,7 +81,7 @@ export default function NewEventPage() {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
-              placeholder="Свадьба Айдара и Даны"
+              placeholder={`Свадьба ${examplePerson1} и ${examplePerson2}`}
               className="input"
               required
               autoFocus
@@ -93,7 +100,7 @@ export default function NewEventPage() {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, person1: e.target.value }))
                 }
-                placeholder="Айдар"
+                placeholder={examplePerson1}
                 className="input"
               />
             </div>
@@ -107,7 +114,7 @@ export default function NewEventPage() {
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, person2: e.target.value }))
                 }
-                placeholder="Дана"
+                placeholder={examplePerson2}
                 className="input"
               />
             </div>
@@ -169,7 +176,7 @@ export default function NewEventPage() {
           {/* Budget */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              Планируемый бюджет (тенге)
+              Планируемый бюджет ({currencyName})
             </label>
             <input
               type="number"

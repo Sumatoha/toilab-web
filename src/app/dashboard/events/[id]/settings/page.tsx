@@ -2,17 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Trash2, Check, Link2, Plus, Copy, RefreshCw, Eye, Edit3, Lock, X } from "lucide-react";
+import { Trash2, Link2, Plus, Copy, RefreshCw, Eye, Edit3, Lock, X } from "lucide-react";
 import { events, shares } from "@/lib/api";
-import { Event, UpdateEventRequest, ShareLink, ShareAccessLevel, ShareWidget } from "@/lib/types";
+import { Event, UpdateEventRequest, ShareLink, ShareAccessLevel, ShareWidget, Country } from "@/lib/types";
 import { PageLoader, ConfirmDialog, SuccessDialog, Modal, ModalFooter, TimeInput } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { cn, getDefaultCity } from "@/lib/utils";
+import { useAuthStore } from "@/lib/store";
 import toast from "react-hot-toast";
 
 export default function EventSettingsPage() {
   const params = useParams();
   const router = useRouter();
   const eventId = params.id as string;
+  const { user } = useAuthStore();
+  const userCountry: Country = user?.country || "kz";
+  const defaultCity = getDefaultCity(userCountry);
 
   const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -144,17 +148,6 @@ export default function EventSettingsPage() {
     }
   }
 
-  async function handleActivate() {
-    try {
-      await events.activate(eventId);
-      toast.success("Активировано");
-      const data = await events.get(eventId);
-      setEvent(data);
-    } catch {
-      toast.error("Не удалось активировать");
-    }
-  }
-
   if (isLoading) {
     return <PageLoader />;
   }
@@ -167,16 +160,6 @@ export default function EventSettingsPage() {
         <h1 className="text-h1">Настройки</h1>
         <p className="text-caption mt-1">Редактирование мероприятия</p>
       </div>
-
-      {event.status === "draft" && (
-        <div className="p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-lg">
-          <p className="text-sm text-amber-800 mb-3">Мероприятие в черновике</p>
-          <button onClick={handleActivate} className="btn-primary btn-sm">
-            <Check className="w-4 h-4" />
-            Активировать
-          </button>
-        </div>
-      )}
 
       {/* Basic */}
       <section className="space-y-3 sm:space-y-4">
@@ -265,7 +248,7 @@ export default function EventSettingsPage() {
             value={formData.venue?.city || ""}
             onChange={(e) => setFormData({ ...formData, venue: { ...formData.venue, city: e.target.value } })}
             className="input"
-            placeholder="Алматы"
+            placeholder={defaultCity || "Город"}
           />
         </div>
       </section>

@@ -1,17 +1,54 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { Country, CurrencyConfig } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number | string | undefined | null): string {
+// Currency configurations by country
+export const currencyConfigs: Record<Country, CurrencyConfig> = {
+  kz: { code: "KZT", symbol: "₸", name: "Тенге" },
+  ru: { code: "RUB", symbol: "₽", name: "Рубль" },
+  kg: { code: "KGS", symbol: "сом", name: "Сом" },
+  uz: { code: "UZS", symbol: "сум", name: "Сум" },
+  other: { code: "USD", symbol: "$", name: "Доллар" },
+};
+
+// Check if country is Central Asian
+export function isCentralAsian(country: Country | undefined): boolean {
+  if (!country) return true; // Default to true for backward compatibility
+  return ["kz", "kg", "uz"].includes(country);
+}
+
+// Get example names by country
+export function getExampleNames(country: Country | undefined): { person1: string; person2: string } {
+  if (isCentralAsian(country)) {
+    return { person1: "Айдар", person2: "Дана" };
+  }
+  return { person1: "Иван", person2: "Мария" };
+}
+
+// Get default city by country
+export function getDefaultCity(country: Country | undefined): string {
+  const cities: Record<Country, string> = {
+    kz: "Алматы",
+    ru: "Москва",
+    kg: "Бишкек",
+    uz: "Ташкент",
+    other: "",
+  };
+  return cities[country || "kz"];
+}
+
+export function formatCurrency(amount: number | string | undefined | null, country: Country = "kz"): string {
   // Конвертируем в число
   const num = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
 
   // Проверяем на NaN/undefined/null
   if (amount === undefined || amount === null || isNaN(num)) {
-    return "0 ₸";
+    const config = currencyConfigs[country];
+    return "0 " + config.symbol;
   }
 
   // Простое форматирование с разделителями тысяч
@@ -19,7 +56,8 @@ export function formatCurrency(amount: number | string | undefined | null): stri
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 
-  return formatted + " ₸";
+  const config = currencyConfigs[country];
+  return formatted + " " + config.symbol;
 }
 
 export function formatDate(dateString: string | undefined, locale = "ru-KZ"): string {
@@ -127,6 +165,7 @@ export const expenseCategoryLabels: Record<string, { ru: string; kz: string; ico
   photo: { ru: "Фото", kz: "Фото", icon: "camera" },
   video: { ru: "Видео", kz: "Бейне", icon: "video" },
   music: { ru: "Музыка", kz: "Музыка", icon: "music" },
+  mc: { ru: "Ведущий", kz: "Жүргізуші", icon: "mic" },
   attire: { ru: "Наряды", kz: "Киім", icon: "shirt" },
   transport: { ru: "Транспорт", kz: "Көлік", icon: "car" },
   invitation: { ru: "Приглашения", kz: "Шақыру", icon: "mail" },

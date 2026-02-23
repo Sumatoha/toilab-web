@@ -13,10 +13,11 @@ import {
   CreditCard,
 } from "lucide-react";
 import { expenses as expensesApi, vendors as vendorsApi } from "@/lib/api";
-import { Expense, BudgetSummary, ExpenseCategory, ExpenseStatus, UpdateExpenseRequest, Vendor } from "@/lib/types";
-import { vendorTypeLabels } from "@/lib/utils";
+import { Expense, BudgetSummary, ExpenseCategory, ExpenseStatus, UpdateExpenseRequest, Vendor, Country } from "@/lib/types";
+import { vendorTypeLabels, currencyConfigs } from "@/lib/utils";
 import { cn, formatCurrency, expenseCategoryLabels } from "@/lib/utils";
 import { PageLoader, ConfirmDialog, Modal, ModalFooter, ProgressBar, CircularProgress } from "@/components/ui";
+import { useAuthStore } from "@/lib/store";
 import toast from "react-hot-toast";
 
 const categoryColors: Record<ExpenseCategory, { bg: string; text: string; accent: string }> = {
@@ -26,6 +27,7 @@ const categoryColors: Record<ExpenseCategory, { bg: string; text: string; accent
   photo: { bg: "bg-purple-100", text: "text-purple-700", accent: "bg-purple-500" },
   video: { bg: "bg-indigo-100", text: "text-indigo-700", accent: "bg-indigo-500" },
   music: { bg: "bg-cyan-100", text: "text-cyan-700", accent: "bg-cyan-500" },
+  mc: { bg: "bg-emerald-100", text: "text-emerald-700", accent: "bg-emerald-500" },
   attire: { bg: "bg-rose-100", text: "text-rose-700", accent: "bg-rose-500" },
   transport: { bg: "bg-slate-100", text: "text-slate-700", accent: "bg-slate-500" },
   invitation: { bg: "bg-teal-100", text: "text-teal-700", accent: "bg-teal-500" },
@@ -37,6 +39,8 @@ const categoryColors: Record<ExpenseCategory, { bg: string; text: string; accent
 export default function BudgetPage() {
   const params = useParams();
   const eventId = params.id as string;
+  const { user } = useAuthStore();
+  const userCountry: Country = user?.country || "kz";
 
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
   const [vendorsList, setVendorsList] = useState<Vendor[]>([]);
@@ -70,6 +74,46 @@ export default function BudgetPage() {
     }
   }
 
+  // Helper to recalculate summary from expenses list
+  const recalculateSummary = (expenses: Expense[]): BudgetSummary => {
+    const byCategory: Record<ExpenseCategory, { plannedTotal: number; actualTotal: number; paidTotal: number; count: number }> = {} as Record<ExpenseCategory, { plannedTotal: number; actualTotal: number; paidTotal: number; count: number }>;
+
+    let totalPlanned = 0;
+    let totalActual = 0;
+    let totalPaid = 0;
+
+    expenses.forEach(e => {
+      const planned = Number(e.plannedAmount) || 0;
+      const actual = Number(e.actualAmount) || 0;
+      const paid = Number(e.paidAmount) || 0;
+
+      totalPlanned += planned;
+      totalActual += actual;
+      totalPaid += paid;
+
+      if (!byCategory[e.category]) {
+        byCategory[e.category] = { plannedTotal: 0, actualTotal: 0, paidTotal: 0, count: 0 };
+      }
+      byCategory[e.category].plannedTotal += planned;
+      byCategory[e.category].actualTotal += actual;
+      byCategory[e.category].paidTotal += paid;
+      byCategory[e.category].count += 1;
+    });
+
+    return {
+      totalPlanned,
+      totalActual,
+      totalPaid,
+      byCategory: Object.entries(byCategory).map(([cat, data]) => ({
+        category: cat as ExpenseCategory,
+        plannedTotal: data.plannedTotal,
+        actualTotal: data.actualTotal,
+        paidTotal: data.paidTotal,
+        expenseCount: data.count,
+      })),
+    };
+  };
+
   const handleAddExpense = async (data: {
     category: ExpenseCategory;
     title: string;
@@ -78,10 +122,11 @@ export default function BudgetPage() {
   }) => {
     try {
       const newExpense = await expensesApi.create(eventId, data);
-      setExpensesList((prev) => [...prev, newExpense]);
+      const newList = [...expensesList, newExpense];
+      setExpensesList(newList);
+      setSummary(recalculateSummary(newList));
       setShowAddModal(false);
       toast.success("Расход добавлен");
-      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось добавить расход");
@@ -93,9 +138,11 @@ export default function BudgetPage() {
     setIsDeleting(true);
     try {
       await expensesApi.delete(eventId, deleteExpenseId);
-      setExpensesList((prev) => prev.filter((e) => e.id !== deleteExpenseId));
+      const newList = expensesList.filter((e) => e.id !== deleteExpenseId);
+      setExpensesList(newList);
+      setSummary(recalculateSummary(newList));
       setDeleteExpenseId(null);
-      loadData();
+      toast.success("Расход удалён");
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось удалить расход");
@@ -108,12 +155,11 @@ export default function BudgetPage() {
     if (!editingExpense) return;
     try {
       const updated = await expensesApi.update(eventId, editingExpense.id, data);
-      setExpensesList((prev) =>
-        prev.map((e) => (e.id === editingExpense.id ? updated : e))
-      );
+      const newList = expensesList.map((e) => (e.id === editingExpense.id ? updated : e));
+      setExpensesList(newList);
+      setSummary(recalculateSummary(newList));
       setEditingExpense(null);
       toast.success("Расход обновлён");
-      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось обновить расход");
@@ -184,7 +230,7 @@ export default function BudgetPage() {
                   <span className="text-xs sm:text-sm text-blue-600 font-medium">Запланировано</span>
                 </div>
                 <div className="text-lg sm:text-2xl font-bold text-blue-700">
-                  {formatCurrency(summary.totalPlanned)}
+                  {formatCurrency(summary.totalPlanned, userCountry)}
                 </div>
               </div>
               <div className="p-3 sm:p-4 rounded-xl bg-emerald-50">
@@ -193,7 +239,7 @@ export default function BudgetPage() {
                   <span className="text-xs sm:text-sm text-emerald-600 font-medium">Оплачено</span>
                 </div>
                 <div className="text-lg sm:text-2xl font-bold text-emerald-700">
-                  {formatCurrency(summary.totalPaid)}
+                  {formatCurrency(summary.totalPaid, userCountry)}
                 </div>
               </div>
               <div className={cn(
@@ -207,7 +253,7 @@ export default function BudgetPage() {
                   </span>
                 </div>
                 <div className={cn("text-lg sm:text-2xl font-bold", remaining >= 0 ? "text-amber-700" : "text-red-700")}>
-                  {formatCurrency(Math.abs(remaining))}
+                  {formatCurrency(Math.abs(remaining), userCountry)}
                 </div>
               </div>
             </div>
@@ -236,7 +282,7 @@ export default function BudgetPage() {
                   <span className="text-muted-foreground">Средний расход</span>
                   <span className="font-semibold">
                     {expensesList.length > 0
-                      ? formatCurrency(Math.round(summary.totalPlanned / expensesList.length))
+                      ? formatCurrency(Math.round(summary.totalPlanned / expensesList.length), userCountry)
                       : "—"
                     }
                   </span>
@@ -294,7 +340,7 @@ export default function BudgetPage() {
                   <p className="font-medium text-sm">{label?.ru || cat.category}</p>
                 </div>
                 <p className="text-lg font-bold">
-                  {formatCurrency(planned)}
+                  {formatCurrency(planned, userCountry)}
                 </p>
                 <ProgressBar
                   value={paid}
@@ -339,6 +385,7 @@ export default function BudgetPage() {
                 <ExpenseCard
                   key={expense.id}
                   expense={expense}
+                  country={userCountry}
                   onEdit={() => setEditingExpense(expense)}
                   onDelete={() => setDeleteExpenseId(expense.id)}
                   className={`animate-in stagger-${Math.min(index + 1, 4)}`}
@@ -353,6 +400,7 @@ export default function BudgetPage() {
                   <ExpenseRow
                     key={expense.id}
                     expense={expense}
+                    country={userCountry}
                     onEdit={() => setEditingExpense(expense)}
                     onDelete={() => setDeleteExpenseId(expense.id)}
                     className={`animate-in stagger-${Math.min(index + 1, 4)}`}
@@ -370,6 +418,7 @@ export default function BudgetPage() {
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddExpense}
           vendors={vendorsList}
+          country={userCountry}
         />
       )}
 
@@ -380,6 +429,7 @@ export default function BudgetPage() {
           onClose={() => setEditingExpense(null)}
           onSave={handleUpdateExpense}
           vendors={vendorsList}
+          country={userCountry}
         />
       )}
 
@@ -402,11 +452,13 @@ export default function BudgetPage() {
 // Mobile card component
 function ExpenseCard({
   expense,
+  country,
   onEdit,
   onDelete,
   className,
 }: {
   expense: Expense;
+  country: Country;
   onEdit: () => void;
   onDelete: () => void;
   className?: string;
@@ -444,7 +496,7 @@ function ExpenseCard({
           </div>
         </div>
         <div className="text-right flex-shrink-0">
-          <p className="font-bold text-lg">{formatCurrency(plannedAmount)}</p>
+          <p className="font-bold text-lg">{formatCurrency(plannedAmount, country)}</p>
         </div>
       </div>
 
@@ -484,7 +536,7 @@ function ExpenseCard({
         <div className="mt-3 pt-3 border-t border-border">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
             <span>Оплачено</span>
-            <span>{formatCurrency(paidAmount)}</span>
+            <span>{formatCurrency(paidAmount, country)}</span>
           </div>
           <ProgressBar
             value={paidAmount}
@@ -501,11 +553,13 @@ function ExpenseCard({
 // Desktop row component
 function ExpenseRow({
   expense,
+  country,
   onEdit,
   onDelete,
   className,
 }: {
   expense: Expense;
+  country: Country;
   onEdit: () => void;
   onDelete: () => void;
   className?: string;
@@ -559,10 +613,10 @@ function ExpenseRow({
         </div>
       </div>
       <div className="text-right">
-        <p className="font-semibold">{formatCurrency(plannedAmount)}</p>
+        <p className="font-semibold">{formatCurrency(plannedAmount, country)}</p>
         {paidAmount > 0 && (
           <p className="text-sm text-emerald-600">
-            {formatCurrency(paidAmount)} оплачено
+            {formatCurrency(paidAmount, country)} оплачено
           </p>
         )}
         {paidAmount === 0 && plannedAmount > 0 && (
@@ -595,11 +649,14 @@ function AddExpenseModal({
   onClose,
   onAdd,
   vendors,
+  country,
 }: {
   onClose: () => void;
   onAdd: (data: { category: ExpenseCategory; title: string; plannedAmount: number; vendorId?: string }) => void;
   vendors: Vendor[];
+  country: Country;
 }) {
+  const currencyName = currencyConfigs[country]?.name || "Тенге";
   const [category, setCategory] = useState<ExpenseCategory>("venue");
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
@@ -687,7 +744,7 @@ function AddExpenseModal({
           </div>
         )}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Сумма (тенге)</label>
+          <label className="block text-sm font-medium mb-1.5">Сумма ({currencyName.toLowerCase()})</label>
           <input
             type="number"
             value={amount}
@@ -714,12 +771,15 @@ function EditExpenseModal({
   onClose,
   onSave,
   vendors,
+  country,
 }: {
   expense: Expense;
   onClose: () => void;
   onSave: (data: UpdateExpenseRequest) => void;
   vendors: Vendor[];
+  country: Country;
 }) {
+  const currencyName = currencyConfigs[country]?.name || "Тенге";
   const [title, setTitle] = useState(expense.title);
   const [category, setCategory] = useState<ExpenseCategory>(expense.category);
   const [vendorId, setVendorId] = useState(expense.vendorId || "");
@@ -800,7 +860,7 @@ function EditExpenseModal({
         </div>
 
         <div className="border-t border-border pt-4">
-          <h4 className="text-sm font-medium mb-3">Суммы (тенге)</h4>
+          <h4 className="text-sm font-medium mb-3">Суммы ({currencyName.toLowerCase()})</h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-muted-foreground mb-1">Планировали</label>

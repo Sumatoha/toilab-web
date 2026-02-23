@@ -21,11 +21,16 @@ import {
   MoreHorizontal,
   Guitar,
   LucideIcon,
+  Clock,
+  ChevronRight,
+  Calendar,
+  X,
 } from "lucide-react";
-import { vendors, expenses } from "@/lib/api";
-import { Vendor, VendorStatus, CreateVendorRequest, ExpenseCategory, Expense } from "@/lib/types";
-import { cn, formatCurrency, vendorTypeLabels, vendorStatusLabels } from "@/lib/utils";
+import { vendors, expenses, program as programApi } from "@/lib/api";
+import { Vendor, VendorStatus, CreateVendorRequest, ExpenseCategory, Expense, Country, ProgramItem } from "@/lib/types";
+import { cn, formatCurrency, vendorTypeLabels, vendorStatusLabels, currencyConfigs } from "@/lib/utils";
 import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog } from "@/components/ui";
+import { useAuthStore } from "@/lib/store";
 import toast from "react-hot-toast";
 
 const vendorTypeIcons: Record<string, LucideIcon> = {
@@ -67,6 +72,8 @@ const vendorStatuses: VendorStatus[] = [
 export default function VendorsPage() {
   const params = useParams();
   const eventId = params.id as string;
+  const { user } = useAuthStore();
+  const userCountry: Country = user?.country || "kz";
 
   const [vendorList, setVendorList] = useState<Vendor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,9 +81,11 @@ export default function VendorsPage() {
   const [filterType, setFilterType] = useState<string>("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [viewingVendor, setViewingVendor] = useState<Vendor | null>(null);
   const [deleteVendorId, setDeleteVendorId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [allExpenses, setAllExpenses] = useState<Expense[]>([]);
+  const [programItems, setProgramItems] = useState<ProgramItem[]>([]);
 
   useEffect(() => {
     loadData();
@@ -84,12 +93,14 @@ export default function VendorsPage() {
 
   async function loadData() {
     try {
-      const [vendorData, expenseData] = await Promise.all([
+      const [vendorData, expenseData, programData] = await Promise.all([
         vendors.list(eventId),
         expenses.list(eventId),
+        programApi.list(eventId),
       ]);
       setVendorList(vendorData || []);
       setAllExpenses(expenseData || []);
+      setProgramItems(programData || []);
     } catch (error) {
       console.error("Failed to load vendors:", error);
       toast.error("Не удалось загрузить подрядчиков");
@@ -209,15 +220,15 @@ export default function VendorsPage() {
           </div>
           <div className="card p-4">
             <div className="text-sm text-muted-foreground mb-1">Общая сумма</div>
-            <div className="text-2xl font-bold">{formatCurrency(totalCost)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalCost, userCountry)}</div>
           </div>
           <div className="card p-4">
             <div className="text-sm text-muted-foreground mb-1">Оплачено</div>
-            <div className="text-2xl font-bold text-emerald-600">{formatCurrency(totalPaid)}</div>
+            <div className="text-2xl font-bold text-emerald-600">{formatCurrency(totalPaid, userCountry)}</div>
           </div>
           <div className="card p-4">
             <div className="text-sm text-muted-foreground mb-1">К оплате</div>
-            <div className="text-2xl font-bold text-amber-600">{formatCurrency(totalPending)}</div>
+            <div className="text-2xl font-bold text-amber-600">{formatCurrency(totalPending, userCountry)}</div>
           </div>
         </div>
       )}
@@ -270,6 +281,11 @@ export default function VendorsPage() {
             <VendorCard
               key={vendor.id}
               vendor={vendor}
+              country={userCountry}
+              programItems={programItems.filter(p =>
+                p.responsible?.toLowerCase().includes(vendor.name.toLowerCase())
+              )}
+              onView={() => setViewingVendor(vendor)}
               onEdit={() => setEditingVendor(vendor)}
               onDelete={() => setDeleteVendorId(vendor.id)}
             />
@@ -282,6 +298,7 @@ export default function VendorsPage() {
         <VendorModal
           onClose={() => setShowAddModal(false)}
           onSubmit={handleAddVendor}
+          country={userCountry}
         />
       )}
 
@@ -291,6 +308,21 @@ export default function VendorsPage() {
           vendor={editingVendor}
           onClose={() => setEditingVendor(null)}
           onSubmit={(data) => handleUpdateVendor(editingVendor.id, data)}
+          country={userCountry}
+        />
+      )}
+
+      {/* Detail Modal */}
+      {viewingVendor && (
+        <VendorDetailModal
+          vendor={viewingVendor}
+          country={userCountry}
+          programItems={programItems.filter(p =>
+            p.responsible?.toLowerCase().includes(viewingVendor.name.toLowerCase())
+          )}
+          linkedExpenses={allExpenses.filter(e => e.vendorId === viewingVendor.id)}
+          onClose={() => setViewingVendor(null)}
+          onEdit={() => { setViewingVendor(null); setEditingVendor(viewingVendor); }}
         />
       )}
 
@@ -316,10 +348,16 @@ export default function VendorsPage() {
 
 function VendorCard({
   vendor,
+  country,
+  programItems,
+  onView,
   onEdit,
   onDelete,
 }: {
   vendor: Vendor;
+  country: Country;
+  programItems: ProgramItem[];
+  onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -337,7 +375,10 @@ function VendorCard({
   };
 
   return (
-    <div className="card p-4 hover:shadow-md hover:border-primary/20 transition-all group">
+    <div
+      onClick={onView}
+      className="card p-4 hover:shadow-md hover:border-primary/20 transition-all group cursor-pointer"
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -379,7 +420,7 @@ function VendorCard({
         <div className="mb-3">
           <div className="flex items-center justify-between text-sm mb-1.5">
             <span className="text-muted-foreground">Оплачено</span>
-            <span className="font-medium">{formatCurrency(vendor.paidAmount)} / {formatCurrency(vendor.totalAmount)}</span>
+            <span className="font-medium">{formatCurrency(vendor.paidAmount, country)} / {formatCurrency(vendor.totalAmount, country)}</span>
           </div>
           <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
             <div
@@ -395,17 +436,31 @@ function VendorCard({
         <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{vendor.note}</p>
       )}
 
+      {/* Program responsibilities indicator */}
+      {programItems.length > 0 && (
+        <div className="flex items-center gap-1.5 text-xs text-primary mb-3">
+          <Calendar className="w-3.5 h-3.5" />
+          <span>{programItems.length} {programItems.length === 1 ? "пункт" : programItems.length < 5 ? "пункта" : "пунктов"} программы</span>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex items-center gap-2 pt-2 border-t border-border">
         <button
-          onClick={onEdit}
-          className="flex-1 py-1.5 text-sm text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+          onClick={(e) => { e.stopPropagation(); onView(); }}
+          className="flex-1 py-1.5 text-sm text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg transition-colors flex items-center justify-center gap-1"
         >
-          <Edit2 className="w-4 h-4 inline mr-1" />
-          Изменить
+          Подробнее
+          <ChevronRight className="w-4 h-4" />
         </button>
         <button
-          onClick={onDelete}
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+        >
+          <Edit2 className="w-4 h-4" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
           className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
         >
           <Trash2 className="w-4 h-4" />
@@ -419,11 +474,14 @@ function VendorModal({
   vendor,
   onClose,
   onSubmit,
+  country,
 }: {
   vendor?: Vendor;
   onClose: () => void;
   onSubmit: (data: CreateVendorRequest) => void;
+  country: Country;
 }) {
+  const currencySymbol = currencyConfigs[country]?.symbol || "₸";
   const [category, setCategory] = useState<string>(vendor?.category || "photographer");
   const [name, setName] = useState(vendor?.name || "");
   const [phone, setPhone] = useState(vendor?.phone || "");
@@ -554,7 +612,7 @@ function VendorModal({
         {/* Amounts */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium mb-1.5">Сумма (₸)</label>
+            <label className="block text-sm font-medium mb-1.5">Сумма ({currencySymbol})</label>
             <input
               type="number"
               value={totalAmount}
@@ -564,7 +622,7 @@ function VendorModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5">Задаток (₸)</label>
+            <label className="block text-sm font-medium mb-1.5">Задаток ({currencySymbol})</label>
             <input
               type="number"
               value={depositAmount}
@@ -579,7 +637,7 @@ function VendorModal({
         {vendor && (
           <>
             <div>
-              <label className="block text-sm font-medium mb-1.5">Оплачено (₸)</label>
+              <label className="block text-sm font-medium mb-1.5">Оплачено ({currencySymbol})</label>
               <input
                 type="number"
                 value={paidAmount}
@@ -636,5 +694,176 @@ function VendorModal({
         </ModalFooter>
       </form>
     </Modal>
+  );
+}
+
+function VendorDetailModal({
+  vendor,
+  country,
+  programItems,
+  linkedExpenses,
+  onClose,
+  onEdit,
+}: {
+  vendor: Vendor;
+  country: Country;
+  programItems: ProgramItem[];
+  linkedExpenses: Expense[];
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  const Icon = vendorTypeIcons[vendor.category] || MoreHorizontal;
+  const typeLabel = vendorTypeLabels[vendor.category]?.ru || vendor.category;
+  const statusLabel = vendorStatusLabels[vendor.status];
+  const progress = vendor.totalAmount > 0 ? (vendor.paidAmount / vendor.totalAmount) * 100 : 0;
+
+  const statusColors: Record<VendorStatus, string> = {
+    contacted: "bg-gray-100 text-gray-700",
+    booked: "bg-blue-100 text-blue-700",
+    deposit_paid: "bg-amber-100 text-amber-700",
+    paid: "bg-emerald-100 text-emerald-700",
+    cancelled: "bg-red-100 text-red-700",
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-background rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Icon className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">{vendor.name}</h2>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{typeLabel}</span>
+                <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", statusColors[vendor.status])}>
+                  {statusLabel?.ru || vendor.status}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 overflow-y-auto flex-1 space-y-5">
+          {/* Contact */}
+          {(vendor.phone || vendor.instagram) && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Контакты</h3>
+              <div className="space-y-1.5">
+                {vendor.phone && (
+                  <a href={`tel:${vendor.phone}`} className="flex items-center gap-2 text-sm hover:text-primary">
+                    <Phone className="w-4 h-4 text-muted-foreground" />
+                    {vendor.phone}
+                  </a>
+                )}
+                {vendor.instagram && (
+                  <a
+                    href={`https://instagram.com/${vendor.instagram.replace("@", "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm hover:text-primary"
+                  >
+                    <Instagram className="w-4 h-4 text-muted-foreground" />
+                    {vendor.instagram}
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Payment */}
+          {vendor.totalAmount > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Оплата</h3>
+              <div className="card p-3 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Сумма</span>
+                  <span className="font-semibold">{formatCurrency(vendor.totalAmount, country)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Оплачено</span>
+                  <span className="font-semibold text-emerald-600">{formatCurrency(vendor.paidAmount, country)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Осталось</span>
+                  <span className="font-semibold text-amber-600">{formatCurrency(vendor.totalAmount - vendor.paidAmount, country)}</span>
+                </div>
+                <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all"
+                    style={{ width: `${Math.min(progress, 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Program responsibilities */}
+          {programItems.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Ответственный за ({programItems.length})</h3>
+              <div className="space-y-2">
+                {programItems.sort((a, b) => {
+                  if (!a.startTime || !b.startTime) return 0;
+                  return a.startTime.localeCompare(b.startTime);
+                }).map((item) => (
+                  <div key={item.id} className="card p-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Clock className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{item.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {item.startTime}
+                        {item.endTime && ` - ${item.endTime}`}
+                        {item.duration && item.duration > 0 && ` (${item.duration} мин)`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Linked expenses */}
+          {linkedExpenses.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Связанные расходы ({linkedExpenses.length})</h3>
+              <div className="space-y-2">
+                {linkedExpenses.map((expense) => (
+                  <div key={expense.id} className="card p-3 flex items-center justify-between">
+                    <span className="text-sm">{expense.title}</span>
+                    <span className="text-sm font-medium">{formatCurrency(expense.actualAmount || expense.plannedAmount, country)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Note */}
+          {vendor.note && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">Заметка</h3>
+              <p className="text-sm">{vendor.note}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-border flex justify-end gap-2">
+          <button onClick={onClose} className="btn-outline btn-md">Закрыть</button>
+          <button onClick={onEdit} className="btn-primary btn-md">
+            <Edit2 className="w-4 h-4" />
+            Редактировать
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

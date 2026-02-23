@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/lib/store";
-import { auth } from "@/lib/api";
+import { auth, config } from "@/lib/api";
 import { Logo } from "@/components/ui";
 import toast from "react-hot-toast";
+import type { Country, CountryConfig } from "@/lib/types";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,13 +15,27 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [country, setCountry] = useState<Country>("kz");
+  const [countries, setCountries] = useState<CountryConfig[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     hydrate();
+    // Load countries list
+    config.getCountries().then(setCountries).catch(() => {
+      // Fallback to default countries if API fails
+      setCountries([
+        { code: "kz", name: "Казахстан", currency: { code: "KZT", symbol: "₸", name: "Тенге" } },
+        { code: "ru", name: "Россия", currency: { code: "RUB", symbol: "₽", name: "Рубль" } },
+        { code: "kg", name: "Кыргызстан", currency: { code: "KGS", symbol: "сом", name: "Сом" } },
+        { code: "uz", name: "Узбекистан", currency: { code: "UZS", symbol: "сум", name: "Сум" } },
+        { code: "other", name: "Другое", currency: { code: "USD", symbol: "$", name: "Доллар" } },
+      ]);
+    });
   }, [hydrate]);
 
   useEffect(() => {
@@ -45,7 +60,12 @@ export default function LoginPage() {
           setSubmitting(false);
           return;
         }
-        const result = await auth.register(email, password, name);
+        if (password !== confirmPassword) {
+          toast.error("Пароли не совпадают");
+          setSubmitting(false);
+          return;
+        }
+        const result = await auth.register(email, password, confirmPassword, name, country);
         setAuth(result.user, result.accessToken, result.refreshToken);
         toast.success("Регистрация успешна!");
         router.push("/dashboard");
@@ -139,6 +159,48 @@ export default function LoginPage() {
                   required
                 />
               </div>
+
+              {mode === "register" && (
+                <>
+                  <div>
+                    <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
+                      Подтверждение пароля
+                    </label>
+                    <input
+                      type="password"
+                      id="confirmPassword"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="input w-full"
+                      placeholder="Повторите пароль"
+                      minLength={6}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="country" className="block text-sm font-medium mb-1">
+                      Страна
+                    </label>
+                    <select
+                      id="country"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value as Country)}
+                      className="input w-full"
+                      required
+                    >
+                      {countries.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Это определит валюту и локализацию контента
+                    </p>
+                  </div>
+                </>
+              )}
 
               <button
                 type="submit"

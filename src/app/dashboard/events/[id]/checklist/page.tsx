@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, useRef, forwardRef } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   Plus,
   Check,
@@ -9,6 +9,7 @@ import {
   Trash2,
   Sparkles,
   CalendarDays,
+  Pencil,
 } from "lucide-react";
 import { checklist as checklistApi, calendar as calendarApi } from "@/lib/api";
 import { ChecklistItem, ChecklistProgress, ChecklistCategory, CreateCalendarEventRequest } from "@/lib/types";
@@ -42,19 +43,36 @@ const WEDDING_TASK_SUGGESTIONS = [
 
 export default function ChecklistPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const eventId = params.id as string;
+  const highlightTaskId = searchParams.get("task");
 
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [progress, setProgress] = useState<ChecklistProgress | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<ChecklistItem | null>(null);
+  const [prefillSuggestion, setPrefillSuggestion] = useState<{ title: string; category: ChecklistCategory } | null>(null);
   const [filter, setFilter] = useState<"all" | "pending" | "completed">("all");
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [highlightedTask, setHighlightedTask] = useState<string | null>(highlightTaskId);
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false);
+  const taskRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     loadData();
   }, [eventId]);
+
+  // Scroll to highlighted task when data loads
+  useEffect(() => {
+    if (highlightedTask && items.length > 0 && taskRefs.current[highlightedTask]) {
+      taskRefs.current[highlightedTask]?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Clear highlight after 3 seconds
+      const timeout = setTimeout(() => setHighlightedTask(null), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [highlightedTask, items]);
 
   async function loadData() {
     try {
@@ -72,16 +90,28 @@ export default function ChecklistPage() {
     }
   }
 
+  // Helper to recalculate progress locally (avoids extra API call)
+  const updateProgress = (newItems: ChecklistItem[]) => {
+    const total = newItems.length;
+    const completed = newItems.filter(i => i.isCompleted).length;
+    const percent = total > 0 ? (completed / total) * 100 : 0;
+    setProgress({ total, completed, percent });
+  };
+
   const handleToggle = async (item: ChecklistItem) => {
+    // Optimistic update
+    const newItems = items.map((i) =>
+      i.id === item.id ? { ...i, isCompleted: !i.isCompleted } : i
+    );
+    setItems(newItems);
+    updateProgress(newItems);
+
     try {
       await checklistApi.toggle(eventId, item.id, !item.isCompleted);
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === item.id ? { ...i, isCompleted: !i.isCompleted } : i
-        )
-      );
-      loadData();
     } catch (error) {
+      // Revert on error
+      setItems(items);
+      updateProgress(items);
       const err = error as Error;
       toast.error(err.message || "Не удалось обновить задачу");
     }
@@ -91,15 +121,34 @@ export default function ChecklistPage() {
     title: string;
     category: ChecklistCategory;
     dueDate?: string;
+    description?: string;
   }) => {
     try {
       const newItem = await checklistApi.create(eventId, data);
-      setItems((prev) => [...prev, newItem]);
+      const newItems = [...items, newItem];
+      setItems(newItems);
+      updateProgress(newItems);
       toast.success("Задача добавлена");
-      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось добавить задачу");
+    }
+  };
+
+  const handleUpdate = async (itemId: string, data: {
+    title?: string;
+    category?: ChecklistCategory;
+    dueDate?: string;
+    description?: string;
+  }) => {
+    try {
+      const updated = await checklistApi.update(eventId, itemId, data);
+      setItems((prev) => prev.map((i) => i.id === itemId ? updated : i));
+      setEditingItem(null);
+      toast.success("Задача обновлена");
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "Не удалось обновить задачу");
     }
   };
 
@@ -108,14 +157,31 @@ export default function ChecklistPage() {
     setIsDeleting(true);
     try {
       await checklistApi.delete(eventId, deleteItemId);
-      setItems((prev) => prev.filter((i) => i.id !== deleteItemId));
+      const newItems = items.filter((i) => i.id !== deleteItemId);
+      setItems(newItems);
+      updateProgress(newItems);
       setDeleteItemId(null);
-      loadData();
+      toast.success("Задача удалена");
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось удалить задачу");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleApplyTemplate = async () => {
+    setIsApplyingTemplate(true);
+    try {
+      const result = await checklistApi.applyTemplate(eventId);
+      toast.success(`Добавлено ${result.count} задач из шаблона`);
+      // Template adds items, need to reload to get them
+      loadData();
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "Не удалось применить шаблон");
+    } finally {
+      setIsApplyingTemplate(false);
     }
   };
 
@@ -201,12 +267,22 @@ export default function ChecklistPage() {
           <CheckSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold mb-2">Чек-лист пуст</h3>
           <p className="text-muted-foreground mb-6">
-            Добавьте первую задачу из предложенных или создайте свою
+            Примените готовый шаблон или добавьте задачи вручную
           </p>
-          <button onClick={() => setShowAddModal(true)} className="btn-primary btn-md">
-            <Plus className="w-4 h-4" />
-            Добавить задачу
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={handleApplyTemplate}
+              disabled={isApplyingTemplate}
+              className="btn-primary btn-md"
+            >
+              <Sparkles className="w-4 h-4" />
+              {isApplyingTemplate ? "Применение..." : "Применить шаблон"}
+            </button>
+            <button onClick={() => setShowAddModal(true)} className="btn-outline btn-md">
+              <Plus className="w-4 h-4" />
+              Добавить вручную
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -215,8 +291,11 @@ export default function ChecklistPage() {
             {filteredItems.map((item) => (
               <ChecklistCard
                 key={item.id}
+                ref={(el) => { taskRefs.current[item.id] = el; }}
                 item={item}
+                isHighlighted={highlightedTask === item.id}
                 onToggle={() => handleToggle(item)}
+                onEdit={() => setEditingItem(item)}
                 onDelete={() => setDeleteItemId(item.id)}
               />
             ))}
@@ -228,8 +307,11 @@ export default function ChecklistPage() {
               {filteredItems.map((item) => (
                 <ChecklistRow
                   key={item.id}
+                  ref={(el) => { taskRefs.current[item.id] = el; }}
                   item={item}
+                  isHighlighted={highlightedTask === item.id}
                   onToggle={() => handleToggle(item)}
+                  onEdit={() => setEditingItem(item)}
                   onDelete={() => setDeleteItemId(item.id)}
                 />
               ))}
@@ -240,11 +322,24 @@ export default function ChecklistPage() {
 
       {/* Add Modal */}
       {showAddModal && (
-        <AddTaskModal
+        <TaskModal
           eventId={eventId}
-          onClose={() => setShowAddModal(false)}
-          onAdd={handleAdd}
+          onClose={() => { setShowAddModal(false); setPrefillSuggestion(null); }}
+          onSubmit={handleAdd}
           suggestions={availableSuggestions}
+          prefillSuggestion={prefillSuggestion}
+          onSelectSuggestion={(s) => setPrefillSuggestion(s)}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <TaskModal
+          eventId={eventId}
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSubmit={(data) => handleUpdate(editingItem.id, data)}
+          suggestions={[]}
         />
       )}
 
@@ -265,15 +360,13 @@ export default function ChecklistPage() {
 }
 
 // Mobile card component
-function ChecklistCard({
-  item,
-  onToggle,
-  onDelete,
-}: {
+const ChecklistCard = forwardRef<HTMLDivElement, {
   item: ChecklistItem;
+  isHighlighted?: boolean;
   onToggle: () => void;
+  onEdit: () => void;
   onDelete: () => void;
-}) {
+}>(({ item, isHighlighted, onToggle, onEdit, onDelete }, ref) => {
   const categoryLabel = checklistCategoryLabels[item.category];
 
   // Calculate days until deadline
@@ -301,6 +394,7 @@ function ChecklistCard({
 
   return (
     <div
+      ref={ref}
       className={cn(
         "card p-4 transition-all touch-manipulation",
         item.isCompleted
@@ -309,7 +403,8 @@ function ChecklistCard({
             ? "bg-red-50/80 border-red-200"
             : isUrgent
               ? "bg-amber-50/80 border-amber-200"
-              : ""
+              : "",
+        isHighlighted && "ring-2 ring-primary ring-offset-2 animate-pulse"
       )}
     >
       <div className="flex items-start gap-3">
@@ -337,14 +432,28 @@ function ChecklistCard({
             {categoryLabel?.ru || item.category}
           </p>
         </div>
-        <button
-          onClick={onDelete}
-          className="p-2.5 text-muted-foreground hover:text-red-500 active:bg-red-50 rounded-xl transition-colors"
-          aria-label="Удалить"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onEdit}
+            className="p-2.5 text-muted-foreground hover:text-primary active:bg-primary/10 rounded-xl transition-colors"
+            aria-label="Редактировать"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-2.5 text-muted-foreground hover:text-red-500 active:bg-red-50 rounded-xl transition-colors"
+            aria-label="Удалить"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+
+      {/* Description */}
+      {item.description && (
+        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{item.description}</p>
+      )}
 
       {/* Deadline badge */}
       {item.dueDate && (
@@ -374,18 +483,18 @@ function ChecklistCard({
       )}
     </div>
   );
-}
+});
+
+ChecklistCard.displayName = "ChecklistCard";
 
 // Desktop row component
-function ChecklistRow({
-  item,
-  onToggle,
-  onDelete,
-}: {
+const ChecklistRow = forwardRef<HTMLDivElement, {
   item: ChecklistItem;
+  isHighlighted?: boolean;
   onToggle: () => void;
+  onEdit: () => void;
   onDelete: () => void;
-}) {
+}>(({ item, isHighlighted, onToggle, onEdit, onDelete }, ref) => {
   const categoryLabel = checklistCategoryLabels[item.category];
 
   // Calculate days until deadline
@@ -413,6 +522,7 @@ function ChecklistRow({
 
   return (
     <div
+      ref={ref}
       className={cn(
         "flex items-center gap-4 p-4 transition-colors group",
         item.isCompleted
@@ -421,7 +531,8 @@ function ChecklistRow({
             ? "bg-red-50/50"
             : isUrgent
               ? "bg-amber-50/50"
-              : "hover:bg-secondary/50"
+              : "hover:bg-secondary/50",
+        isHighlighted && "ring-2 ring-primary ring-inset animate-pulse"
       )}
     >
       <button
@@ -469,6 +580,13 @@ function ChecklistRow({
         </span>
       )}
       <button
+        onClick={onEdit}
+        className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+        title="Редактировать"
+      >
+        <Pencil className="w-4 h-4" />
+      </button>
+      <button
         onClick={onDelete}
         className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
         title="Удалить"
@@ -477,31 +595,66 @@ function ChecklistRow({
       </button>
     </div>
   );
-}
+});
 
-function AddTaskModal({
+ChecklistRow.displayName = "ChecklistRow";
+
+function TaskModal({
   eventId,
+  item,
   onClose,
-  onAdd,
-  suggestions,
+  onSubmit,
+  suggestions = [],
+  prefillSuggestion,
+  onSelectSuggestion,
 }: {
   eventId: string;
+  item?: ChecklistItem;
   onClose: () => void;
-  onAdd: (data: { title: string; category: ChecklistCategory; dueDate?: string }) => void;
-  suggestions: { title: string; category: ChecklistCategory }[];
+  onSubmit: (data: { title: string; category: ChecklistCategory; dueDate?: string; description?: string }) => void;
+  suggestions?: { title: string; category: ChecklistCategory }[];
+  prefillSuggestion?: { title: string; category: ChecklistCategory } | null;
+  onSelectSuggestion?: (s: { title: string; category: ChecklistCategory } | null) => void;
 }) {
-  const [mode, setMode] = useState<"suggestions" | "custom">("suggestions");
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<ChecklistCategory>("other");
-  const [dueDate, setDueDate] = useState("");
+  const isEditing = !!item;
+  const showSuggestions = !isEditing && suggestions.length > 0 && !prefillSuggestion;
+
+  const [mode, setMode] = useState<"suggestions" | "form">(showSuggestions ? "suggestions" : "form");
+  const [title, setTitle] = useState(item?.title || prefillSuggestion?.title || "");
+  const [description, setDescription] = useState(item?.description || "");
+  const [category, setCategory] = useState<ChecklistCategory>(
+    item?.category || prefillSuggestion?.category || "other"
+  );
+  const [dueDate, setDueDate] = useState(item?.dueDate?.split("T")[0] || "");
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set());
   const [addToCalendar, setAddToCalendar] = useState(false);
   const [calendarTime, setCalendarTime] = useState("");
   const [autoCompleteTask, setAutoCompleteTask] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAddSuggestion = (suggestion: { title: string; category: ChecklistCategory }) => {
-    onAdd({ title: suggestion.title, category: suggestion.category });
+  // When prefillSuggestion changes, switch to form mode
+  useEffect(() => {
+    if (prefillSuggestion) {
+      setTitle(prefillSuggestion.title);
+      setCategory(prefillSuggestion.category);
+      setMode("form");
+    }
+  }, [prefillSuggestion]);
+
+  const handleSelectSuggestion = (suggestion: { title: string; category: ChecklistCategory }) => {
+    // Switch to form mode with prefilled data so user can add details
+    if (onSelectSuggestion) {
+      onSelectSuggestion(suggestion);
+    } else {
+      setTitle(suggestion.title);
+      setCategory(suggestion.category);
+      setMode("form");
+    }
+  };
+
+  const handleQuickAdd = (suggestion: { title: string; category: ChecklistCategory }) => {
+    // Quick add without details
+    onSubmit({ title: suggestion.title, category: suggestion.category });
     setAddedTasks(prev => {
       const newSet = new Set(prev);
       newSet.add(suggestion.title);
@@ -509,24 +662,25 @@ function AddTaskModal({
     });
   };
 
-  const handleSubmitCustom = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
     setIsSubmitting(true);
     try {
-      // Add the task
-      onAdd({
+      // Add/update the task
+      onSubmit({
         title: title.trim(),
         category,
         dueDate: dueDate || undefined,
+        description: description.trim() || undefined,
       });
 
-      // Create calendar event if checkbox is checked and date is set
-      if (addToCalendar && dueDate) {
+      // Create calendar event if checkbox is checked and date is set (only for new tasks)
+      if (!isEditing && addToCalendar && dueDate) {
         const calendarData: CreateCalendarEventRequest = {
           title: title.trim(),
-          type: "meeting",
+          type: "deadline",
           date: dueDate,
           time: calendarTime || undefined,
           autoCompleteTask,
@@ -535,7 +689,7 @@ function AddTaskModal({
         toast.success("Событие добавлено в календарь");
       }
 
-      onClose(); // Close modal after adding custom task
+      onClose();
     } catch (error) {
       console.error("Failed to create calendar event:", error);
       // Task was still added, just calendar event failed
@@ -555,43 +709,50 @@ function AddTaskModal({
   ];
 
   return (
-    <Modal isOpen onClose={onClose} title="Добавить задачу" size="md">
-      {/* Tabs */}
-      <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6">
-        <button
-          onClick={() => setMode("suggestions")}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors",
-            mode === "suggestions"
-              ? "bg-white text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Sparkles className="w-4 h-4" />
-          Предложенные
-        </button>
-        <button
-          onClick={() => setMode("custom")}
-          className={cn(
-            "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors",
-            mode === "custom"
-              ? "bg-white text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Plus className="w-4 h-4" />
-          Своя задача
-        </button>
-      </div>
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={isEditing ? "Редактировать задачу" : (prefillSuggestion ? "Добавить задачу" : "Добавить задачу")}
+      size="md"
+    >
+      {/* Tabs - only show for new tasks with suggestions */}
+      {!isEditing && suggestions.length > 0 && (
+        <div className="flex gap-1 bg-secondary rounded-lg p-1 mb-6">
+          <button
+            onClick={() => { setMode("suggestions"); onSelectSuggestion?.(null); }}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors",
+              mode === "suggestions"
+                ? "bg-white text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Sparkles className="w-4 h-4" />
+            Предложенные
+          </button>
+          <button
+            onClick={() => setMode("form")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors",
+              mode === "form"
+                ? "bg-white text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Plus className="w-4 h-4" />
+            {prefillSuggestion ? "С деталями" : "Своя задача"}
+          </button>
+        </div>
+      )}
 
-      {mode === "suggestions" ? (
+      {mode === "suggestions" && !isEditing ? (
         <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {suggestions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Check className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>Все предложенные задачи добавлены!</p>
               <button
-                onClick={() => setMode("custom")}
+                onClick={() => setMode("form")}
                 className="text-primary hover:underline mt-2"
               >
                 Создать свою задачу
@@ -623,13 +784,23 @@ function AddTaskModal({
                       Добавлено
                     </span>
                   ) : (
-                    <button
-                      onClick={() => handleAddSuggestion(suggestion)}
-                      className="btn-outline btn-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Добавить
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleSelectSuggestion(suggestion)}
+                        className="btn-outline btn-sm text-xs"
+                        title="Добавить с деталями"
+                      >
+                        <Pencil className="w-3 h-3" />
+                        Детали
+                      </button>
+                      <button
+                        onClick={() => handleQuickAdd(suggestion)}
+                        className="btn-primary btn-sm text-xs"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Быстро
+                      </button>
+                    </div>
                   )}
                 </div>
               );
@@ -637,7 +808,7 @@ function AddTaskModal({
           )}
         </div>
       ) : (
-        <form onSubmit={handleSubmitCustom} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1.5">Задача *</label>
             <input
@@ -647,6 +818,16 @@ function AddTaskModal({
               className="input"
               placeholder="Что нужно сделать?"
               autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Описание</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="input min-h-[60px] resize-none"
+              placeholder="Дополнительные детали..."
+              rows={2}
             />
           </div>
           <div>
@@ -664,7 +845,7 @@ function AddTaskModal({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5">Срок (опционально)</label>
+            <label className="block text-sm font-medium mb-1.5">Срок</label>
             <input
               type="date"
               value={dueDate}
@@ -673,8 +854,8 @@ function AddTaskModal({
             />
           </div>
 
-          {/* Add to Calendar option */}
-          {dueDate && (
+          {/* Add to Calendar option - only for new tasks */}
+          {!isEditing && dueDate && (
             <div className="space-y-3 p-3 bg-secondary/50 rounded-lg">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -690,7 +871,7 @@ function AddTaskModal({
               {addToCalendar && (
                 <>
                   <div>
-                    <label className="block text-sm text-muted-foreground mb-1">Время встречи</label>
+                    <label className="block text-sm text-muted-foreground mb-1">Время</label>
                     <TimeInput
                       value={calendarTime}
                       onChange={setCalendarTime}
@@ -712,20 +893,24 @@ function AddTaskModal({
             </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="submit" disabled={isSubmitting} className="btn-primary btn-md">
-              <Plus className="w-4 h-4" />
-              {isSubmitting ? "Добавление..." : "Добавить"}
+          <div className="flex justify-end gap-2 pt-4 border-t border-border">
+            <button type="button" onClick={onClose} className="btn-outline btn-md">
+              Отмена
+            </button>
+            <button type="submit" disabled={isSubmitting || !title.trim()} className="btn-primary btn-md">
+              {isSubmitting ? "..." : isEditing ? "Сохранить" : "Добавить"}
             </button>
           </div>
         </form>
       )}
 
-      <div className="flex justify-end mt-6 pt-4 border-t border-border">
-        <button onClick={onClose} className="btn-outline btn-md">
-          Закрыть
-        </button>
-      </div>
+      {mode === "suggestions" && (
+        <div className="flex justify-end mt-6 pt-4 border-t border-border">
+          <button onClick={onClose} className="btn-outline btn-md">
+            Закрыть
+          </button>
+        </div>
+      )}
     </Modal>
   );
 }

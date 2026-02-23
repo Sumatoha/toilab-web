@@ -13,14 +13,17 @@ import {
   UserPlus,
 } from "lucide-react";
 import { gifts, guests } from "@/lib/api";
-import { Gift, GiftStats, Guest, GiftType } from "@/lib/types";
-import { cn, formatCurrency } from "@/lib/utils";
+import { Gift, GiftStats, Guest, GiftType, Country } from "@/lib/types";
+import { cn, formatCurrency, isCentralAsian, currencyConfigs } from "@/lib/utils";
 import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog, Avatar } from "@/components/ui";
+import { useAuthStore } from "@/lib/store";
 import toast from "react-hot-toast";
 
 export default function GiftsPage() {
   const params = useParams();
   const eventId = params.id as string;
+  const { user } = useAuthStore();
+  const userCountry: Country = user?.country || "kz";
 
   const [giftList, setGiftList] = useState<Gift[]>([]);
   const [guestList, setGuestList] = useState<Guest[]>([]);
@@ -54,6 +57,20 @@ export default function GiftsPage() {
     }
   }
 
+  // Helper to recalculate stats from gifts list
+  const recalculateStats = (giftsList: Gift[]): GiftStats => {
+    const moneyGifts = giftsList.filter(g => g.type === "money");
+    const itemGifts = giftsList.filter(g => g.type === "item").length;
+    const totalAmount = moneyGifts.reduce((sum, g) => sum + (g.amount || 0), 0);
+
+    return {
+      totalGifts: giftsList.length,
+      moneyGifts: moneyGifts.length,
+      itemGifts,
+      totalAmount,
+    };
+  };
+
   const filteredGifts = giftList.filter((gift) => {
     if (filter !== "all" && gift.type !== filter) return false;
     if (search && !gift.guestName.toLowerCase().includes(search.toLowerCase())) return false;
@@ -70,6 +87,7 @@ export default function GiftsPage() {
     createGuest?: boolean;
   }) => {
     try {
+      let newList: Gift[];
       if (data.createGuest) {
         const result = await gifts.createWithGuest(eventId, {
           guestName: data.guestName,
@@ -79,7 +97,8 @@ export default function GiftsPage() {
           description: data.description,
           note: data.note,
         });
-        setGiftList((prev) => [result.gift, ...prev]);
+        newList = [result.gift, ...giftList];
+        setGiftList(newList);
         if (result.guest) {
           setGuestList((prev) => [...prev, result.guest!]);
         }
@@ -92,11 +111,12 @@ export default function GiftsPage() {
           description: data.description,
           note: data.note,
         });
-        setGiftList((prev) => [newGift, ...prev]);
+        newList = [newGift, ...giftList];
+        setGiftList(newList);
       }
+      setStats(recalculateStats(newList));
       setShowAddModal(false);
       toast.success("Подарок добавлен");
-      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось добавить подарок");
@@ -108,9 +128,11 @@ export default function GiftsPage() {
     setIsDeleting(true);
     try {
       await gifts.delete(eventId, deleteGiftId);
-      setGiftList((prev) => prev.filter((g) => g.id !== deleteGiftId));
+      const newList = giftList.filter((g) => g.id !== deleteGiftId);
+      setGiftList(newList);
+      setStats(recalculateStats(newList));
       setDeleteGiftId(null);
-      loadData();
+      toast.success("Подарок удалён");
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось удалить подарок");
@@ -145,7 +167,7 @@ export default function GiftsPage() {
         <div>
           <h1 className="text-h1">Подарки</h1>
           <p className="text-caption mt-1">
-            Учёт подарков и көрімдік
+            {isCentralAsian(userCountry) ? "Учёт подарков и көрімдік" : "Учёт подарков"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -186,7 +208,7 @@ export default function GiftsPage() {
           <div className="card p-3 sm:p-4">
             <div className="text-xs sm:text-sm text-muted-foreground mb-1">Сумма</div>
             <div className="text-lg sm:text-2xl font-bold text-emerald-600 truncate">
-              {formatCurrency(stats.totalAmount)}
+              {formatCurrency(stats.totalAmount, userCountry)}
             </div>
           </div>
         </div>
@@ -254,6 +276,7 @@ export default function GiftsPage() {
               <GiftRow
                 key={gift.id}
                 gift={gift}
+                country={userCountry}
                 onDelete={() => setDeleteGiftId(gift.id)}
                 className={`animate-in stagger-${Math.min(index + 1, 4)}`}
               />
@@ -268,6 +291,7 @@ export default function GiftsPage() {
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddGift}
           guests={guestList}
+          country={userCountry}
         />
       )}
 
@@ -321,7 +345,7 @@ function StatCard({
   );
 }
 
-function GiftRow({ gift, onDelete, className }: { gift: Gift; onDelete: () => void; className?: string }) {
+function GiftRow({ gift, country, onDelete, className }: { gift: Gift; country: Country; onDelete: () => void; className?: string }) {
   const formattedDate = new Date(gift.receivedAt).toLocaleDateString("ru-KZ", {
     day: "numeric",
     month: "short",
@@ -337,7 +361,7 @@ function GiftRow({ gift, onDelete, className }: { gift: Gift; onDelete: () => vo
           <span className="hidden sm:inline">{formattedDate}</span>
         </div>
       </div>
-      <GiftTypeBadge type={gift.type} amount={gift.amount} />
+      <GiftTypeBadge type={gift.type} amount={gift.amount} country={country} />
       <button
         onClick={onDelete}
         className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
@@ -349,12 +373,12 @@ function GiftRow({ gift, onDelete, className }: { gift: Gift; onDelete: () => vo
   );
 }
 
-function GiftTypeBadge({ type, amount }: { type: string; amount: number }) {
+function GiftTypeBadge({ type, amount, country }: { type: string; amount: number; country: Country }) {
   if (type === "money") {
     return (
       <span className="inline-flex items-center gap-1.5 badge-success">
         <Banknote className="w-3 h-3" />
-        {formatCurrency(amount)}
+        {formatCurrency(amount, country)}
       </span>
     );
   }
@@ -371,6 +395,7 @@ function AddGiftModal({
   onClose,
   onAdd,
   guests,
+  country,
 }: {
   onClose: () => void;
   onAdd: (data: {
@@ -383,7 +408,9 @@ function AddGiftModal({
     createGuest?: boolean;
   }) => void;
   guests: Guest[];
+  country: Country;
 }) {
+  const currencySymbol = currencyConfigs[country]?.symbol || "₸";
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [selectedGuestId, setSelectedGuestId] = useState("");
   const [guestName, setGuestName] = useState("");
@@ -549,7 +576,7 @@ function AddGiftModal({
         {/* Amount (for money) */}
         {type === "money" && (
           <div>
-            <label className="block text-sm font-medium mb-1.5">Сумма (₸)</label>
+            <label className="block text-sm font-medium mb-1.5">Сумма ({currencySymbol})</label>
             <input
               type="number"
               value={amount}

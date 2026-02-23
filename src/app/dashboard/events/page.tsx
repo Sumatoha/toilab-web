@@ -6,7 +6,6 @@ import { Plus, Calendar, Users, MapPin } from "lucide-react";
 import { events as eventsApi } from "@/lib/api";
 import { Event } from "@/lib/types";
 import { formatDate, eventTypeLabels } from "@/lib/utils";
-import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 export default function EventsPage() {
@@ -79,12 +78,7 @@ export default function EventsPage() {
                     {event.person1} & {event.person2}
                   </h3>
                 </div>
-                <div
-                  className={cn(
-                    "w-2 h-2 rounded-full",
-                    event.status === "active" ? "bg-green-500" : "bg-yellow-500"
-                  )}
-                />
+                <div className="w-2 h-2 rounded-full bg-green-500" />
               </div>
 
               <div className="space-y-2 text-sm text-muted-foreground">

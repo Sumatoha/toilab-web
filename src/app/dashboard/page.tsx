@@ -32,9 +32,6 @@ export default function DashboardPage() {
     return <PageLoader />;
   }
 
-  const activeEvents = eventList.filter(e => e.status === "active");
-  const draftEvents = eventList.filter(e => e.status === "draft");
-
   return (
     <div className="space-y-8">
       {/* Hero Section */}
@@ -47,7 +44,7 @@ export default function DashboardPage() {
             <p className="text-muted-foreground mt-1">
               {eventList.length === 0
                 ? "Создайте первую свадьбу, чтобы начать"
-                : `У вас ${activeEvents.length} активных свадеб`}
+                : `У вас ${eventList.length} ${eventList.length === 1 ? "мероприятие" : "мероприятий"}`}
             </p>
           </div>
           <Link
@@ -64,45 +61,20 @@ export default function DashboardPage() {
       {eventList.length === 0 ? (
         <EventsEmptyState />
       ) : (
-        <div className="space-y-8">
-          {/* Active Events */}
-          {activeEvents.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="status-dot-active" />
-                <h2 className="text-h3">Активные свадьбы</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {activeEvents.map((event, index) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    className={`animate-in stagger-${Math.min(index + 1, 4)}`}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Draft Events */}
-          {draftEvents.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="status-dot-warning" />
-                <h2 className="text-h3">Черновики</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {draftEvents.map((event, index) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    className={`animate-in stagger-${Math.min(index + 1, 4)}`}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-h3">Ваши мероприятия</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {eventList.map((event, index) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                className={`animate-in stagger-${Math.min(index + 1, 4)}`}
+              />
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );
@@ -144,9 +116,7 @@ function EventCard({ event, className }: { event: Event; className?: string }) {
     <Link
       href={`/dashboard/events/${event.id}`}
       className={cn(
-        "card-interactive group relative overflow-hidden",
-        event.status === "active" && "border-l-4 border-l-emerald-500",
-        event.status === "draft" && "border-l-4 border-l-amber-500",
+        "card-interactive group relative overflow-hidden border-l-4 border-l-emerald-500",
         className
       )}
     >
@@ -202,10 +172,6 @@ function EventCard({ event, className }: { event: Event; className?: string }) {
         </div>
       </div>
 
-      {/* Status Badge */}
-      <div className="absolute bottom-4 right-4">
-        <StatusBadge status={event.status} />
-      </div>
     </Link>
   );
 }
@@ -221,27 +187,3 @@ function getDaysUntil(dateStr: string): number | null {
   }
 }
 
-function StatusBadge({ status }: { status: string }) {
-  if (status === "active") {
-    return (
-      <span className="inline-flex items-center gap-1.5 badge-success">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-        Активно
-      </span>
-    );
-  }
-  if (status === "draft") {
-    return (
-      <span className="inline-flex items-center gap-1.5 badge-warning">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-        Черновик
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1.5 badge-default">
-      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-      Завершено
-    </span>
-  );
-}

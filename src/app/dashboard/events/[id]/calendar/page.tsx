@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams } from "next/navigation";
 import {
   Plus,
@@ -14,6 +15,7 @@ import {
   LayoutGrid,
   List,
   MapPin,
+  Clock,
 } from "lucide-react";
 import { calendar as calendarApi } from "@/lib/api";
 import { CalendarEvent, CalendarEventType } from "@/lib/types";
@@ -36,6 +38,30 @@ const eventTypeColors: Record<CalendarEventType, { bg: string; text: string; bor
 };
 
 type ViewType = "week" | "month";
+
+// Helper to calculate event duration in hours
+function getEventDurationHours(event: CalendarEvent): number {
+  if (!event.time) return 1;
+  if (!event.endTime) return 1;
+
+  const [startH, startM] = event.time.split(":").map(Number);
+  const [endH, endM] = event.endTime.split(":").map(Number);
+
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  if (endMinutes <= startMinutes) return 1;
+
+  const durationHours = (endMinutes - startMinutes) / 60;
+  return Math.max(1, Math.ceil(durationHours));
+}
+
+// Helper to calculate the top offset within the hour slot
+function getEventTopOffset(time: string): number {
+  if (!time) return 0;
+  const minutes = parseInt(time.split(":")[1] || "0");
+  return (minutes / 60) * 100; // percentage
+}
 
 export default function CalendarPage() {
   const params = useParams();
@@ -180,7 +206,7 @@ export default function CalendarPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7:00 - 20:00
+  const hours = Array.from({ length: 18 }, (_, i) => i + 6); // 6:00 - 23:00
 
   if (isLoading) {
     return (
@@ -291,9 +317,9 @@ export default function CalendarPage() {
           </div>
 
           {/* Time Grid */}
-          <div className="max-h-[600px] overflow-y-auto">
+          <div className="max-h-[600px] overflow-y-auto" style={{ isolation: 'isolate' }}>
             {hours.map((hour, hourIdx) => (
-              <div key={hour} className="flex">
+              <div key={hour} className="flex relative" style={{ zIndex: hours.length - hourIdx }}>
                 {/* Time Label */}
                 <div className="w-16 flex-shrink-0 relative">
                   <span className={cn(
@@ -307,11 +333,13 @@ export default function CalendarPage() {
                 {/* Day Columns */}
                 <div className="flex-1 grid grid-cols-7">
                   {weekDays.map((day, dayIdx) => {
-                    const dayEvents = getEventsForDate(day).filter(e => {
+                    // Only get events that START in this hour slot
+                    const startingEvents = getEventsForDate(day).filter(e => {
                       if (!e.time) return hour === 9;
                       const eventHour = parseInt(e.time.split(":")[0]);
                       return eventHour === hour;
                     });
+
                     const isWeekend = dayIdx >= 5;
 
                     return (
@@ -319,32 +347,27 @@ export default function CalendarPage() {
                         key={dayIdx}
                         onClick={() => handleAddFromSlot(day, hour)}
                         className={cn(
-                          "h-14 border-t border-l border-border/40 cursor-pointer hover:bg-primary/5 transition-colors relative",
+                          "h-14 border-t border-l border-border/40 cursor-pointer hover:bg-primary/5 transition-colors relative overflow-visible",
                           isWeekend && "bg-muted/20",
                           dayIdx === 6 && "border-r"
                         )}
                       >
-                        {dayEvents.map((event) => (
-                            <div
+                        {/* Events starting in this slot - they span multiple hours via CSS */}
+                        {startingEvents.map((event) => {
+                          const durationHours = getEventDurationHours(event);
+                          const heightPx = durationHours * 56 - 4; // 56px per hour (h-14), minus padding
+                          const topOffset = getEventTopOffset(event.time || "");
+
+                          return (
+                            <CalendarEventBlock
                               key={event.id}
-                              onClick={(e) => { e.stopPropagation(); setEditingEvent(event); }}
-                              className={cn(
-                                "absolute inset-x-0.5 top-0.5 bottom-0.5 px-2 py-1 rounded-md text-xs cursor-pointer transition-all",
-                                "hover:shadow-md hover:scale-[1.02] hover:z-10",
-                                "border-l-[3px]",
-                                event.type === "meeting" && "bg-primary/15 border-l-primary text-primary",
-                                event.type === "deadline" && "bg-destructive/15 border-l-destructive text-destructive",
-                                event.type === "reminder" && "bg-warning/15 border-l-warning text-warning-foreground",
-                                event.type === "other" && "bg-muted border-l-muted-foreground text-muted-foreground",
-                                event.isCompleted && "opacity-50"
-                              )}
-                            >
-                              <div className="font-medium truncate">{event.title}</div>
-                              {event.time && (
-                                <div className="text-[10px] opacity-70">{event.time}</div>
-                              )}
-                            </div>
-                        ))}
+                              event={event}
+                              heightPx={heightPx}
+                              topOffsetPercent={topOffset}
+                              onClick={() => setEditingEvent(event)}
+                            />
+                          );
+                        })}
                       </div>
                     );
                   })}
@@ -435,6 +458,136 @@ export default function CalendarPage() {
         isLoading={isDeleting}
       />
     </div>
+  );
+}
+
+function CalendarEventBlock({
+  event,
+  heightPx,
+  topOffsetPercent,
+  onClick,
+}: {
+  event: CalendarEvent;
+  heightPx: number;
+  topOffsetPercent: number;
+  onClick: () => void;
+}) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0, showBelow: false });
+  const blockRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    // Check if there's enough space above (need ~180px for tooltip)
+    const showBelow = rect.top < 180;
+    setTooltipPosition({
+      x: rect.left + rect.width / 2,
+      y: showBelow ? rect.bottom : rect.top,
+      showBelow,
+    });
+    setShowTooltip(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowTooltip(false);
+  };
+
+  const Icon = eventTypeIcons[event.type];
+  const typeLabel = calendarEventTypeLabels[event.type];
+
+  return (
+    <>
+      <div
+        ref={blockRef}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={{
+          height: `${heightPx}px`,
+          top: `${topOffsetPercent}%`,
+        }}
+        className={cn(
+          "absolute inset-x-0.5 px-2 py-1 rounded-md text-xs cursor-pointer transition-all",
+          "z-20 hover:z-30 hover:shadow-lg",
+          "border-l-[3px]",
+          event.type === "meeting" && "bg-primary/90 border-l-primary text-white",
+          event.type === "deadline" && "bg-destructive/90 border-l-destructive text-white",
+          event.type === "reminder" && "bg-warning/90 border-l-warning text-white",
+          event.type === "other" && "bg-muted-foreground/80 border-l-muted-foreground text-white",
+          event.isCompleted && "opacity-50"
+        )}
+      >
+        <div className="font-medium truncate">{event.title}</div>
+        {event.time && (
+          <div className="text-[10px] opacity-70">
+            {event.time}
+            {event.endTime && ` - ${event.endTime}`}
+          </div>
+        )}
+      </div>
+
+      {/* Tooltip - rendered via Portal to body for proper z-index */}
+      {showTooltip && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed pointer-events-none z-50"
+          style={{
+            left: tooltipPosition.x,
+            top: tooltipPosition.showBelow ? tooltipPosition.y + 8 : tooltipPosition.y - 8,
+            transform: tooltipPosition.showBelow ? "translate(-50%, 0)" : "translate(-50%, -100%)",
+          }}
+        >
+          <div className="bg-popover border border-border rounded-lg shadow-xl p-3 min-w-[200px] max-w-[280px]">
+            <div className="flex items-start gap-2 mb-2">
+              <div className={cn(
+                "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                eventTypeColors[event.type].bg
+              )}>
+                <Icon className={cn("w-4 h-4", eventTypeColors[event.type].text)} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm truncate">{event.title}</p>
+                <p className="text-xs text-muted-foreground">{typeLabel.ru}</p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              {event.time && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>
+                    {event.time}
+                    {event.endTime && ` - ${event.endTime}`}
+                  </span>
+                </div>
+              )}
+              {event.location && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span className="truncate">{event.location}</span>
+                </div>
+              )}
+              {event.description && (
+                <p className="text-muted-foreground pt-1 border-t border-border mt-2 line-clamp-2">
+                  {event.description}
+                </p>
+              )}
+            </div>
+
+            {/* Arrow - adapts to position */}
+            {tooltipPosition.showBelow ? (
+              <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-full">
+                <div className="w-2 h-2 bg-popover border-l border-t border-border rotate-45 mt-[3px]" />
+              </div>
+            ) : (
+              <div className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-full">
+                <div className="w-2 h-2 bg-popover border-r border-b border-border rotate-45 -mt-1" />
+              </div>
+            )}
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 }
 
@@ -623,7 +776,11 @@ function CalendarEventModal({
   const [title, setTitle] = useState(event?.title || "");
   const [description, setDescription] = useState(event?.description || "");
   const [type, setType] = useState<CalendarEventType>(event?.type || "meeting");
-  const [date, setDate] = useState(getDateString(event?.date) || initialDate || new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(
+    event?.date
+      ? getDateString(event.date)
+      : (initialDate || new Date().toISOString().split("T")[0])
+  );
   const [time, setTime] = useState(event?.time || initialTime || "");
   const [endTime, setEndTime] = useState(event?.endTime || "");
   const [location, setLocation] = useState(event?.location || "");
