@@ -10,8 +10,6 @@ import {
   Users,
   Wallet,
   CheckSquare,
-  Copy,
-  ExternalLink,
   AlertCircle,
   CalendarDays,
   Bell,
@@ -30,7 +28,6 @@ import { events, checklist, calendar, activity } from "@/lib/api";
 import { Event, EventStats, ChecklistItem, CalendarEvent, ActivityLog } from "@/lib/types";
 import { formatDate, getDaysUntil, eventTypeLabels, cn } from "@/lib/utils";
 import { PageLoader } from "@/components/ui";
-import toast from "react-hot-toast";
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -80,12 +77,13 @@ export default function EventDetailPage() {
     loadData();
   }, [eventId]);
 
-  const copyLink = () => {
-    if (event) {
-      navigator.clipboard.writeText(`${window.location.origin}/i/${event.slug}`);
-      toast.success("Ссылка скопирована");
-    }
-  };
+// TODO: Uncomment when /i/[slug] public invitation page is implemented
+  // const copyLink = () => {
+  //   if (event) {
+  //     navigator.clipboard.writeText(`${window.location.origin}/i/${event.slug}`);
+  //     toast.success("Ссылка скопирована");
+  //   }
+  // };
 
   if (isLoading) {
     return <PageLoader />;
@@ -142,6 +140,7 @@ export default function EventDetailPage() {
           </p>
         </div>
 
+{/* TODO: Public invitation page /i/[slug] not implemented yet
         <div className="flex gap-2">
           <button
             onClick={copyLink}
@@ -159,6 +158,7 @@ export default function EventDetailPage() {
             <span className="hidden sm:inline">Открыть</span>
             </Link>
         </div>
+        */}
       </div>
 
       {/* Event Info Bar */}

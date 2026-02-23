@@ -276,12 +276,18 @@ export default function GuestsPage() {
       </div>
 
       {/* Stats Cards */}
-      {stats && (
+      {stats && (() => {
+        // Calculate total companions from all guests
+        const allPlusOnes = guestList.reduce((sum, g) => sum + (g.plusCount || 0), 0);
+        const totalPeople = stats.total + allPlusOnes;
+
+        return (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
           <StatCard
             icon={Users}
             label="Всего"
-            value={stats.total}
+            value={totalPeople}
+            description={allPlusOnes > 0 ? `${stats.total} гостей + ${allPlusOnes} сопр.` : undefined}
             color="slate"
           />
           <StatCard
@@ -314,7 +320,8 @@ export default function GuestsPage() {
             />
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -466,12 +473,14 @@ function StatCard({
   label,
   value,
   sublabel,
+  description,
   color,
 }: {
   icon: typeof Users;
   label: string;
   value: number;
   sublabel?: string;
+  description?: string;
   color: "slate" | "emerald" | "red" | "amber";
 }) {
   const colorStyles = {
@@ -497,6 +506,9 @@ function StatCard({
             )}
           </div>
           <div className="text-xs sm:text-sm text-muted-foreground truncate">{label}</div>
+          {description && (
+            <div className="text-[10px] sm:text-xs text-muted-foreground/70 truncate">{description}</div>
+          )}
         </div>
       </div>
     </div>
