@@ -414,6 +414,7 @@ export default function GuestsPage() {
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddGuest}
           tables={tables}
+          guestList={guestList}
         />
       )}
 
@@ -422,6 +423,7 @@ export default function GuestsPage() {
         <EditGuestModal
           guest={editingGuest}
           tables={tables}
+          guestList={guestList}
           onClose={() => setEditingGuest(null)}
           onSave={(data) => handleUpdateGuest(editingGuest.id, data)}
         />
@@ -669,10 +671,12 @@ function AddGuestModal({
   onClose,
   onAdd,
   tables,
+  guestList,
 }: {
   onClose: () => void;
   onAdd: (data: { name: string; phone?: string; email?: string; tableId?: string; rsvpStatus?: string; plusCount?: number }) => void;
   tables: SeatingTable[];
+  guestList: Guest[];
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -680,6 +684,14 @@ function AddGuestModal({
   const [tableId, setTableId] = useState("");
   const [rsvpStatus, setRsvpStatus] = useState("pending");
   const [plusCount, setPlusCount] = useState(0);
+
+  // Calculate occupied seats at a table (including plusCount)
+  const getOccupied = (table: SeatingTable): number => {
+    return table.guestIds.reduce((sum, gid) => {
+      const guest = guestList.find(g => g.id === gid);
+      return sum + 1 + (guest?.plusCount || 0);
+    }, 0);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -819,7 +831,7 @@ function AddGuestModal({
               <option value="">Не назначен</option>
               {tables.map((table) => (
                 <option key={table.id} value={table.id}>
-                  {formatTableName(table.number, table.name)} ({table.guestIds.length}/{table.capacity})
+                  {formatTableName(table.number, table.name)} ({getOccupied(table)}/{table.capacity})
                 </option>
               ))}
             </select>
@@ -841,11 +853,13 @@ function AddGuestModal({
 function EditGuestModal({
   guest,
   tables,
+  guestList,
   onClose,
   onSave,
 }: {
   guest: Guest;
   tables: SeatingTable[];
+  guestList: Guest[];
   onClose: () => void;
   onSave: (data: { name?: string; phone?: string; email?: string; tableId?: string | null; rsvpStatus?: string; plusCount?: number }) => void;
 }) {
@@ -854,6 +868,14 @@ function EditGuestModal({
   const [email, setEmail] = useState(guest.email || "");
   const [plusCount, setPlusCount] = useState(guest.plusCount || 0);
   const [tableId, setTableId] = useState(guest.tableId || "");
+
+  // Calculate occupied seats at a table (including plusCount)
+  const getOccupied = (table: SeatingTable): number => {
+    return table.guestIds.reduce((sum, gid) => {
+      const g = guestList.find(gl => gl.id === gid);
+      return sum + 1 + (g?.plusCount || 0);
+    }, 0);
+  };
   const [rsvpStatus, setRsvpStatus] = useState(guest.rsvpStatus || "pending");
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -994,7 +1016,7 @@ function EditGuestModal({
               <option value="">Не назначен</option>
               {tables.map((table) => (
                 <option key={table.id} value={table.id}>
-                  {formatTableName(table.number, table.name)} ({table.guestIds.length}/{table.capacity})
+                  {formatTableName(table.number, table.name)} ({getOccupied(table)}/{table.capacity})
                 </option>
               ))}
             </select>
