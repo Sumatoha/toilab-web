@@ -65,38 +65,71 @@ export default function GuestsPage() {
     }
   }
 
+  // Helper to recalculate stats from guests list
+  const recalculateStats = (guests: Guest[]): GuestStats => {
+    const accepted = guests.filter(g => g.rsvpStatus === "accepted");
+    const declined = guests.filter(g => g.rsvpStatus === "declined").length;
+    const pending = guests.filter(g => g.rsvpStatus === "pending").length;
+    const plusOnes = accepted.reduce((sum, g) => sum + (g.plusCount || 0), 0);
+
+    return {
+      total: guests.length,
+      accepted: accepted.length,
+      declined,
+      pending,
+      plusOnes,
+      attending: accepted.length + plusOnes,
+    };
+  };
+
   const filteredGuests = guestList.filter((guest) => {
     if (filter !== "all" && guest.rsvpStatus !== filter) return false;
     if (search && !guest.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const handleAddGuest = async (data: { name: string; phone?: string; email?: string; tableId?: string }) => {
+  const handleAddGuest = async (data: { name: string; phone?: string; email?: string; tableId?: string; rsvpStatus?: string; plusCount?: number }) => {
     try {
-      const newGuest = await guests.create(eventId, { name: data.name, phone: data.phone, email: data.email });
+      const newGuest = await guests.create(eventId, {
+        name: data.name,
+        phone: data.phone,
+        email: data.email,
+        rsvpStatus: data.rsvpStatus,
+        plusCount: data.plusCount,
+      });
 
       // If tableId provided, assign guest to table
       if (data.tableId) {
         await seating.assignGuest(eventId, data.tableId, newGuest.id);
+        newGuest.tableId = data.tableId;
+        // Update table's guestIds locally
+        setTables(prev => prev.map(t =>
+          t.id === data.tableId
+            ? { ...t, guestIds: [...t.guestIds, newGuest.id] }
+            : t
+        ));
       }
 
-      setGuestList((prev) => [...prev, newGuest]);
+      const newList = [...guestList, newGuest];
+      setGuestList(newList);
+      setStats(recalculateStats(newList));
       setShowAddModal(false);
       toast.success("Гость добавлен");
-      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось добавить гостя");
     }
   };
 
-  const handleUpdateGuest = async (guestId: string, data: { name?: string; phone?: string; email?: string; tableId?: string | null }) => {
+  const handleUpdateGuest = async (guestId: string, data: { name?: string; phone?: string; email?: string; tableId?: string | null; rsvpStatus?: string; plusCount?: number }) => {
     try {
       // Update guest info
       await guests.update(eventId, guestId, {
         name: data.name,
         phone: data.phone,
         email: data.email,
+        rsvpStatus: data.rsvpStatus,
+        plusCount: data.plusCount,
       });
 
       // Handle table assignment
@@ -112,24 +145,52 @@ export default function GuestsPage() {
         if (data.tableId) {
           await seating.assignGuest(eventId, data.tableId, guestId);
         }
+
+        // Update tables state locally
+        setTables(prev => prev.map(t => {
+          if (t.id === currentTableId) {
+            return { ...t, guestIds: t.guestIds.filter(id => id !== guestId) };
+          }
+          if (t.id === data.tableId) {
+            return { ...t, guestIds: [...t.guestIds, guestId] };
+          }
+          return t;
+        }));
       }
 
+      // Update guest list locally
+      const newList = guestList.map(g =>
+        g.id === guestId
+          ? {
+              ...g,
+              name: data.name ?? g.name,
+              phone: data.phone ?? g.phone,
+              email: data.email ?? g.email,
+              rsvpStatus: (data.rsvpStatus ?? g.rsvpStatus) as "pending" | "accepted" | "declined",
+              tableId: data.tableId !== undefined ? (data.tableId || undefined) : g.tableId,
+              plusCount: data.plusCount ?? g.plusCount,
+            }
+          : g
+      );
+      setGuestList(newList);
+      setStats(recalculateStats(newList));
       setEditingGuest(null);
       toast.success("Гость обновлён");
-      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось обновить гостя");
     }
   };
 
-  const handleImportGuests = async (names: string[]) => {
+  const handleImportGuests = async (guestsData: { name: string; plusCount: number }[]) => {
     try {
-      const result = await guests.import(eventId, { names });
-      setGuestList((prev) => [...prev, ...result.guests]);
+      const result = await guests.importWithPlusCount(eventId, { guests: guestsData });
+      const newList = [...guestList, ...result.guests];
+      setGuestList(newList);
+      setStats(recalculateStats(newList));
       setShowImportModal(false);
-      toast.success(`Добавлено ${result.created} гостей`);
-      loadData();
+      const totalPeople = guestsData.reduce((sum, g) => sum + 1 + g.plusCount, 0);
+      toast.success(`Добавлено ${result.created} гостей (${totalPeople} человек)`);
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось импортировать гостей");
@@ -145,6 +206,12 @@ export default function GuestsPage() {
       // Remove guest from their table if assigned
       if (guest?.tableId) {
         await seating.removeGuest(eventId, guest.tableId, deleteGuestId).catch(() => {});
+        // Update tables state locally
+        setTables(prev => prev.map(t =>
+          t.id === guest.tableId
+            ? { ...t, guestIds: t.guestIds.filter(id => id !== deleteGuestId) }
+            : t
+        ));
       }
 
       // Update associated gifts to clear guestId (backend should handle, but ensure frontend state is correct)
@@ -154,13 +221,18 @@ export default function GuestsPage() {
       }
 
       await guests.delete(eventId, deleteGuestId);
-      setGuestList((prev) => prev.filter((g) => g.id !== deleteGuestId));
+      const newList = guestList.filter((g) => g.id !== deleteGuestId);
+      setGuestList(newList);
+      setStats(recalculateStats(newList));
+      // Also update gifts state to unlink
+      setAllGifts(prev => prev.map(g =>
+        g.guestId === deleteGuestId ? { ...g, guestId: undefined } : g
+      ));
       setDeleteGuestId(null);
       toast.success(linkedGifts.length > 0
         ? "Гость удалён, подарки сохранены"
         : "Гость удалён"
       );
-      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось удалить гостя");
@@ -599,13 +671,15 @@ function AddGuestModal({
   tables,
 }: {
   onClose: () => void;
-  onAdd: (data: { name: string; phone?: string; email?: string; tableId?: string }) => void;
+  onAdd: (data: { name: string; phone?: string; email?: string; tableId?: string; rsvpStatus?: string; plusCount?: number }) => void;
   tables: SeatingTable[];
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [tableId, setTableId] = useState("");
+  const [rsvpStatus, setRsvpStatus] = useState("pending");
+  const [plusCount, setPlusCount] = useState(0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -615,6 +689,8 @@ function AddGuestModal({
       phone: phone.trim() || undefined,
       email: email.trim() || undefined,
       tableId: tableId || undefined,
+      rsvpStatus,
+      plusCount: plusCount > 0 ? plusCount : undefined,
     });
   };
 
@@ -631,6 +707,81 @@ function AddGuestModal({
             placeholder="Имя гостя"
             autoFocus
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Статус</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setRsvpStatus("accepted")}
+              className={cn(
+                "flex-1 py-2.5 px-3 rounded-lg border text-sm font-medium transition-colors",
+                rsvpStatus === "accepted"
+                  ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                  : "border-border hover:bg-secondary"
+              )}
+            >
+              <Check className="w-4 h-4 inline mr-1.5" />
+              Придёт
+            </button>
+            <button
+              type="button"
+              onClick={() => setRsvpStatus("pending")}
+              className={cn(
+                "flex-1 py-2.5 px-3 rounded-lg border text-sm font-medium transition-colors",
+                rsvpStatus === "pending"
+                  ? "bg-amber-50 border-amber-300 text-amber-700"
+                  : "border-border hover:bg-secondary"
+              )}
+            >
+              <Clock className="w-4 h-4 inline mr-1.5" />
+              Жду ответ
+            </button>
+            <button
+              type="button"
+              onClick={() => setRsvpStatus("declined")}
+              className={cn(
+                "flex-1 py-2.5 px-3 rounded-lg border text-sm font-medium transition-colors",
+                rsvpStatus === "declined"
+                  ? "bg-red-50 border-red-300 text-red-700"
+                  : "border-border hover:bg-secondary"
+              )}
+            >
+              <X className="w-4 h-4 inline mr-1.5" />
+              Не придёт
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            <span className="inline-flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4" />
+              Дополнительные гости (+N)
+            </span>
+          </label>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPlusCount(Math.max(0, plusCount - 1))}
+              className="w-10 h-10 rounded-lg border border-border hover:bg-secondary flex items-center justify-center text-lg font-medium disabled:opacity-50"
+              disabled={plusCount === 0}
+            >
+              −
+            </button>
+            <div className="flex-1 text-center">
+              <span className="text-2xl font-bold">{plusCount}</span>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {plusCount === 0 ? "Придёт один" : `+${plusCount} (всего ${plusCount + 1})`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPlusCount(plusCount + 1)}
+              className="w-10 h-10 rounded-lg border border-border hover:bg-secondary flex items-center justify-center text-lg font-medium"
+            >
+              +
+            </button>
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Телефон</label>
@@ -696,12 +847,14 @@ function EditGuestModal({
   guest: Guest;
   tables: SeatingTable[];
   onClose: () => void;
-  onSave: (data: { name?: string; phone?: string; email?: string; tableId?: string | null }) => void;
+  onSave: (data: { name?: string; phone?: string; email?: string; tableId?: string | null; rsvpStatus?: string; plusCount?: number }) => void;
 }) {
   const [name, setName] = useState(guest.name);
   const [phone, setPhone] = useState(guest.phone || "");
   const [email, setEmail] = useState(guest.email || "");
+  const [plusCount, setPlusCount] = useState(guest.plusCount || 0);
   const [tableId, setTableId] = useState(guest.tableId || "");
+  const [rsvpStatus, setRsvpStatus] = useState(guest.rsvpStatus || "pending");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -711,6 +864,8 @@ function EditGuestModal({
       phone: phone.trim() || undefined,
       email: email.trim() || undefined,
       tableId: tableId || null,
+      rsvpStatus,
+      plusCount,
     });
   };
 
@@ -727,6 +882,81 @@ function EditGuestModal({
             placeholder="Имя гостя"
             autoFocus
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Статус</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setRsvpStatus("accepted")}
+              className={cn(
+                "flex-1 py-2.5 px-3 rounded-lg border text-sm font-medium transition-colors",
+                rsvpStatus === "accepted"
+                  ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                  : "border-border hover:bg-secondary"
+              )}
+            >
+              <Check className="w-4 h-4 inline mr-1.5" />
+              Придёт
+            </button>
+            <button
+              type="button"
+              onClick={() => setRsvpStatus("pending")}
+              className={cn(
+                "flex-1 py-2.5 px-3 rounded-lg border text-sm font-medium transition-colors",
+                rsvpStatus === "pending"
+                  ? "bg-amber-50 border-amber-300 text-amber-700"
+                  : "border-border hover:bg-secondary"
+              )}
+            >
+              <Clock className="w-4 h-4 inline mr-1.5" />
+              Жду ответ
+            </button>
+            <button
+              type="button"
+              onClick={() => setRsvpStatus("declined")}
+              className={cn(
+                "flex-1 py-2.5 px-3 rounded-lg border text-sm font-medium transition-colors",
+                rsvpStatus === "declined"
+                  ? "bg-red-50 border-red-300 text-red-700"
+                  : "border-border hover:bg-secondary"
+              )}
+            >
+              <X className="w-4 h-4 inline mr-1.5" />
+              Не придёт
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">
+            <span className="inline-flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4" />
+              Дополнительные гости (+N)
+            </span>
+          </label>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setPlusCount(Math.max(0, plusCount - 1))}
+              className="w-10 h-10 rounded-lg border border-border hover:bg-secondary flex items-center justify-center text-lg font-medium disabled:opacity-50"
+              disabled={plusCount === 0}
+            >
+              −
+            </button>
+            <div className="flex-1 text-center">
+              <span className="text-2xl font-bold">{plusCount}</span>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {plusCount === 0 ? "Придёт один" : `+${plusCount} (всего ${plusCount + 1})`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPlusCount(plusCount + 1)}
+              className="w-10 h-10 rounded-lg border border-border hover:bg-secondary flex items-center justify-center text-lg font-medium"
+            >
+              +
+            </button>
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">Телефон</label>
@@ -783,53 +1013,102 @@ function EditGuestModal({
   );
 }
 
+// Parse guest name with optional +N suffix
+// Examples: "Арман +1" -> { name: "Арман", plusCount: 1 }
+//           "Дана+2" -> { name: "Дана", plusCount: 2 }
+//           "Алмас" -> { name: "Алмас", plusCount: 0 }
+function parseGuestName(input: string): { name: string; plusCount: number } {
+  const trimmed = input.trim();
+  // Match +N at the end (with or without space before +)
+  const match = trimmed.match(/^(.+?)\s*\+(\d+)$/);
+  if (match) {
+    return {
+      name: match[1].trim(),
+      plusCount: parseInt(match[2], 10),
+    };
+  }
+  return { name: trimmed, plusCount: 0 };
+}
+
 function ImportModal({
   onClose,
   onImport,
 }: {
   onClose: () => void;
-  onImport: (names: string[]) => void;
+  onImport: (guests: { name: string; plusCount: number }[]) => void;
 }) {
   const [text, setText] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const names = text
-      .split("\n")
+  // Parse input: split by newlines and commas, then parse each name
+  const parseInput = (input: string) => {
+    return input
+      .split(/[\n,]/) // Split by newline or comma
       .map((n) => n.trim())
-      .filter((n) => n.length > 0);
-    if (names.length === 0) return;
-    onImport(names);
+      .filter((n) => n.length > 0)
+      .map(parseGuestName);
   };
 
-  const previewCount = text
-    .split("\n")
-    .map((n) => n.trim())
-    .filter((n) => n.length > 0).length;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const guests = parseInput(text);
+    if (guests.length === 0) return;
+    onImport(guests);
+  };
+
+  const parsed = parseInput(text);
+  const withPlusOnes = parsed.filter(g => g.plusCount > 0);
+  const totalPeople = parsed.reduce((sum, g) => sum + 1 + g.plusCount, 0);
 
   return (
-    <Modal isOpen onClose={onClose} title="Импорт гостей" description="Добавьте имена гостей, по одному на строку">
+    <Modal isOpen onClose={onClose} title="Импорт гостей">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
+          <p className="text-sm text-muted-foreground mb-2">
+            Добавьте имена гостей через новую строку или запятую.
+            <br />
+            <span className="text-primary font-medium">Подсказка:</span> добавьте +N для гостей с сопровождением (например: &quot;Арман +1&quot;)
+          </p>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             className="input min-h-[200px]"
-            placeholder="Айдар Сериков&#10;Дана Касымова&#10;Алмас Нурланов"
+            placeholder="Айдар Сериков +1&#10;Дана Касымова&#10;Алмас Нурланов +2, Болат Жумабеков"
             autoFocus
           />
-          {previewCount > 0 && (
-            <p className="text-sm text-muted-foreground mt-2">
-              Будет добавлено: <span className="font-medium text-foreground">{previewCount}</span> гостей
-            </p>
+          {parsed.length > 0 && (
+            <div className="mt-3 p-3 bg-secondary/50 rounded-lg space-y-1">
+              <p className="text-sm">
+                <span className="text-muted-foreground">Гостей:</span>{" "}
+                <span className="font-medium">{parsed.length}</span>
+              </p>
+              {withPlusOnes.length > 0 && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">С сопровождением:</span>{" "}
+                  <span className="font-medium text-emerald-600">{withPlusOnes.length}</span>
+                  <span className="text-muted-foreground"> (</span>
+                  {withPlusOnes.slice(0, 3).map((g, i) => (
+                    <span key={i}>
+                      {i > 0 && ", "}
+                      {g.name} <span className="text-emerald-600">+{g.plusCount}</span>
+                    </span>
+                  ))}
+                  {withPlusOnes.length > 3 && <span className="text-muted-foreground"> и ещё {withPlusOnes.length - 3}</span>}
+                  <span className="text-muted-foreground">)</span>
+                </p>
+              )}
+              <p className="text-sm">
+                <span className="text-muted-foreground">Всего придёт:</span>{" "}
+                <span className="font-bold">{totalPeople}</span> человек
+              </p>
+            </div>
           )}
         </div>
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
             Отмена
           </button>
-          <button type="submit" className="btn-primary btn-md">
-            Импортировать
+          <button type="submit" className="btn-primary btn-md" disabled={parsed.length === 0}>
+            Импортировать {parsed.length > 0 && `(${parsed.length})`}
           </button>
         </ModalFooter>
       </form>

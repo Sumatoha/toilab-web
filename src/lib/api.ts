@@ -22,6 +22,7 @@ import type {
   CreateGuestRequest,
   UpdateGuestRequest,
   ImportGuestsRequest,
+  ImportGuestsWithPlusCountRequest,
   CreateExpenseRequest,
   UpdateExpenseRequest,
   CreateVendorRequest,
@@ -50,6 +51,8 @@ import type {
   CreateTableRequest,
   UpdateTableRequest,
   ActivityLog,
+  Country,
+  CountryConfig,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -177,12 +180,12 @@ export const auth = {
       }
     ),
 
-  register: (email: string, password: string, name: string) =>
+  register: (email: string, password: string, confirmPassword: string, name: string, country: Country = "kz") =>
     fetchApi<{ user: User; accessToken: string; refreshToken: string }>(
       "/auth/register",
       {
         method: "POST",
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify({ email, password, confirmPassword, name, country }),
       }
     ),
 
@@ -232,11 +235,6 @@ export const events = {
 
   getStats: (id: string) => fetchApi<EventStats>(`/events/${id}/stats`),
 
-  activate: (id: string) =>
-    fetchApi<Event>(`/events/${id}/activate`, {
-      method: "PUT",
-    }),
-
   updateInvitation: (id: string, data: { externalUrl: string }) =>
     fetchApi<Event>(`/events/${id}/invitation`, {
       method: "PATCH",
@@ -258,6 +256,15 @@ export const guests = {
     }),
 
   import: (eventId: string, data: ImportGuestsRequest) =>
+    fetchApi<{ created: number; guests: Guest[] }>(
+      `/events/${eventId}/guests/import`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      }
+    ),
+
+  importWithPlusCount: (eventId: string, data: ImportGuestsWithPlusCountRequest) =>
     fetchApi<{ created: number; guests: Guest[] }>(
       `/events/${eventId}/guests/import`,
       {
@@ -382,6 +389,11 @@ export const checklist = {
     fetchApi<ChecklistProgress>(`/events/${eventId}/checklist/progress`),
 
   getCategories: () => fetchApi<ChecklistCategory[]>("/checklist-categories"),
+
+  applyTemplate: (eventId: string) =>
+    fetchApi<{ message: string; count: number }>(`/events/${eventId}/checklist/apply-template`, {
+      method: "POST",
+    }),
 };
 
 // Calendar
@@ -612,6 +624,11 @@ export const seating = {
 export const activity = {
   list: (eventId: string, limit?: number) =>
     fetchApi<ActivityLog[]>(`/events/${eventId}/activity${limit ? `?limit=${limit}` : ""}`),
+};
+
+// Config
+export const config = {
+  getCountries: () => fetchApi<CountryConfig[]>("/config/countries"),
 };
 
 export { ApiError };

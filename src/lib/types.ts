@@ -6,6 +6,20 @@ export type ExpenseStatus = "planned" | "booked" | "paid";
 export type VendorStatus = "contacted" | "booked" | "deposit_paid" | "paid" | "cancelled";
 export type VendorType = "photographer" | "videographer" | "mc" | "dj" | "stylist" | "florist" | "restaurant" | "band" | "decor" | "transport" | "other";
 export type Plan = "free" | "single" | "pro" | "trial";
+export type Country = "kz" | "ru" | "kg" | "uz" | "other";
+
+// Country configuration
+export interface CurrencyConfig {
+  code: string;
+  symbol: string;
+  name: string;
+}
+
+export interface CountryConfig {
+  code: Country;
+  name: string;
+  currency: CurrencyConfig;
+}
 
 // User
 export interface User {
@@ -17,6 +31,7 @@ export interface User {
   planExpiresAt?: string;
   monthlyEventsCreated?: number;
   monthlyResetAt?: string;
+  country: Country;
   createdAt: string;
 }
 
@@ -123,6 +138,7 @@ export type ExpenseCategory =
   | "photo"
   | "video"
   | "music"
+  | "mc"
   | "attire"
   | "transport"
   | "invitation"
@@ -287,6 +303,8 @@ export interface CreateGuestRequest {
   phone?: string;
   email?: string;
   group?: string;
+  rsvpStatus?: string;
+  plusCount?: number;
 }
 
 export interface UpdateGuestRequest {
@@ -295,10 +313,21 @@ export interface UpdateGuestRequest {
   email?: string;
   group?: string;
   tableNumber?: string;
+  rsvpStatus?: string;
+  plusCount?: number;
 }
 
 export interface ImportGuestsRequest {
   names: string[];
+}
+
+export interface ImportGuestItem {
+  name: string;
+  plusCount: number;
+}
+
+export interface ImportGuestsWithPlusCountRequest {
+  guests: ImportGuestItem[];
 }
 
 export interface RSVPRequest {

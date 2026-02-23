@@ -79,6 +79,24 @@ export default function SeatingPage() {
   const stagedTables = tables.filter((t) => t.positionX < 0);
   const placedTables = tables.filter((t) => t.positionX >= 0);
 
+  // Calculate occupied seats at a table (including plusCount)
+  const calculateOccupied = (guests: Guest[]): number => {
+    return guests.reduce((sum, g) => sum + 1 + g.plusCount, 0);
+  };
+
+  // Helper to recalculate stats locally
+  const recalculateStats = (tablesData: TableWithGuests[], unseated: Guest[]): SeatingStats => {
+    const actualTables = tablesData.filter(t => t.shape !== "scene");
+    const seatedGuests = actualTables.reduce((sum, t) => sum + calculateOccupied(t.guests), 0);
+    const unseatedTotal = unseated.reduce((sum, g) => sum + 1 + g.plusCount, 0);
+    return {
+      totalTables: actualTables.length,
+      totalCapacity: actualTables.reduce((sum, t) => sum + t.capacity, 0),
+      seatedGuests,
+      unseatedGuests: unseatedTotal,
+    };
+  };
+
   // Resize observer to make canvas responsive
   useEffect(() => {
     const container = containerRef.current;
@@ -200,11 +218,11 @@ export default function SeatingPage() {
       setTables(tablesData || []);
       setStats(statsData);
 
-      // Calculate unseated guests
+      // Calculate unseated guests (show accepted + pending, exclude declined)
       const seatedGuestIds = new Set<string>();
       (tablesData || []).forEach((t) => t.guestIds.forEach((id) => seatedGuestIds.add(id)));
       const unseated = (guestsData || []).filter(
-        (g) => g.rsvpStatus === "accepted" && !seatedGuestIds.has(g.id)
+        (g) => g.rsvpStatus !== "declined" && !seatedGuestIds.has(g.id)
       );
       setUnseatedGuests(unseated);
     } catch (error) {
@@ -218,13 +236,12 @@ export default function SeatingPage() {
   const handleCreateTable = async (data: CreateTableRequest) => {
     try {
       const table = await seating.createTable(eventId, data);
-      setTables((prev) => [
-        ...prev,
-        { ...table, guests: [] },
-      ]);
+      const newTable: TableWithGuests = { ...table, guests: [] };
+      const newTables = [...tables, newTable];
+      setTables(newTables);
+      setStats(recalculateStats(newTables, unseatedGuests));
       setShowCreateModal(false);
       toast.success(data.shape === "scene" ? "Сцена создана" : "Стол создан");
-      loadData();
     } catch {
       toast.error("Не удалось создать");
     }
@@ -234,10 +251,16 @@ export default function SeatingPage() {
     const table = tables.find((t) => t.id === tableId);
     try {
       await seating.deleteTable(eventId, tableId);
-      setTables((prev) => prev.filter((t) => t.id !== tableId));
+      const newTables = tables.filter((t) => t.id !== tableId);
+      // Return guests from deleted table back to unseated
+      const freedGuests = table?.guests || [];
+      const newUnseated = [...unseatedGuests, ...freedGuests];
+      setTables(newTables);
+      setUnseatedGuests(newUnseated);
+      setStats(recalculateStats(newTables, newUnseated));
       setSelectedTable(null);
+      setMobileSelectedTable(null);
       toast.success(table?.shape === "scene" ? "Сцена удалена" : "Стол удалён");
-      loadData();
     } catch {
       toast.error("Не удалось удалить");
     }
@@ -246,8 +269,24 @@ export default function SeatingPage() {
   const handleAssignGuest = async (tableId: string, guestId: string) => {
     try {
       await seating.assignGuest(eventId, tableId, guestId);
+      // Move guest from unseated to table
+      const guest = unseatedGuests.find(g => g.id === guestId);
+      if (guest) {
+        const newUnseated = unseatedGuests.filter(g => g.id !== guestId);
+        const newTables = tables.map(t =>
+          t.id === tableId
+            ? { ...t, guests: [...t.guests, guest], guestIds: [...t.guestIds, guestId] }
+            : t
+        );
+        setUnseatedGuests(newUnseated);
+        setTables(newTables);
+        setStats(recalculateStats(newTables, newUnseated));
+        // Update mobile selected table if needed
+        if (mobileSelectedTable?.id === tableId) {
+          setMobileSelectedTable(newTables.find(t => t.id === tableId) || null);
+        }
+      }
       toast.success("Гость добавлен");
-      loadData();
     } catch (error) {
       const err = error as Error;
       toast.error(err.message || "Не удалось добавить гостя");
@@ -257,8 +296,25 @@ export default function SeatingPage() {
   const handleRemoveGuest = async (tableId: string, guestId: string) => {
     try {
       await seating.removeGuest(eventId, tableId, guestId);
+      // Move guest from table back to unseated
+      const table = tables.find(t => t.id === tableId);
+      const guest = table?.guests.find(g => g.id === guestId);
+      if (guest) {
+        const newUnseated = [...unseatedGuests, guest];
+        const newTables = tables.map(t =>
+          t.id === tableId
+            ? { ...t, guests: t.guests.filter(g => g.id !== guestId), guestIds: t.guestIds.filter(id => id !== guestId) }
+            : t
+        );
+        setUnseatedGuests(newUnseated);
+        setTables(newTables);
+        setStats(recalculateStats(newTables, newUnseated));
+        // Update mobile selected table if needed
+        if (mobileSelectedTable?.id === tableId) {
+          setMobileSelectedTable(newTables.find(t => t.id === tableId) || null);
+        }
+      }
       toast.success("Гость удалён со стола");
-      loadData();
     } catch {
       toast.error("Не удалось удалить гостя");
     }
@@ -549,6 +605,10 @@ export default function SeatingPage() {
                     isDragging={draggingRef.current === table.id}
                     onMouseDown={(e) => handleTableMouseDown(e, table.id)}
                     onTouchStart={(e) => handleTableTouchStart(e, table.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedTable(table.id);
+                    }}
                     onDrop={(e) => handleTableDrop(e, table.id)}
                     onDragOver={handleTableDragOver}
                   />
@@ -576,7 +636,7 @@ export default function SeatingPage() {
                 {!isSelectedScene && (
                   <>
                     <div className="text-sm text-muted-foreground">
-                      {selectedTableData.guests.length} / {selectedTableData.capacity} мест
+                      {selectedTableData.guests.reduce((sum, g) => sum + 1 + g.plusCount, 0)} / {selectedTableData.capacity} мест
                     </div>
                     <div className="space-y-2">
                       {selectedTableData.guests.map((guest) => (
@@ -584,7 +644,12 @@ export default function SeatingPage() {
                           key={guest.id}
                           className="flex items-center justify-between p-2 bg-secondary rounded-lg"
                         >
-                          <span className="text-sm">{guest.name}</span>
+                          <span className="text-sm">
+                            {guest.name}
+                            {guest.plusCount > 0 && (
+                              <span className="text-muted-foreground ml-1">+{guest.plusCount}</span>
+                            )}
+                          </span>
                           <button
                             onClick={() => handleRemoveGuest(selectedTableData.id, guest.id)}
                             className="btn-ghost btn-sm text-red-600"
@@ -594,7 +659,7 @@ export default function SeatingPage() {
                         </div>
                       ))}
                     </div>
-                    {selectedTableData.guests.length < selectedTableData.capacity && (
+                    {selectedTableData.guests.reduce((sum, g) => sum + 1 + g.plusCount, 0) < selectedTableData.capacity && (
                       <button
                         onClick={() => setShowAssignModal(true)}
                         className="btn-ghost btn-sm w-full"
@@ -688,8 +753,6 @@ export default function SeatingPage() {
           onAssign={(guestId) => {
             handleAssignGuest(mobileSelectedTable.id, guestId);
             setShowMobileAssignModal(false);
-            // Refresh table data
-            loadData();
           }}
           unseatedGuests={unseatedGuests}
         />
@@ -745,6 +808,7 @@ interface TableElementProps {
   isDragging: boolean;
   onMouseDown: (e: React.MouseEvent) => void;
   onTouchStart: (e: React.TouchEvent) => void;
+  onClick: (e: React.MouseEvent) => void;
   onDrop: (e: React.DragEvent) => void;
   onDragOver: (e: React.DragEvent) => void;
 }
@@ -756,11 +820,13 @@ function TableElement({
   isDragging,
   onMouseDown,
   onTouchStart,
+  onClick,
   onDrop,
   onDragOver,
 }: TableElementProps) {
   const isScene = table.shape === "scene";
-  const isFull = !isScene && table.guests.length >= table.capacity;
+  const occupiedSeats = table.guests.reduce((sum, g) => sum + 1 + g.plusCount, 0);
+  const isFull = !isScene && occupiedSeats >= table.capacity;
 
   const getShape = () => {
     if (isScene) return "4px";
@@ -788,6 +854,7 @@ function TableElement({
       }}
       onMouseDown={onMouseDown}
       onTouchStart={onTouchStart}
+      onClick={onClick}
       onDrop={isScene ? undefined : onDrop}
       onDragOver={isScene ? undefined : onDragOver}
     >
@@ -808,7 +875,7 @@ function TableElement({
               {formatTableName(table.number, table.name)}
             </span>
             <span className="text-xs text-muted-foreground">
-              {table.guests.length}/{table.capacity}
+              {occupiedSeats}/{table.capacity}
             </span>
           </>
         )}
@@ -1012,8 +1079,9 @@ interface MobileTableCardProps {
 }
 
 function MobileTableCard({ table, onSelect }: MobileTableCardProps) {
-  const isFull = table.guests.length >= table.capacity;
-  const fillPercent = Math.round((table.guests.length / table.capacity) * 100);
+  const occupiedSeats = table.guests.reduce((sum, g) => sum + 1 + g.plusCount, 0);
+  const isFull = occupiedSeats >= table.capacity;
+  const fillPercent = Math.round((occupiedSeats / table.capacity) * 100);
 
   const ShapeIcon = tableShapeIcons[table.shape] || Circle;
 
@@ -1057,7 +1125,7 @@ function MobileTableCard({ table, onSelect }: MobileTableCardProps) {
               />
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap">
-              {table.guests.length}/{table.capacity}
+              {occupiedSeats}/{table.capacity}
             </span>
           </div>
         </div>
@@ -1105,7 +1173,9 @@ function MobileTableDetailModal({
   onAddGuest,
   unseatedGuests,
 }: MobileTableDetailModalProps) {
-  const isFull = table.guests.length >= table.capacity;
+  const occupiedSeats = table.guests.reduce((sum, g) => sum + 1 + g.plusCount, 0);
+  const isFull = occupiedSeats >= table.capacity;
+  const freeSeats = table.capacity - occupiedSeats;
   const ShapeIcon = tableShapeIcons[table.shape] || Circle;
 
   return (
@@ -1121,11 +1191,11 @@ function MobileTableDetailModal({
           </div>
           <div>
             <div className="text-2xl font-bold">
-              {table.guests.length}
+              {occupiedSeats}
               <span className="text-base font-normal text-muted-foreground">/{table.capacity}</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              {isFull ? "Стол заполнен" : `Свободно ${table.capacity - table.guests.length} мест`}
+              {isFull ? "Стол заполнен" : `Свободно ${freeSeats} мест`}
             </div>
           </div>
         </div>
@@ -1134,7 +1204,7 @@ function MobileTableDetailModal({
         <div>
           <div className="flex items-center justify-between mb-2">
             <h4 className="font-medium text-sm">Гости за столом</h4>
-            {!isFull && unseatedGuests.length > 0 && (
+            {freeSeats > 0 && unseatedGuests.length > 0 && (
               <button onClick={onAddGuest} className="btn-primary btn-sm">
                 <UserPlus className="w-4 h-4" />
                 Добавить
