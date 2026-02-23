@@ -23,11 +23,15 @@ import {
   Settings,
   Link2,
   LucideIcon,
+  Share2,
+  Copy,
+  Check,
 } from "lucide-react";
-import { events, checklist, calendar, activity } from "@/lib/api";
-import { Event, EventStats, ChecklistItem, CalendarEvent, ActivityLog } from "@/lib/types";
+import { events, checklist, calendar, activity, shares } from "@/lib/api";
+import { Event, EventStats, ChecklistItem, CalendarEvent, ActivityLog, ShareLink, ShareWidget } from "@/lib/types";
 import { formatDate, getDaysUntil, eventTypeLabels, cn } from "@/lib/utils";
-import { PageLoader } from "@/components/ui";
+import { PageLoader, Modal, ModalFooter } from "@/components/ui";
+import toast from "react-hot-toast";
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -39,6 +43,7 @@ export default function EventDetailPage() {
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
   const [recentActivity, setRecentActivity] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -140,25 +145,13 @@ export default function EventDetailPage() {
           </p>
         </div>
 
-{/* TODO: Public invitation page /i/[slug] not implemented yet
-        <div className="flex gap-2">
-          <button
-            onClick={copyLink}
-            className="btn-outline btn-sm"
-          >
-            <Copy className="w-4 h-4" />
-            <span className="hidden sm:inline">Скопировать</span>
-          </button>
-          <Link
-            href={`/i/${event.slug}`}
-            target="_blank"
-            className="btn-primary btn-sm"
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span className="hidden sm:inline">Открыть</span>
-            </Link>
-        </div>
-        */}
+        <button
+          onClick={() => setShowShareModal(true)}
+          className="btn-outline btn-sm"
+        >
+          <Share2 className="w-4 h-4" />
+          <span className="hidden sm:inline">Поделиться</span>
+        </button>
       </div>
 
       {/* Event Info Bar */}
@@ -367,6 +360,13 @@ export default function EventDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Quick Share Modal */}
+      <QuickShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        eventId={eventId}
+      />
     </div>
   );
 }
@@ -480,3 +480,159 @@ function ActivityItem({ log }: { log: ActivityLog }) {
   );
 }
 
+// Widget options for sharing
+const WIDGET_OPTIONS: { key: ShareWidget; label: string }[] = [
+  { key: "guests", label: "Гости" },
+  { key: "budget", label: "Бюджет" },
+  { key: "checklist", label: "Задачи" },
+  { key: "program", label: "Программа" },
+  { key: "seating", label: "Рассадка" },
+  { key: "gifts", label: "Подарки" },
+];
+
+interface QuickShareModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  eventId: string;
+}
+
+function QuickShareModal({ isOpen, onClose, eventId }: QuickShareModalProps) {
+  const [selectedWidgets, setSelectedWidgets] = useState<ShareWidget[]>(["guests", "checklist", "program"]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createdLink, setCreatedLink] = useState<ShareLink | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const toggleWidget = (widget: ShareWidget) => {
+    setSelectedWidgets((prev) =>
+      prev.includes(widget)
+        ? prev.filter((w) => w !== widget)
+        : [...prev, widget]
+    );
+  };
+
+  const handleCreate = async () => {
+    if (selectedWidgets.length === 0) return;
+
+    setIsCreating(true);
+    try {
+      const link = await shares.create(eventId, {
+        accessLevel: "view",
+        widgets: selectedWidgets,
+      });
+      setCreatedLink(link);
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "Не удалось создать ссылку");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const getShareUrl = () => {
+    if (!createdLink) return "";
+    return `${window.location.origin}/share/${createdLink.token}`;
+  };
+
+  const handleCopy = async () => {
+    const url = getShareUrl();
+    if (url) {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success("Ссылка скопирована");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleClose = () => {
+    // Reset state when closing
+    setCreatedLink(null);
+    setCopied(false);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={handleClose} title="Поделиться">
+      {!createdLink ? (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Что показать?</label>
+            <div className="grid grid-cols-2 gap-2">
+              {WIDGET_OPTIONS.map((widget) => (
+                <label
+                  key={widget.key}
+                  className={cn(
+                    "flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors",
+                    selectedWidgets.includes(widget.key)
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedWidgets.includes(widget.key)}
+                    onChange={() => toggleWidget(widget.key)}
+                    className="rounded border-border"
+                  />
+                  <span className="text-sm font-medium">{widget.label}</span>
+                </label>
+              ))}
+            </div>
+            {selectedWidgets.length === 0 && (
+              <p className="text-xs text-red-500 mt-2">Выберите хотя бы один раздел</p>
+            )}
+          </div>
+
+          <ModalFooter>
+            <button type="button" onClick={handleClose} className="btn-ghost btn-md">
+              Отмена
+            </button>
+            <button
+              onClick={handleCreate}
+              disabled={isCreating || selectedWidgets.length === 0}
+              className="btn-primary btn-md"
+            >
+              {isCreating ? "Создание..." : "Создать ссылку"}
+            </button>
+          </ModalFooter>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="p-4 bg-muted/50 rounded-lg">
+            <p className="text-sm text-muted-foreground mb-2">Ссылка для доступа:</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={getShareUrl()}
+                className="input flex-1 text-sm bg-background"
+              />
+              <button
+                onClick={handleCopy}
+                className={cn(
+                  "btn-md px-3 transition-colors",
+                  copied ? "btn-ghost text-emerald-600" : "btn-primary"
+                )}
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="text-sm text-muted-foreground">
+            <p>Доступные разделы: {selectedWidgets.map(w =>
+              WIDGET_OPTIONS.find(o => o.key === w)?.label
+            ).join(", ")}</p>
+          </div>
+
+          <ModalFooter>
+            <button onClick={handleClose} className="btn-primary btn-md w-full">
+              Готово
+            </button>
+          </ModalFooter>
+        </div>
+      )}
+    </Modal>
+  );
+}
