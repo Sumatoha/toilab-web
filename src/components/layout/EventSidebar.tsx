@@ -7,27 +7,28 @@ import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings,
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store";
 import { Plan } from "@/lib/types";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: string;
   icon: LucideIcon;
   badge?: number;
   feature?: string;
 }
 
 const navItems: NavItem[] = [
-  { href: "", label: "Главная", icon: LayoutDashboard },
-  { href: "/guests", label: "Гости", icon: Users, feature: "guests" },
-  { href: "/seating", label: "Рассадка", icon: LayoutGrid, feature: "seating" },
-  { href: "/gifts", label: "Подарки", icon: Gift, feature: "gifts" },
-  { href: "/program", label: "Программа", icon: Clock },
-  { href: "/vendors", label: "Подрядчики", icon: Briefcase, feature: "vendors" },
-  { href: "/budget", label: "Расходы", icon: Wallet },
-  { href: "/checklist", label: "Задачи", icon: CheckSquare },
-  { href: "/calendar", label: "Календарь", icon: CalendarDays },
-  { href: "/invitation", label: "Приглашение", icon: Mail, feature: "invitation" },
-  { href: "/settings", label: "Настройки", icon: Settings },
+  { href: "", labelKey: "nav.overview", icon: LayoutDashboard },
+  { href: "/guests", labelKey: "nav.guests", icon: Users, feature: "guests" },
+  { href: "/seating", labelKey: "nav.seating", icon: LayoutGrid, feature: "seating" },
+  { href: "/gifts", labelKey: "nav.gifts", icon: Gift, feature: "gifts" },
+  { href: "/program", labelKey: "nav.program", icon: Clock },
+  { href: "/vendors", labelKey: "nav.vendors", icon: Briefcase, feature: "vendors" },
+  { href: "/budget", labelKey: "nav.budget", icon: Wallet },
+  { href: "/checklist", labelKey: "nav.checklist", icon: CheckSquare },
+  { href: "/calendar", labelKey: "nav.calendar", icon: CalendarDays },
+  { href: "/invitation", labelKey: "nav.invitation", icon: Mail, feature: "invitation" },
+  { href: "/settings", labelKey: "nav.settings", icon: Settings },
 ];
 
 // Plans that can have multiple events (show "All events" link)
@@ -54,6 +55,7 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
   const pathname = usePathname();
   const params = useParams();
   const { user } = useAuthStore();
+  const { t } = useTranslation();
   const eventId = params.id as string;
   const basePath = `/dashboard/events/${eventId}`;
   const userPlan = user?.plan || "free";
@@ -102,6 +104,7 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
           const badge = getBadge(item.href);
           const Icon = item.icon;
           const isLocked = !hasFeature(userPlan, item.feature);
+          const label = t(item.labelKey);
 
           if (isLocked) {
             return (
@@ -112,7 +115,7 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
                 className="group flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all duration-150 text-muted-foreground/60 hover:bg-primary/5 hover:text-primary"
               >
                 <Icon className="w-4 h-4 text-muted-foreground/60 group-hover:text-primary" />
-                <span className="flex-1">{item.label}</span>
+                <span className="flex-1">{label}</span>
                 <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                   Pro
                 </span>
@@ -138,7 +141,7 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
                   isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
                 )}
               />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{label}</span>
               {badge !== undefined && badge > 0 && (
                 <span
                   className={cn(
@@ -165,10 +168,10 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
         >
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-primary">Toilab Pro</span>
+            <span className="text-sm font-semibold text-primary">{t("pro.upgrade")}</span>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Откройте гостей, рассадку и другие функции
+            {t("pro.upgradeDescription")}
           </p>
         </Link>
       )}
@@ -181,7 +184,7 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
           className="mt-6 pt-4 border-t border-border group flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-          <span>Все мероприятия</span>
+          <span>{t("nav.allEvents")}</span>
         </Link>
       )}
     </>
@@ -194,10 +197,10 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
         <button
           onClick={() => setIsOpen(true)}
           className="flex items-center gap-2 text-sm font-medium"
-          aria-label="Открыть меню навигации"
+          aria-label={t("common.show")}
         >
           <Menu className="w-5 h-5" />
-          <span>{currentItem?.label || "Меню"}</span>
+          <span>{currentItem ? t(currentItem.labelKey) : t("nav.overview")}</span>
         </button>
       </div>
 
@@ -218,11 +221,11 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
       >
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
-            <span className="font-semibold">Меню</span>
+            <span className="font-semibold">{t("nav.overview")}</span>
             <button
               onClick={() => setIsOpen(false)}
               className="p-2 hover:bg-secondary rounded-lg transition-colors"
-              aria-label="Закрыть меню"
+              aria-label={t("common.close")}
             >
               <X className="w-5 h-5" />
             </button>

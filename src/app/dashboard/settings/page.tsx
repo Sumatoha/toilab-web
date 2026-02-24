@@ -3,16 +3,17 @@
 import { useState } from "react";
 import { useAuthStore } from "@/lib/store";
 import { auth } from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
-import { User, CreditCard, Bell, Check, Sparkles, Crown, Zap, Gift } from "lucide-react";
+import { User, CreditCard, Bell, Check, Sparkles, Crown, Zap, Gift, Globe } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { Plan } from "@/lib/types";
 
 interface PlanInfo {
-  name: string;
+  nameKey: string;
   price: number;
   period?: string;
-  description: string;
+  descriptionKey: string;
   features: string[];
   limitations?: string[];
   icon: typeof Zap;
@@ -21,35 +22,35 @@ interface PlanInfo {
 
 const PLANS: Record<Plan, PlanInfo> = {
   free: {
-    name: "Toilab",
+    nameKey: "Toilab",
     price: 0,
-    description: "Бесплатный доступ",
+    descriptionKey: "settings.plans.free",
     features: ["1 мероприятие", "Бюджет", "Чек-лист", "Программа"],
     limitations: ["Без гостей", "Без рассадки", "Без приглашений"],
     icon: Zap,
     color: "slate",
   },
   single: {
-    name: "Toilab Pro",
+    nameKey: "Toilab Pro",
     price: 7990,
-    description: "Для вашего мероприятия",
+    descriptionKey: "settings.plans.single",
     features: ["Все функции", "Список гостей", "Рассадка", "Приглашения", "Подарки", "Поделиться"],
     icon: Sparkles,
     color: "primary",
   },
   pro: {
-    name: "Toilab Studio",
+    nameKey: "Toilab Studio",
     price: 24990,
     period: "/мес",
-    description: "Для вашего агентства",
+    descriptionKey: "settings.plans.pro",
     features: ["До 10 мероприятий", "Все функции", "Приоритетная поддержка"],
     icon: Crown,
     color: "amber",
   },
   trial: {
-    name: "Toilab Pro (пробный)",
+    nameKey: "Toilab Pro",
     price: 0,
-    description: "Полный доступ",
+    descriptionKey: "settings.plans.trial",
     features: ["Все функции Pro", "Ограниченный срок"],
     icon: Sparkles,
     color: "emerald",
@@ -58,6 +59,7 @@ const PLANS: Record<Plan, PlanInfo> = {
 
 export default function SettingsPage() {
   const { user, setUser } = useAuthStore();
+  const { t, locale, setLocale, canChangeLanguage } = useTranslation();
   const [name, setName] = useState(user?.name || "");
   const [saving, setSaving] = useState(false);
   const [promoCode, setPromoCode] = useState("");
@@ -68,10 +70,10 @@ export default function SettingsPage() {
     try {
       const updated = await auth.updateProfile({ name });
       setUser(updated);
-      toast.success("Профиль обновлен");
+      toast.success(t("settings.profileSaved"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось сохранить");
+      toast.error(err.message || t("errors.saveError"));
     } finally {
       setSaving(false);
     }
@@ -79,7 +81,7 @@ export default function SettingsPage() {
 
   const handleActivatePromo = async () => {
     if (!promoCode.trim()) {
-      toast.error("Введите промокод");
+      toast.error(t("errors.required"));
       return;
     }
     setActivatingPromo(true);
@@ -87,10 +89,10 @@ export default function SettingsPage() {
       const updated = await auth.activatePromo(promoCode.trim().toUpperCase());
       setUser(updated);
       setPromoCode("");
-      toast.success("Пробный период активирован!");
+      toast.success(t("settings.promoActivated"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Неверный промокод");
+      toast.error(err.message || t("settings.promoError"));
     } finally {
       setActivatingPromo(false);
     }
@@ -102,20 +104,20 @@ export default function SettingsPage() {
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold">Настройки</h1>
-        <p className="text-muted-foreground">Управление аккаунтом и подпиской</p>
+        <h1 className="text-2xl font-display font-bold">{t("settings.title")}</h1>
+        <p className="text-muted-foreground">{t("settings.profileSettings")}</p>
       </div>
 
       {/* Profile */}
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
           <User className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">Профиль</h2>
+          <h2 className="text-lg font-semibold">{t("nav.profile")}</h2>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Имя</label>
+            <label className="block text-sm font-medium mb-1">{t("settings.yourName")}</label>
             <input
               type="text"
               value={name}
@@ -125,16 +127,13 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+            <label className="block text-sm font-medium mb-1">{t("settings.yourEmail")}</label>
             <input
               type="email"
               value={user?.email || ""}
               disabled
               className="input w-full bg-secondary"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Email нельзя изменить
-            </p>
           </div>
 
           <button
@@ -142,16 +141,51 @@ export default function SettingsPage() {
             disabled={saving || name === user?.name}
             className="btn-primary h-10 px-6"
           >
-            {saving ? "Сохранение..." : "Сохранить"}
+            {saving ? t("common.loading") : t("settings.saveChanges")}
           </button>
         </div>
       </div>
+
+      {/* Language - Only for KZ users */}
+      {canChangeLanguage && (
+        <div className="card">
+          <div className="flex items-center gap-3 mb-4">
+            <Globe className="w-5 h-5 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">{t("settings.language")}</h2>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setLocale("kk")}
+              className={cn(
+                "flex-1 h-12 rounded-lg font-medium transition-colors",
+                locale === "kk"
+                  ? "bg-primary text-white"
+                  : "bg-secondary text-foreground hover:bg-secondary/80"
+              )}
+            >
+              {t("settings.languageKk")}
+            </button>
+            <button
+              onClick={() => setLocale("ru")}
+              className={cn(
+                "flex-1 h-12 rounded-lg font-medium transition-colors",
+                locale === "ru"
+                  ? "bg-primary text-white"
+                  : "bg-secondary text-foreground hover:bg-secondary/80"
+              )}
+            >
+              {t("settings.languageRu")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Current Plan */}
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
           <CreditCard className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">Ваш тариф</h2>
+          <h2 className="text-lg font-semibold">{t("settings.plan")}</h2>
         </div>
 
         <div className={cn(
@@ -167,8 +201,8 @@ export default function SettingsPage() {
                 <currentPlan.icon className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold">{currentPlan.name}</h3>
-                <p className="text-sm text-muted-foreground">{currentPlan.description}</p>
+                <h3 className="text-lg font-bold">{currentPlan.nameKey}</h3>
+                <p className="text-sm text-muted-foreground">{t(currentPlan.descriptionKey)}</p>
               </div>
             </div>
             {currentPlan.price > 0 && (
@@ -228,8 +262,8 @@ export default function SettingsPage() {
       {/* Upgrade options for free users */}
       {user?.plan === "free" && (
         <div className="card">
-          <h2 className="text-lg font-semibold mb-2">Откройте все возможности</h2>
-          <p className="text-sm text-muted-foreground mb-4">Создайте мероприятие мечты с полным набором инструментов</p>
+          <h2 className="text-lg font-semibold mb-2">{t("pro.upgradeDescription")}</h2>
+          <p className="text-sm text-muted-foreground mb-4">{t("pro.features")}</p>
           <div className="grid sm:grid-cols-2 gap-4">
             {/* Pro */}
             <div className="p-4 rounded-xl border-2 border-primary bg-primary/5">
@@ -239,7 +273,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="font-bold">Toilab Pro</h3>
-                  <p className="text-xs text-muted-foreground">Для вашего мероприятия</p>
+                  <p className="text-xs text-muted-foreground">{t("settings.plans.single")}</p>
                 </div>
               </div>
               <div className="text-2xl font-bold mb-3">7 990 ₸</div>
@@ -251,7 +285,7 @@ export default function SettingsPage() {
                   </li>
                 ))}
               </ul>
-              <button className="btn-primary w-full h-10">Выбрать Pro</button>
+              <button className="btn-primary w-full h-10">{t("settings.upgrade")}</button>
             </div>
 
             {/* Studio */}
@@ -262,7 +296,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <h3 className="font-bold">Toilab Studio</h3>
-                  <p className="text-xs text-muted-foreground">Для вашего агентства</p>
+                  <p className="text-xs text-muted-foreground">{t("settings.plans.pro")}</p>
                 </div>
               </div>
               <div className="text-2xl font-bold mb-3">
@@ -277,7 +311,7 @@ export default function SettingsPage() {
                 ))}
               </ul>
               <button className="w-full h-10 bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold rounded-lg transition-colors">
-                Выбрать Studio
+                {t("settings.upgrade")}
               </button>
             </div>
           </div>
@@ -286,14 +320,14 @@ export default function SettingsPage() {
           <div className="mt-6 pt-6 border-t border-border">
             <div className="flex items-center gap-2 mb-3">
               <Gift className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Есть промокод?</span>
+              <span className="text-sm font-medium">{t("settings.promoCode")}</span>
             </div>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value)}
-                placeholder="Введите промокод"
+                placeholder={t("settings.promoCode")}
                 className="input flex-1"
               />
               <button
@@ -301,7 +335,7 @@ export default function SettingsPage() {
                 disabled={activatingPromo || !promoCode.trim()}
                 className="btn-primary px-6"
               >
-                {activatingPromo ? "..." : "Применить"}
+                {activatingPromo ? "..." : t("settings.activatePromo")}
               </button>
             </div>
           </div>

@@ -21,11 +21,13 @@ import { guests, seating, gifts } from "@/lib/api";
 import { Guest, GuestStats, SeatingTable, Gift } from "@/lib/types";
 import { cn, rsvpStatusLabels, formatTableName } from "@/lib/utils";
 import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog, Avatar, ProgressBar } from "@/components/ui";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 export default function GuestsPage() {
   const params = useParams();
   const eventId = params.id as string;
+  const { t } = useTranslation();
 
   const [guestList, setGuestList] = useState<Guest[]>([]);
   const [tables, setTables] = useState<SeatingTable[]>([]);
@@ -59,7 +61,7 @@ export default function GuestsPage() {
       setAllGifts(giftsData || []);
     } catch (error) {
       console.error("Failed to load guests:", error);
-      toast.error("Не удалось загрузить гостей");
+      toast.error(t("errors.loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -114,10 +116,10 @@ export default function GuestsPage() {
       setGuestList(newList);
       setStats(recalculateStats(newList));
       setShowAddModal(false);
-      toast.success("Гость добавлен");
+      toast.success(t("guests.guestAdded"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось добавить гостя");
+      toast.error(err.message || t("guests.addError"));
     }
   };
 
@@ -175,10 +177,10 @@ export default function GuestsPage() {
       setGuestList(newList);
       setStats(recalculateStats(newList));
       setEditingGuest(null);
-      toast.success("Гость обновлён");
+      toast.success(t("guests.guestUpdated"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось обновить гостя");
+      toast.error(err.message || t("guests.updateError"));
     }
   };
 
@@ -190,10 +192,10 @@ export default function GuestsPage() {
       setStats(recalculateStats(newList));
       setShowImportModal(false);
       const totalPeople = guestsData.reduce((sum, g) => sum + 1 + g.plusCount, 0);
-      toast.success(`Добавлено ${result.created} гостей (${totalPeople} человек)`);
+      toast.success(t("guests.importSuccess", { count: result.created, total: totalPeople }));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось импортировать гостей");
+      toast.error(err.message || t("guests.importError"));
     }
   };
 
@@ -230,12 +232,12 @@ export default function GuestsPage() {
       ));
       setDeleteGuestId(null);
       toast.success(linkedGifts.length > 0
-        ? "Гость удалён, подарки сохранены"
-        : "Гость удалён"
+        ? t("guests.deletedWithGifts")
+        : t("guests.deleted")
       );
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось удалить гостя");
+      toast.error(err.message || t("guests.deleteError"));
     } finally {
       setIsDeleting(false);
     }
@@ -258,19 +260,19 @@ export default function GuestsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-h1">Гости</h1>
+          <h1 className="text-h1">{t("nav.guests")}</h1>
           <p className="text-caption mt-1">
-            Управляйте списком гостей и отслеживайте RSVP
+            {t("guests.description")}
           </p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowImportModal(true)} className="btn-outline btn-sm">
             <Upload className="w-4 h-4" />
-            <span className="hidden sm:inline">Импорт</span>
+            <span className="hidden sm:inline">{t("guests.import")}</span>
           </button>
           <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Добавить гостя</span>
+            <span className="hidden sm:inline">{t("guests.addGuest")}</span>
           </button>
         </div>
       </div>
@@ -285,32 +287,32 @@ export default function GuestsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
           <StatCard
             icon={Users}
-            label="Всего"
+            label={t("common.total")}
             value={totalPeople}
-            description={allPlusOnes > 0 ? `${stats.total} гостей + ${allPlusOnes} сопр.` : undefined}
+            description={allPlusOnes > 0 ? `${stats.total} ${t("guests.guests")} + ${allPlusOnes} ${t("guests.companions")}` : undefined}
             color="slate"
           />
           <StatCard
             icon={UserCheck}
-            label="Придут"
+            label={t("guests.willCome")}
             value={stats.accepted}
             sublabel={stats.plusOnes > 0 ? `+${stats.plusOnes}` : undefined}
             color="emerald"
           />
           <StatCard
             icon={UserX}
-            label="Не придут"
+            label={t("guests.wontCome")}
             value={stats.declined}
             color="red"
           />
           <StatCard
             icon={Clock}
-            label="Ожидание"
+            label={t("guests.waiting")}
             value={stats.pending}
             color="amber"
           />
           <div className="card p-3 sm:p-4 col-span-2 sm:col-span-1">
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">Отклик</div>
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">{t("guests.responseRate")}</div>
             <div className="text-xl sm:text-2xl font-bold mb-2">{responseRate}%</div>
             <ProgressBar
               value={stats.accepted + stats.declined}
@@ -329,7 +331,7 @@ export default function GuestsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Поиск гостей..."
+            placeholder={t("guests.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input pl-10"
@@ -337,10 +339,10 @@ export default function GuestsPage() {
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 sm:overflow-x-visible">
           {[
-            { key: "all", label: "Все", count: stats?.total },
-            { key: "accepted", label: "Придут", count: stats?.accepted },
-            { key: "pending", label: "Ожидание", count: stats?.pending },
-            { key: "declined", label: "Не придут", count: stats?.declined },
+            { key: "all", label: t("common.all"), count: stats?.total },
+            { key: "accepted", label: t("guests.willCome"), count: stats?.accepted },
+            { key: "pending", label: t("guests.waiting"), count: stats?.pending },
+            { key: "declined", label: t("guests.wontCome"), count: stats?.declined },
           ].map((f) => (
             <button
               key={f.key}
@@ -369,13 +371,13 @@ export default function GuestsPage() {
         <div className="card">
           <EmptyState
             icon={Users}
-            title={guestList.length === 0 ? "Список гостей пуст" : "Нет гостей по заданным фильтрам"}
-            description={guestList.length === 0 ? "Добавьте первого гостя" : "Попробуйте изменить фильтры"}
+            title={guestList.length === 0 ? t("guests.emptyTitle") : t("guests.noFilterResults")}
+            description={guestList.length === 0 ? t("guests.emptyDescription") : t("guests.changeFilters")}
             action={
               guestList.length === 0 ? (
                 <button onClick={() => setShowAddModal(true)} className="btn-primary btn-md">
                   <Plus className="w-4 h-4" />
-                  Добавить гостя
+                  {t("guests.addGuest")}
                 </button>
               ) : undefined
             }
@@ -422,6 +424,7 @@ export default function GuestsPage() {
           onAdd={handleAddGuest}
           tables={tables}
           guestList={guestList}
+          t={t}
         />
       )}
 
@@ -433,6 +436,7 @@ export default function GuestsPage() {
           guestList={guestList}
           onClose={() => setEditingGuest(null)}
           onSave={(data) => handleUpdateGuest(editingGuest.id, data)}
+          t={t}
         />
       )}
 
@@ -441,6 +445,7 @@ export default function GuestsPage() {
         <ImportModal
           onClose={() => setShowImportModal(false)}
           onImport={handleImportGuests}
+          t={t}
         />
       )}
 
@@ -449,18 +454,18 @@ export default function GuestsPage() {
         isOpen={!!deleteGuestId}
         onClose={() => setDeleteGuestId(null)}
         onConfirm={handleDeleteGuest}
-        title="Удалить гостя?"
+        title={t("guests.deleteTitle")}
         description={(() => {
-          if (!deleteGuestId) return "Гость будет удалён из списка";
+          if (!deleteGuestId) return t("guests.deleteDescription");
           const guest = guestList.find(g => g.id === deleteGuestId);
           const linkedGifts = allGifts.filter(g => g.guestId === deleteGuestId).length;
-          const parts = ["Гость будет удалён из списка"];
-          if (guest?.tableId) parts.push("снят со стола");
-          if (linkedGifts > 0) parts.push(`${linkedGifts} подарков сохранятся`);
+          const parts = [t("guests.deleteDescription")];
+          if (guest?.tableId) parts.push(t("guests.removedFromTable"));
+          if (linkedGifts > 0) parts.push(t("guests.giftsKept", { count: linkedGifts }));
           return parts.join(", ");
         })()}
-        confirmText="Удалить"
-        cancelText="Отмена"
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
         variant="danger"
         isLoading={isDeleting}
       />
@@ -684,11 +689,13 @@ function AddGuestModal({
   onAdd,
   tables,
   guestList,
+  t,
 }: {
   onClose: () => void;
   onAdd: (data: { name: string; phone?: string; email?: string; tableId?: string; rsvpStatus?: string; plusCount?: number }) => void;
   tables: SeatingTable[];
   guestList: Guest[];
+  t: (key: string, params?: Record<string, string | number>) => string;
 }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -719,21 +726,21 @@ function AddGuestModal({
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Добавить гостя">
+    <Modal isOpen onClose={onClose} title={t("guests.addGuest")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5">Имя *</label>
+          <label className="block text-sm font-medium mb-1.5">{t("guests.name")} *</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="input"
-            placeholder="Имя гостя"
+            placeholder={t("guests.namePlaceholder")}
             autoFocus
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">Статус</label>
+          <label className="block text-sm font-medium mb-1.5">{t("common.status")}</label>
           <div className="flex gap-2">
             <button
               type="button"
@@ -746,7 +753,7 @@ function AddGuestModal({
               )}
             >
               <Check className="w-4 h-4 inline mr-1.5" />
-              Придёт
+              {t("guests.willCome")}
             </button>
             <button
               type="button"
@@ -759,7 +766,7 @@ function AddGuestModal({
               )}
             >
               <Clock className="w-4 h-4 inline mr-1.5" />
-              Жду ответ
+              {t("guests.waitingAnswer")}
             </button>
             <button
               type="button"
@@ -772,7 +779,7 @@ function AddGuestModal({
               )}
             >
               <X className="w-4 h-4 inline mr-1.5" />
-              Не придёт
+              {t("guests.wontCome")}
             </button>
           </div>
         </div>
@@ -780,7 +787,7 @@ function AddGuestModal({
           <label className="block text-sm font-medium mb-1.5">
             <span className="inline-flex items-center gap-1.5">
               <UserPlus className="w-4 h-4" />
-              Дополнительные гости (+N)
+              {t("guests.additionalGuests")}
             </span>
           </label>
           <div className="flex items-center gap-3">
@@ -795,7 +802,7 @@ function AddGuestModal({
             <div className="flex-1 text-center">
               <span className="text-2xl font-bold">{plusCount}</span>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {plusCount === 0 ? "Придёт один" : `+${plusCount} (всего ${plusCount + 1})`}
+                {plusCount === 0 ? t("guests.comesAlone") : `+${plusCount} (${t("common.total")} ${plusCount + 1})`}
               </p>
             </div>
             <button
@@ -808,7 +815,7 @@ function AddGuestModal({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">Телефон</label>
+          <label className="block text-sm font-medium mb-1.5">{t("guests.phone")}</label>
           <input
             type="tel"
             value={phone}
@@ -832,7 +839,7 @@ function AddGuestModal({
             <label className="block text-sm font-medium mb-1.5">
               <span className="inline-flex items-center gap-1.5">
                 <LayoutGrid className="w-4 h-4" />
-                Стол
+                {t("seating.table")}
               </span>
             </label>
             <select
@@ -840,7 +847,7 @@ function AddGuestModal({
               onChange={(e) => setTableId(e.target.value)}
               className="input"
             >
-              <option value="">Не назначен</option>
+              <option value="">{t("guests.notAssigned")}</option>
               {tables.map((table) => (
                 <option key={table.id} value={table.id}>
                   {formatTableName(table.number, table.name)} ({getOccupied(table)}/{table.capacity})
@@ -851,10 +858,10 @@ function AddGuestModal({
         )}
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
-            Отмена
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary btn-md">
-            Добавить
+            {t("common.add")}
           </button>
         </ModalFooter>
       </form>
@@ -868,12 +875,14 @@ function EditGuestModal({
   guestList,
   onClose,
   onSave,
+  t,
 }: {
   guest: Guest;
   tables: SeatingTable[];
   guestList: Guest[];
   onClose: () => void;
   onSave: (data: { name?: string; phone?: string; email?: string; tableId?: string | null; rsvpStatus?: string; plusCount?: number }) => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }) {
   const [name, setName] = useState(guest.name);
   const [phone, setPhone] = useState(guest.phone || "");
@@ -904,21 +913,21 @@ function EditGuestModal({
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Редактировать гостя">
+    <Modal isOpen onClose={onClose} title={t("guests.editGuest")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5">Имя *</label>
+          <label className="block text-sm font-medium mb-1.5">{t("guests.name")} *</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="input"
-            placeholder="Имя гостя"
+            placeholder={t("guests.namePlaceholder")}
             autoFocus
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">Статус</label>
+          <label className="block text-sm font-medium mb-1.5">{t("common.status")}</label>
           <div className="flex gap-2">
             <button
               type="button"
@@ -931,7 +940,7 @@ function EditGuestModal({
               )}
             >
               <Check className="w-4 h-4 inline mr-1.5" />
-              Придёт
+              {t("guests.willCome")}
             </button>
             <button
               type="button"
@@ -944,7 +953,7 @@ function EditGuestModal({
               )}
             >
               <Clock className="w-4 h-4 inline mr-1.5" />
-              Жду ответ
+              {t("guests.waitingAnswer")}
             </button>
             <button
               type="button"
@@ -957,7 +966,7 @@ function EditGuestModal({
               )}
             >
               <X className="w-4 h-4 inline mr-1.5" />
-              Не придёт
+              {t("guests.wontCome")}
             </button>
           </div>
         </div>
@@ -965,7 +974,7 @@ function EditGuestModal({
           <label className="block text-sm font-medium mb-1.5">
             <span className="inline-flex items-center gap-1.5">
               <UserPlus className="w-4 h-4" />
-              Дополнительные гости (+N)
+              {t("guests.additionalGuests")}
             </span>
           </label>
           <div className="flex items-center gap-3">
@@ -980,7 +989,7 @@ function EditGuestModal({
             <div className="flex-1 text-center">
               <span className="text-2xl font-bold">{plusCount}</span>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {plusCount === 0 ? "Придёт один" : `+${plusCount} (всего ${plusCount + 1})`}
+                {plusCount === 0 ? t("guests.comesAlone") : `+${plusCount} (${t("common.total")} ${plusCount + 1})`}
               </p>
             </div>
             <button
@@ -993,7 +1002,7 @@ function EditGuestModal({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">Телефон</label>
+          <label className="block text-sm font-medium mb-1.5">{t("guests.phone")}</label>
           <input
             type="tel"
             value={phone}
@@ -1017,7 +1026,7 @@ function EditGuestModal({
             <label className="block text-sm font-medium mb-1.5">
               <span className="inline-flex items-center gap-1.5">
                 <LayoutGrid className="w-4 h-4" />
-                Стол
+                {t("seating.table")}
               </span>
             </label>
             <select
@@ -1025,7 +1034,7 @@ function EditGuestModal({
               onChange={(e) => setTableId(e.target.value)}
               className="input"
             >
-              <option value="">Не назначен</option>
+              <option value="">{t("guests.notAssigned")}</option>
               {tables.map((table) => (
                 <option key={table.id} value={table.id}>
                   {formatTableName(table.number, table.name)} ({getOccupied(table)}/{table.capacity})
@@ -1036,10 +1045,10 @@ function EditGuestModal({
         )}
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
-            Отмена
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary btn-md">
-            Сохранить
+            {t("common.save")}
           </button>
         </ModalFooter>
       </form>
@@ -1067,9 +1076,11 @@ function parseGuestName(input: string): { name: string; plusCount: number } {
 function ImportModal({
   onClose,
   onImport,
+  t,
 }: {
   onClose: () => void;
   onImport: (guests: { name: string; plusCount: number }[]) => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }) {
   const [text, setText] = useState("");
 
@@ -1094,13 +1105,13 @@ function ImportModal({
   const totalPeople = parsed.reduce((sum, g) => sum + 1 + g.plusCount, 0);
 
   return (
-    <Modal isOpen onClose={onClose} title="Импорт гостей">
+    <Modal isOpen onClose={onClose} title={t("guests.importGuests")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <p className="text-sm text-muted-foreground mb-2">
-            Добавьте имена гостей через новую строку или запятую.
+            {t("guests.importHint")}
             <br />
-            <span className="text-primary font-medium">Подсказка:</span> добавьте +N для гостей с сопровождением (например: &quot;Арман +1&quot;)
+            <span className="text-primary font-medium">{t("guests.importTip")}</span>
           </p>
           <textarea
             value={text}
@@ -1112,12 +1123,12 @@ function ImportModal({
           {parsed.length > 0 && (
             <div className="mt-3 p-3 bg-secondary/50 rounded-lg space-y-1">
               <p className="text-sm">
-                <span className="text-muted-foreground">Гостей:</span>{" "}
+                <span className="text-muted-foreground">{t("guests.guests")}:</span>{" "}
                 <span className="font-medium">{parsed.length}</span>
               </p>
               {withPlusOnes.length > 0 && (
                 <p className="text-sm">
-                  <span className="text-muted-foreground">С сопровождением:</span>{" "}
+                  <span className="text-muted-foreground">{t("guests.withCompanions")}:</span>{" "}
                   <span className="font-medium text-emerald-600">{withPlusOnes.length}</span>
                   <span className="text-muted-foreground"> (</span>
                   {withPlusOnes.slice(0, 3).map((g, i) => (
@@ -1126,23 +1137,23 @@ function ImportModal({
                       {g.name} <span className="text-emerald-600">+{g.plusCount}</span>
                     </span>
                   ))}
-                  {withPlusOnes.length > 3 && <span className="text-muted-foreground"> и ещё {withPlusOnes.length - 3}</span>}
+                  {withPlusOnes.length > 3 && <span className="text-muted-foreground"> {t("guests.andMore", { count: withPlusOnes.length - 3 })}</span>}
                   <span className="text-muted-foreground">)</span>
                 </p>
               )}
               <p className="text-sm">
-                <span className="text-muted-foreground">Всего придёт:</span>{" "}
-                <span className="font-bold">{totalPeople}</span> человек
+                <span className="text-muted-foreground">{t("guests.totalWillCome")}:</span>{" "}
+                <span className="font-bold">{totalPeople}</span> {t("guests.people")}
               </p>
             </div>
           )}
         </div>
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
-            Отмена
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary btn-md" disabled={parsed.length === 0}>
-            Импортировать {parsed.length > 0 && `(${parsed.length})`}
+            {t("guests.importAction")} {parsed.length > 0 && `(${parsed.length})`}
           </button>
         </ModalFooter>
       </form>

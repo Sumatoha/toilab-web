@@ -18,6 +18,7 @@ import { vendorTypeLabels, currencyConfigs } from "@/lib/utils";
 import { cn, formatCurrency, expenseCategoryLabels } from "@/lib/utils";
 import { PageLoader, ConfirmDialog, Modal, ModalFooter, ProgressBar, CircularProgress } from "@/components/ui";
 import { useAuthStore } from "@/lib/store";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 const categoryColors: Record<ExpenseCategory, { bg: string; text: string; accent: string }> = {
@@ -40,6 +41,7 @@ export default function BudgetPage() {
   const params = useParams();
   const eventId = params.id as string;
   const { user } = useAuthStore();
+  const { t } = useTranslation();
   const userCountry: Country = user?.country || "kz";
 
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
@@ -68,7 +70,7 @@ export default function BudgetPage() {
       setVendorsList(vendorsData || []);
     } catch (error) {
       console.error("Failed to load budget:", error);
-      toast.error("Не удалось загрузить бюджет");
+      toast.error(t("errors.loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -126,10 +128,10 @@ export default function BudgetPage() {
       setExpensesList(newList);
       setSummary(recalculateSummary(newList));
       setShowAddModal(false);
-      toast.success("Расход добавлен");
+      toast.success(t("budget.expenseSaved"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось добавить расход");
+      toast.error(err.message || t("errors.saveError"));
     }
   };
 
@@ -142,10 +144,10 @@ export default function BudgetPage() {
       setExpensesList(newList);
       setSummary(recalculateSummary(newList));
       setDeleteExpenseId(null);
-      toast.success("Расход удалён");
+      toast.success(t("budget.expenseDeleted"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось удалить расход");
+      toast.error(err.message || t("errors.deleteError"));
     } finally {
       setIsDeleting(false);
     }
@@ -159,10 +161,10 @@ export default function BudgetPage() {
       setExpensesList(newList);
       setSummary(recalculateSummary(newList));
       setEditingExpense(null);
-      toast.success("Расход обновлён");
+      toast.success(t("budget.expenseSaved"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось обновить расход");
+      toast.error(err.message || t("errors.saveError"));
     }
   };
 
@@ -184,14 +186,14 @@ export default function BudgetPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-h1">Бюджет</h1>
+          <h1 className="text-h1">{t("nav.budget")}</h1>
           <p className="text-caption mt-1">
-            Отслеживайте расходы по категориям
+            {t("budget.description")}
           </p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
           <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Добавить расход</span>
+          <span className="hidden sm:inline">{t("budget.addExpense")}</span>
         </button>
       </div>
 
@@ -680,6 +682,7 @@ function AddExpenseModal({
     "photo",
     "video",
     "music",
+    "mc",
     "attire",
     "transport",
     "invitation",
@@ -810,7 +813,7 @@ function EditExpenseModal({
 
   const categories: ExpenseCategory[] = [
     "venue", "catering", "decoration", "photo", "video",
-    "music", "attire", "transport", "invitation", "gift", "beauty", "other",
+    "music", "mc", "attire", "transport", "invitation", "gift", "beauty", "other",
   ];
 
   return (

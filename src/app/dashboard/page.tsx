@@ -7,12 +7,14 @@ import { events } from "@/lib/api";
 import { Event } from "@/lib/types";
 import { formatDate, cn } from "@/lib/utils";
 import { PageLoader } from "@/components/ui";
+import { useTranslation } from "@/hooks/use-translation";
 
 const WEDDING_EMOJI = "\u{1F48D}";
 
 export default function DashboardPage() {
   const [eventList, setEventList] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     async function loadData() {
@@ -39,12 +41,12 @@ export default function DashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-display text-foreground">
-              {getGreeting()}
+              {getGreeting(t)}
             </h1>
             <p className="text-muted-foreground mt-1">
               {eventList.length === 0
-                ? "Создайте первую свадьбу, чтобы начать"
-                : `У вас ${eventList.length} ${eventList.length === 1 ? "мероприятие" : "мероприятий"}`}
+                ? t("dashboard.createFirst")
+                : `${eventList.length} ${t("dashboard.myEvents").toLowerCase()}`}
             </p>
           </div>
           <Link
@@ -52,24 +54,25 @@ export default function DashboardPage() {
             className="btn-primary btn-lg shadow-lg hover:shadow-xl inline-flex"
           >
             <Plus className="w-5 h-5" />
-            Новая свадьба
+            {t("dashboard.createEvent")}
           </Link>
         </div>
       </div>
 
       {/* Content */}
       {eventList.length === 0 ? (
-        <EventsEmptyState />
+        <EventsEmptyState t={t} />
       ) : (
         <section>
           <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-h3">Ваши мероприятия</h2>
+            <h2 className="text-h3">{t("dashboard.myEvents")}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {eventList.map((event, index) => (
               <EventCard
                 key={event.id}
                 event={event}
+                t={t}
                 className={`animate-in stagger-${Math.min(index + 1, 4)}`}
               />
             ))}
@@ -80,37 +83,44 @@ export default function DashboardPage() {
   );
 }
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Доброе утро!";
-  if (hour < 18) return "Добрый день!";
-  return "Добрый вечер!";
+function getGreeting(t: (key: string) => string) {
+  return t("auth.welcome") + "!";
 }
 
-function EventsEmptyState() {
+function EventsEmptyState({ t }: { t: (key: string) => string }) {
   return (
     <div className="card-gradient p-12 text-center">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6 text-3xl">
         {WEDDING_EMOJI}
       </div>
-      <h2 className="text-h2 mb-2">Начните планировать свадьбу</h2>
+      <h2 className="text-h2 mb-2">{t("dashboard.noEvents")}</h2>
       <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-        Создайте свадьбу и управляйте гостями, бюджетом и задачами в одном месте
+        {t("dashboard.createFirst")}
       </p>
       <Link href="/dashboard/events/new" className="btn-primary btn-lg inline-flex">
         <Plus className="w-5 h-5" />
-        Создать свадьбу
+        {t("dashboard.createEvent")}
       </Link>
     </div>
   );
 }
 
-function EventCard({ event, className }: { event: Event; className?: string }) {
+interface EventCardProps {
+  event: Event;
+  t: (key: string) => string;
+  className?: string;
+}
+
+function EventCard({ event, t, className }: EventCardProps) {
 
   // Mock stats - in real app these would come from API
   const guestCount = 0; // Would be fetched from event stats
   const maxGuests = event.guestLimit || 100;
   const daysUntil = event.date ? getDaysUntil(event.date) : null;
+
+  // Get event type label
+  const eventTypeKey = `event.${event.type}` as const;
+  const eventTypeLabel = t(eventTypeKey);
 
   return (
     <Link
@@ -128,7 +138,7 @@ function EventCard({ event, className }: { event: Event; className?: string }) {
           </div>
           <div>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Свадьба
+              {eventTypeLabel}
             </span>
             <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
               {event.title}
@@ -161,14 +171,14 @@ function EventCard({ event, className }: { event: Event; className?: string }) {
             <span>{formatDate(event.date)}</span>
             {daysUntil !== null && daysUntil > 0 && (
               <span className="text-xs text-muted-foreground">
-                (через {daysUntil} дн.)
+                ({daysUntil} {t("dashboard.daysLeft")})
               </span>
             )}
           </div>
         )}
         <div className="flex items-center gap-2 text-sm">
           <Users className="w-4 h-4 text-muted-foreground" />
-          <span>{guestCount} / {maxGuests} гостей</span>
+          <span>{guestCount} / {maxGuests} {t("dashboard.guests")}</span>
         </div>
       </div>
 
@@ -186,4 +196,3 @@ function getDaysUntil(dateStr: string): number | null {
     return null;
   }
 }
-

@@ -6,12 +6,14 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/store";
 import { auth, config } from "@/lib/api";
 import { Logo } from "@/components/ui";
+import { usePublicTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 import type { Country, CountryConfig } from "@/lib/types";
 
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, isHydrated, hydrate, setAuth } = useAuthStore();
+  const { t } = usePublicTranslation();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,27 +54,27 @@ export default function LoginPage() {
       if (mode === "login") {
         const result = await auth.login(email, password);
         setAuth(result.user, result.accessToken, result.refreshToken);
-        toast.success("Добро пожаловать!");
+        toast.success(t("auth.welcome") + "!");
         router.push("/dashboard");
       } else {
         if (!name.trim()) {
-          toast.error("Введите имя");
+          toast.error(t("errors.required"));
           setSubmitting(false);
           return;
         }
         if (password !== confirmPassword) {
-          toast.error("Пароли не совпадают");
+          toast.error(t("auth.passwordMismatch"));
           setSubmitting(false);
           return;
         }
         const result = await auth.register(email, password, confirmPassword, name, country);
         setAuth(result.user, result.accessToken, result.refreshToken);
-        toast.success("Регистрация успешна!");
+        toast.success(t("common.success") + "!");
         router.push("/dashboard");
       }
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Ошибка авторизации");
+      toast.error(err.message || t("auth.invalidCredentials"));
     } finally {
       setSubmitting(false);
     }
@@ -103,12 +105,12 @@ export default function LoginPage() {
           <div className="card p-8">
             <div className="text-center mb-8">
               <h1 className="text-2xl font-display font-bold mb-2">
-                {mode === "login" ? "Вход" : "Регистрация"}
+                {mode === "login" ? t("auth.loginTitle") : t("auth.registerTitle")}
               </h1>
               <p className="text-muted-foreground">
                 {mode === "login"
-                  ? "Войдите, чтобы продолжить"
-                  : "Создайте аккаунт для планирования мероприятий"}
+                  ? t("auth.welcome")
+                  : t("auth.registerTitle")}
               </p>
             </div>
 
@@ -116,7 +118,7 @@ export default function LoginPage() {
               {mode === "register" && (
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium mb-1">
-                    Имя
+                    {t("auth.name")}
                   </label>
                   <input
                     type="text"
@@ -124,14 +126,14 @@ export default function LoginPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="input w-full"
-                    placeholder="Ваше имя"
+                    placeholder={t("auth.namePlaceholder")}
                   />
                 </div>
               )}
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium mb-1">
-                  Email
+                  {t("auth.email")}
                 </label>
                 <input
                   type="email"
@@ -139,14 +141,14 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input w-full"
-                  placeholder="your@email.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   required
                 />
               </div>
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium mb-1">
-                  Пароль
+                  {t("auth.password")}
                 </label>
                 <input
                   type="password"
@@ -154,7 +156,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="input w-full"
-                  placeholder="Минимум 6 символов"
+                  placeholder={t("auth.passwordPlaceholder")}
                   minLength={6}
                   required
                 />
@@ -164,7 +166,7 @@ export default function LoginPage() {
                 <>
                   <div>
                     <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">
-                      Подтверждение пароля
+                      {t("auth.confirmPassword")}
                     </label>
                     <input
                       type="password"
@@ -172,7 +174,7 @@ export default function LoginPage() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="input w-full"
-                      placeholder="Повторите пароль"
+                      placeholder={t("auth.confirmPassword")}
                       minLength={6}
                       required
                     />
@@ -180,7 +182,7 @@ export default function LoginPage() {
 
                   <div>
                     <label htmlFor="country" className="block text-sm font-medium mb-1">
-                      Страна
+                      {t("auth.country")}
                     </label>
                     <select
                       id="country"
@@ -195,9 +197,6 @@ export default function LoginPage() {
                         </option>
                       ))}
                     </select>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Это определит валюту и локализацию контента
-                    </p>
                   </div>
                 </>
               )}
@@ -210,9 +209,9 @@ export default function LoginPage() {
                 {submitting ? (
                   <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white inline-block"></span>
                 ) : mode === "login" ? (
-                  "Войти"
+                  t("auth.loginButton")
                 ) : (
-                  "Зарегистрироваться"
+                  t("auth.registerButton")
                 )}
               </button>
             </form>
@@ -224,8 +223,8 @@ export default function LoginPage() {
                 className="text-sm text-primary hover:underline"
               >
                 {mode === "login"
-                  ? "Нет аккаунта? Зарегистрируйтесь"
-                  : "Уже есть аккаунт? Войдите"}
+                  ? t("auth.noAccount")
+                  : t("auth.hasAccount")}
               </button>
             </div>
 

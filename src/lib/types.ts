@@ -21,6 +21,9 @@ export interface CountryConfig {
   currency: CurrencyConfig;
 }
 
+// Locale type
+export type Locale = "ru" | "kk";
+
 // User
 export interface User {
   id: string;
@@ -32,6 +35,7 @@ export interface User {
   monthlyEventsCreated?: number;
   monthlyResetAt?: string;
   country: Country;
+  locale?: Locale;
   createdAt: string;
 }
 

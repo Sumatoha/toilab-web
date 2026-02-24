@@ -191,7 +191,7 @@ export const auth = {
 
   me: () => fetchApi<User>("/auth/me"),
 
-  updateProfile: (data: { name?: string }) =>
+  updateProfile: (data: { name?: string; locale?: string }) =>
     fetchApi<User>("/auth/me", {
       method: "PATCH",
       body: JSON.stringify(data),

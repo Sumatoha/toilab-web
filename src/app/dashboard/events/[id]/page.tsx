@@ -29,13 +29,15 @@ import {
 } from "lucide-react";
 import { events, checklist, calendar, activity, shares } from "@/lib/api";
 import { Event, EventStats, ChecklistItem, CalendarEvent, ActivityLog, ShareLink, ShareWidget } from "@/lib/types";
-import { formatDate, getDaysUntil, eventTypeLabels, cn } from "@/lib/utils";
+import { formatDate, getDaysUntil, cn } from "@/lib/utils";
 import { PageLoader, Modal, ModalFooter } from "@/components/ui";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 export default function EventDetailPage() {
   const params = useParams();
   const eventId = params.id as string;
+  const { t } = useTranslation();
 
   const [event, setEvent] = useState<Event | null>(null);
   const [stats, setStats] = useState<EventStats | null>(null);
@@ -89,16 +91,16 @@ export default function EventDetailPage() {
   if (!event) {
     return (
       <div className="text-center py-16">
-        <p className="text-muted-foreground">Мероприятие не найдено</p>
+        <p className="text-muted-foreground">{t("errors.eventNotFound")}</p>
         <Link href="/dashboard" className="text-sm underline mt-2 inline-block">
-          Назад
+          {t("common.back")}
         </Link>
       </div>
     );
   }
 
   const daysUntil = getDaysUntil(event.date);
-  const typeLabel = eventTypeLabels[event.type]?.ru || event.type;
+  const typeLabel = t(`event.${event.type}`);
   const taskProgress = stats?.checklistTotal ? Math.round((stats.checklistDone / stats.checklistTotal) * 100) : 0;
   const budgetProgress = event.totalBudget > 0 ? Math.round(((stats?.paidAmount || 0) / event.totalBudget) * 100) : 0;
   const guestProgress = stats?.totalGuests ? Math.round(((stats?.confirmedGuests || 0) / stats.totalGuests) * 100) : 0;
@@ -142,7 +144,7 @@ export default function EventDetailPage() {
           className="btn-outline btn-sm"
         >
           <Share2 className="w-4 h-4" />
-          <span className="hidden sm:inline">Поделиться</span>
+          <span className="hidden sm:inline">{t("common.share")}</span>
         </button>
       </div>
 
@@ -150,7 +152,7 @@ export default function EventDetailPage() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg text-sm">
           <Calendar className="w-4 h-4 text-muted-foreground" />
-          <span>{event.date ? formatDate(event.date) : "Дата не указана"}</span>
+          <span>{event.date ? formatDate(event.date) : t("common.dateNotSet")}</span>
         </div>
         {event.time && (
           <div className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg text-sm">
@@ -166,7 +168,7 @@ export default function EventDetailPage() {
         )}
         {daysUntil !== null && daysUntil > 0 && (
           <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium">
-            <span>{daysUntil} {daysUntil === 1 ? "день" : daysUntil < 5 ? "дня" : "дней"} до события</span>
+            <span>{daysUntil} {t("dashboard.daysLeft")}</span>
           </div>
         )}
       </div>
@@ -183,7 +185,7 @@ export default function EventDetailPage() {
             </div>
             <div>
               <div className="text-xl font-bold">{stats?.confirmedGuests || 0}<span className="text-muted-foreground font-normal text-sm">/{stats?.totalGuests || 0}</span></div>
-              <div className="text-xs text-muted-foreground">Гости</div>
+              <div className="text-xs text-muted-foreground">{t("event.overview.stats.guests")}</div>
             </div>
           </div>
           {guestProgress > 0 && (
@@ -203,7 +205,7 @@ export default function EventDetailPage() {
             </div>
             <div>
               <div className="text-xl font-bold">{Math.round(budgetProgress)}%</div>
-              <div className="text-xs text-muted-foreground">Бюджет</div>
+              <div className="text-xs text-muted-foreground">{t("event.overview.stats.budget")}</div>
             </div>
           </div>
           {budgetProgress > 0 && (
@@ -223,7 +225,7 @@ export default function EventDetailPage() {
             </div>
             <div>
               <div className="text-xl font-bold">{stats?.checklistDone || 0}<span className="text-muted-foreground font-normal text-sm">/{stats?.checklistTotal || 0}</span></div>
-              <div className="text-xs text-muted-foreground">Задачи</div>
+              <div className="text-xs text-muted-foreground">{t("event.overview.stats.tasks")}</div>
             </div>
           </div>
           {taskProgress > 0 && (
@@ -239,14 +241,14 @@ export default function EventDetailPage() {
         {/* Left: Unified Timeline (Tasks + Calendar) */}
         <div className="lg:col-span-3 card">
           <div className="flex items-center justify-between p-4 border-b border-border">
-            <h2 className="font-semibold">Предстоящее</h2>
+            <h2 className="font-semibold">{t("event.overview.timeline")}</h2>
             <div className="flex gap-2">
               <Link href={`/dashboard/events/${eventId}/checklist`} className="text-xs text-muted-foreground hover:text-primary">
-                Задачи
+                {t("nav.checklist")}
               </Link>
               <span className="text-muted-foreground">•</span>
               <Link href={`/dashboard/events/${eventId}/calendar`} className="text-xs text-muted-foreground hover:text-primary">
-                Календарь
+                {t("nav.calendar")}
               </Link>
             </div>
           </div>
@@ -302,11 +304,11 @@ export default function EventDetailPage() {
                             "text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0",
                             item.type === 'task' ? "bg-secondary text-muted-foreground" : "bg-blue-50 text-blue-600"
                           )}>
-                            {item.type === 'task' ? 'задача' : 'событие'}
+                            {item.type === 'task' ? t("checklist.title").toLowerCase() : t("calendar.title").toLowerCase()}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {isToday ? "Сегодня" : diffDays === 1 ? "Завтра" : isPast ? `${Math.abs(diffDays)} дн. назад` : item.date.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" })}
+                          {isToday ? t("calendar.today") : diffDays === 1 ? t("common.next") : isPast ? `${Math.abs(diffDays)} ${t("dashboard.daysLeft")}` : item.date.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" })}
                           {item.time && ` • ${item.time}`}
                         </p>
                       </div>
@@ -318,13 +320,13 @@ export default function EventDetailPage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <p className="text-muted-foreground text-sm mb-3">Нет предстоящих дел</p>
+                <p className="text-muted-foreground text-sm mb-3">{t("event.overview.noUpcoming")}</p>
                 <div className="flex gap-2 justify-center">
                   <Link href={`/dashboard/events/${eventId}/checklist`} className="btn-outline btn-sm">
-                    Добавить задачу
+                    {t("checklist.addTask")}
                   </Link>
                   <Link href={`/dashboard/events/${eventId}/calendar`} className="btn-outline btn-sm">
-                    Добавить событие
+                    {t("calendar.addEvent")}
                   </Link>
                 </div>
               </div>
@@ -335,18 +337,18 @@ export default function EventDetailPage() {
         {/* Right: Recent Activity */}
         <div className="lg:col-span-2 card">
           <div className="p-4 border-b border-border">
-            <h2 className="font-semibold">Последние действия</h2>
+            <h2 className="font-semibold">{t("event.overview.activity")}</h2>
           </div>
           <div className="p-4">
             {recentActivity.length > 0 ? (
               <div className="space-y-3">
                 {recentActivity.slice(0, 5).map((log) => (
-                  <ActivityItem key={log.id} log={log} />
+                  <ActivityItem key={log.id} log={log} t={t} />
                 ))}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Пока нет действий
+                {t("event.overview.noActivity")}
               </p>
             )}
           </div>
@@ -358,90 +360,71 @@ export default function EventDetailPage() {
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
         eventId={eventId}
+        t={t}
       />
     </div>
   );
 }
 
 // Activity action configurations
-const activityConfig: Record<string, { icon: LucideIcon; color: string; getText: (log: ActivityLog) => string }> = {
+const activityConfig: Record<string, { icon: LucideIcon; color: string }> = {
   // Guest actions
-  guest_added: { icon: UserPlus, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Добавлен гость: ${log.entityName || ""}` },
-  guest_updated: { icon: Users, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлён гость: ${log.entityName || ""}` },
-  guest_deleted: { icon: Users, color: "text-red-600 bg-red-100", getText: (log) => `Удалён гость: ${log.entityName || ""}` },
-  guest_rsvp: { icon: UserCheck, color: "text-emerald-600 bg-emerald-100", getText: (log) => `RSVP: ${log.entityName || ""} ${log.details || ""}` },
+  guest_added: { icon: UserPlus, color: "text-emerald-600 bg-emerald-100" },
+  guest_updated: { icon: Users, color: "text-blue-600 bg-blue-100" },
+  guest_deleted: { icon: Users, color: "text-red-600 bg-red-100" },
+  guest_rsvp: { icon: UserCheck, color: "text-emerald-600 bg-emerald-100" },
 
   // Expense actions
-  expense_added: { icon: Wallet, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Добавлен расход: ${log.entityName || ""}` },
-  expense_updated: { icon: Wallet, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлён расход: ${log.entityName || ""}` },
-  expense_paid: { icon: CreditCard, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Оплачено: ${log.entityName || ""} ${log.details || ""}` },
-  expense_deleted: { icon: Wallet, color: "text-red-600 bg-red-100", getText: (log) => `Удалён расход: ${log.entityName || ""}` },
+  expense_added: { icon: Wallet, color: "text-indigo-600 bg-indigo-100" },
+  expense_updated: { icon: Wallet, color: "text-blue-600 bg-blue-100" },
+  expense_paid: { icon: CreditCard, color: "text-emerald-600 bg-emerald-100" },
+  expense_deleted: { icon: Wallet, color: "text-red-600 bg-red-100" },
 
   // Task/checklist actions
-  task_completed: { icon: CheckSquare, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Выполнено: ${log.entityName || ""}` },
-  task_added: { icon: CheckSquare, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Добавлена задача: ${log.entityName || ""}` },
-  task_updated: { icon: CheckSquare, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлена задача: ${log.entityName || ""}` },
-  task_deleted: { icon: CheckSquare, color: "text-red-600 bg-red-100", getText: (log) => `Удалена задача: ${log.entityName || ""}` },
-  checklist_added: { icon: CheckSquare, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Добавлена задача: ${log.entityName || ""}` },
-  checklist_updated: { icon: CheckSquare, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлена задача: ${log.entityName || ""}` },
-  checklist_deleted: { icon: CheckSquare, color: "text-red-600 bg-red-100", getText: (log) => `Удалена задача: ${log.entityName || ""}` },
+  task_completed: { icon: CheckSquare, color: "text-emerald-600 bg-emerald-100" },
+  task_added: { icon: CheckSquare, color: "text-indigo-600 bg-indigo-100" },
+  task_updated: { icon: CheckSquare, color: "text-blue-600 bg-blue-100" },
+  task_deleted: { icon: CheckSquare, color: "text-red-600 bg-red-100" },
 
   // Program actions
-  program_item_added: { icon: FileText, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Программа: добавлено "${log.entityName || ""}"` },
-  program_item_updated: { icon: FileText, color: "text-blue-600 bg-blue-100", getText: (log) => `Программа: изменено "${log.entityName || ""}"` },
-  program_item_deleted: { icon: FileText, color: "text-red-600 bg-red-100", getText: (log) => `Программа: удалено "${log.entityName || ""}"` },
-  program_added: { icon: FileText, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Программа: добавлено "${log.entityName || ""}"` },
-  program_updated: { icon: FileText, color: "text-blue-600 bg-blue-100", getText: (log) => `Программа: изменено "${log.entityName || ""}"` },
-  program_deleted: { icon: FileText, color: "text-red-600 bg-red-100", getText: (log) => `Программа: удалено "${log.entityName || ""}"` },
+  program_item_added: { icon: FileText, color: "text-indigo-600 bg-indigo-100" },
+  program_item_updated: { icon: FileText, color: "text-blue-600 bg-blue-100" },
+  program_item_deleted: { icon: FileText, color: "text-red-600 bg-red-100" },
 
   // Vendor actions
-  vendor_added: { icon: Users, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Добавлен подрядчик: ${log.entityName || ""}` },
-  vendor_updated: { icon: Users, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлён подрядчик: ${log.entityName || ""}` },
-  vendor_paid: { icon: CreditCard, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Оплата подрядчику: ${log.entityName || ""} ${log.details || ""}` },
-  vendor_deleted: { icon: Users, color: "text-red-600 bg-red-100", getText: (log) => `Удалён подрядчик: ${log.entityName || ""}` },
+  vendor_added: { icon: Users, color: "text-indigo-600 bg-indigo-100" },
+  vendor_updated: { icon: Users, color: "text-blue-600 bg-blue-100" },
+  vendor_paid: { icon: CreditCard, color: "text-emerald-600 bg-emerald-100" },
+  vendor_deleted: { icon: Users, color: "text-red-600 bg-red-100" },
 
   // Seating/table actions
-  table_added: { icon: LayoutGrid, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Рассадка: добавлен ${log.entityName || "стол"}` },
-  table_updated: { icon: LayoutGrid, color: "text-blue-600 bg-blue-100", getText: (log) => `Рассадка: изменён ${log.entityName || "стол"}` },
-  table_deleted: { icon: LayoutGrid, color: "text-red-600 bg-red-100", getText: (log) => `Рассадка: удалён ${log.entityName || "стол"}` },
-  guest_seated: { icon: LayoutGrid, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Рассажен гость: ${log.entityName || ""}` },
-  seating_added: { icon: LayoutGrid, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Рассадка: добавлен ${log.entityName || "стол"}` },
-  seating_updated: { icon: LayoutGrid, color: "text-blue-600 bg-blue-100", getText: (log) => `Рассадка: изменён ${log.entityName || "стол"}` },
-  seating_deleted: { icon: LayoutGrid, color: "text-red-600 bg-red-100", getText: (log) => `Рассадка: удалён ${log.entityName || "стол"}` },
+  table_added: { icon: LayoutGrid, color: "text-indigo-600 bg-indigo-100" },
+  table_updated: { icon: LayoutGrid, color: "text-blue-600 bg-blue-100" },
+  table_deleted: { icon: LayoutGrid, color: "text-red-600 bg-red-100" },
+  guest_seated: { icon: LayoutGrid, color: "text-emerald-600 bg-emerald-100" },
 
   // Gift actions
-  gift_added: { icon: GiftIcon, color: "text-pink-600 bg-pink-100", getText: (log) => `Подарок от ${log.entityName || ""}` },
-  gift_deleted: { icon: GiftIcon, color: "text-red-600 bg-red-100", getText: (log) => `Удалён подарок: ${log.entityName || ""}` },
-  gift_updated: { icon: GiftIcon, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлён подарок: ${log.entityName || ""}` },
+  gift_added: { icon: GiftIcon, color: "text-pink-600 bg-pink-100" },
+  gift_deleted: { icon: GiftIcon, color: "text-red-600 bg-red-100" },
 
   // Calendar actions
-  calendar_event_added: { icon: CalendarDays, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Событие: ${log.entityName || ""}` },
-  calendar_event_completed: { icon: CalendarDays, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Завершено: ${log.entityName || ""}` },
-  calendar_event_updated: { icon: CalendarDays, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлено событие: ${log.entityName || ""}` },
-  calendar_event_deleted: { icon: CalendarDays, color: "text-red-600 bg-red-100", getText: (log) => `Удалено событие: ${log.entityName || ""}` },
-  calendar_added: { icon: CalendarDays, color: "text-indigo-600 bg-indigo-100", getText: (log) => `Событие: ${log.entityName || ""}` },
-  calendar_updated: { icon: CalendarDays, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлено событие: ${log.entityName || ""}` },
-  calendar_deleted: { icon: CalendarDays, color: "text-red-600 bg-red-100", getText: (log) => `Удалено событие: ${log.entityName || ""}` },
+  calendar_event_added: { icon: CalendarDays, color: "text-indigo-600 bg-indigo-100" },
+  calendar_event_completed: { icon: CalendarDays, color: "text-emerald-600 bg-emerald-100" },
 
   // Event actions
-  event_created: { icon: Calendar, color: "text-emerald-600 bg-emerald-100", getText: (log) => `Создано мероприятие${log.entityName ? `: ${log.entityName}` : ""}` },
-  event_updated: { icon: Settings, color: "text-blue-600 bg-blue-100", getText: (log) => `Обновлены настройки${log.details ? ` ${log.details}` : ""}` },
-  event_deleted: { icon: Settings, color: "text-red-600 bg-red-100", getText: () => `Удалено мероприятие` },
+  event_updated: { icon: Settings, color: "text-blue-600 bg-blue-100" },
 
   // Share actions
-  share_link_created: { icon: Link2, color: "text-indigo-600 bg-indigo-100", getText: () => `Создана ссылка для доступа` },
-  share_created: { icon: Link2, color: "text-indigo-600 bg-indigo-100", getText: () => `Создана ссылка для доступа` },
-  share_deleted: { icon: Link2, color: "text-red-600 bg-red-100", getText: () => `Удалена ссылка для доступа` },
+  share_link_created: { icon: Link2, color: "text-indigo-600 bg-indigo-100" },
 };
 
-function ActivityItem({ log }: { log: ActivityLog }) {
+function ActivityItem({ log, t }: { log: ActivityLog; t: (key: string) => string }) {
   const config = activityConfig[log.action] || {
     icon: Clock,
     color: "text-gray-600 bg-gray-100",
-    getText: () => log.action,
   };
   const Icon = config.icon;
-  const text = config.getText(log);
+  const text = t(`activity.${log.action}`) + (log.entityName ? `: ${log.entityName}` : "");
 
   // Format relative time
   const formatRelativeTime = (date: string) => {
@@ -452,10 +435,10 @@ function ActivityItem({ log }: { log: ActivityLog }) {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return "только что";
-    if (diffMins < 60) return `${diffMins} мин назад`;
-    if (diffHours < 24) return `${diffHours} ч назад`;
-    if (diffDays < 7) return `${diffDays} дн назад`;
+    if (diffMins < 1) return t("calendar.today");
+    if (diffMins < 60) return `${diffMins} min`;
+    if (diffHours < 24) return `${diffHours} h`;
+    if (diffDays < 7) return `${diffDays} d`;
     return then.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" });
   };
 
@@ -473,26 +456,29 @@ function ActivityItem({ log }: { log: ActivityLog }) {
 }
 
 // Widget options for sharing
-const WIDGET_OPTIONS: { key: ShareWidget; label: string }[] = [
-  { key: "guests", label: "Гости" },
-  { key: "budget", label: "Бюджет" },
-  { key: "checklist", label: "Задачи" },
-  { key: "program", label: "Программа" },
-  { key: "seating", label: "Рассадка" },
-  { key: "gifts", label: "Подарки" },
+const getWidgetOptions = (t: (key: string) => string): { key: ShareWidget; label: string }[] => [
+  { key: "guests", label: t("share.widgets.guests") },
+  { key: "budget", label: t("share.widgets.budget") },
+  { key: "checklist", label: t("share.widgets.checklist") },
+  { key: "program", label: t("share.widgets.program") },
+  { key: "seating", label: t("share.widgets.seating") },
+  { key: "gifts", label: t("share.widgets.gifts") },
 ];
 
 interface QuickShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   eventId: string;
+  t: (key: string) => string;
 }
 
-function QuickShareModal({ isOpen, onClose, eventId }: QuickShareModalProps) {
+function QuickShareModal({ isOpen, onClose, eventId, t }: QuickShareModalProps) {
   const [selectedWidgets, setSelectedWidgets] = useState<ShareWidget[]>(["guests", "checklist", "program"]);
   const [isCreating, setIsCreating] = useState(false);
   const [createdLink, setCreatedLink] = useState<ShareLink | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const WIDGET_OPTIONS = getWidgetOptions(t);
 
   const toggleWidget = (widget: ShareWidget) => {
     setSelectedWidgets((prev) =>
@@ -514,7 +500,7 @@ function QuickShareModal({ isOpen, onClose, eventId }: QuickShareModalProps) {
       setCreatedLink(link);
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось создать ссылку");
+      toast.error(err.message || t("errors.saveError"));
     } finally {
       setIsCreating(false);
     }
@@ -530,7 +516,7 @@ function QuickShareModal({ isOpen, onClose, eventId }: QuickShareModalProps) {
     if (url) {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      toast.success("Ссылка скопирована");
+      toast.success(t("toasts.linkCopied"));
       setTimeout(() => setCopied(false), 2000);
     }
   };
@@ -545,11 +531,11 @@ function QuickShareModal({ isOpen, onClose, eventId }: QuickShareModalProps) {
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Поделиться">
+    <Modal isOpen={isOpen} onClose={handleClose} title={t("share.title")}>
       {!createdLink ? (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Что показать?</label>
+            <label className="block text-sm font-medium mb-2">{t("event.overview.shareDescription")}</label>
             <div className="grid grid-cols-2 gap-2">
               {WIDGET_OPTIONS.map((widget) => (
                 <label
@@ -572,27 +558,27 @@ function QuickShareModal({ isOpen, onClose, eventId }: QuickShareModalProps) {
               ))}
             </div>
             {selectedWidgets.length === 0 && (
-              <p className="text-xs text-red-500 mt-2">Выберите хотя бы один раздел</p>
+              <p className="text-xs text-red-500 mt-2">{t("errors.required")}</p>
             )}
           </div>
 
           <ModalFooter>
             <button type="button" onClick={handleClose} className="btn-ghost btn-md">
-              Отмена
+              {t("common.cancel")}
             </button>
             <button
               onClick={handleCreate}
               disabled={isCreating || selectedWidgets.length === 0}
               className="btn-primary btn-md"
             >
-              {isCreating ? "Создание..." : "Создать ссылку"}
+              {isCreating ? t("common.loading") : t("share.createLink")}
             </button>
           </ModalFooter>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="p-4 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground mb-2">Ссылка для доступа:</p>
+            <p className="text-sm text-muted-foreground mb-2">{t("invitation.copyLink")}:</p>
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -613,14 +599,14 @@ function QuickShareModal({ isOpen, onClose, eventId }: QuickShareModalProps) {
           </div>
 
           <div className="text-sm text-muted-foreground">
-            <p>Доступные разделы: {selectedWidgets.map(w =>
+            <p>{selectedWidgets.map(w =>
               WIDGET_OPTIONS.find(o => o.key === w)?.label
             ).join(", ")}</p>
           </div>
 
           <ModalFooter>
             <button onClick={handleClose} className="btn-primary btn-md w-full">
-              Готово
+              {t("common.close")}
             </button>
           </ModalFooter>
         </div>
