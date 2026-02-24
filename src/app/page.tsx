@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   Calendar,
@@ -8,90 +10,54 @@ import {
   Sparkles,
   ArrowRight,
   Check,
+  Globe,
 } from "lucide-react";
 import { Logo } from "@/components/ui";
-
-const features = [
-  {
-    icon: Wallet,
-    title: "Бюджет",
-    description: "Контролируйте расходы по категориям. Знайте, сколько потратили и сколько осталось.",
-  },
-  {
-    icon: Users,
-    title: "Гости и RSVP",
-    description: "Управляйте списком гостей. Отправляйте приглашения и отслеживайте подтверждения.",
-  },
-  {
-    icon: Mail,
-    title: "Приглашения",
-    description: "Красивые электронные приглашения с персональными ссылками для каждого гостя.",
-  },
-  {
-    icon: CheckSquare,
-    title: "Чек-лист",
-    description: "Готовые списки задач по типу мероприятия. Ничего не забудете.",
-  },
-  {
-    icon: Calendar,
-    title: "Подрядчики",
-    description: "Ведите учёт всех подрядчиков: фотограф, ведущий, декор. Статусы оплаты.",
-  },
-  {
-    icon: Sparkles,
-    title: "AI-генерация",
-    description: "Создавайте уникальные приглашения с помощью искусственного интеллекта.",
-  },
-];
-
-const plans = [
-  {
-    name: "Toilab",
-    price: "0 ₸",
-    description: "Попробуйте бесплатно",
-    features: ["Бюджет и расходы", "Чек-лист задач", "Программа вечера", "1 мероприятие"],
-    cta: "Начать бесплатно",
-    highlight: false,
-  },
-  {
-    name: "Toilab Pro",
-    price: "7 990 ₸",
-    description: "Для вашего мероприятия",
-    features: [
-      "Все функции",
-      "Список гостей и RSVP",
-      "Рассадка гостей",
-      "Приглашения",
-      "Учёт подарков",
-      "Поделиться с командой",
-    ],
-    cta: "Выбрать Pro",
-    highlight: true,
-  },
-  {
-    name: "Toilab Studio",
-    price: "24 990 ₸",
-    period: "/мес",
-    description: "Для вашего агентства",
-    features: [
-      "Всё из Pro",
-      "До 10 мероприятий",
-      "Приоритетная поддержка",
-      "Командный доступ",
-    ],
-    cta: "Выбрать Studio",
-    highlight: false,
-  },
-];
-
-const weddingFeatures = [
-  "Список гостей и RSVP",
-  "Бюджет и расходы",
-  "Чек-лист задач",
-  "Приглашения",
-];
+import { usePublicTranslation } from "@/hooks/use-translation";
 
 export default function LandingPage() {
+  const { t, locale, setLocale } = usePublicTranslation();
+
+  const features = [
+    {
+      icon: Wallet,
+      titleKey: "landing.featuresSection.budget.title",
+      descKey: "landing.featuresSection.budget.desc",
+    },
+    {
+      icon: Users,
+      titleKey: "landing.featuresSection.guests.title",
+      descKey: "landing.featuresSection.guests.desc",
+    },
+    {
+      icon: Mail,
+      titleKey: "landing.featuresSection.invitations.title",
+      descKey: "landing.featuresSection.invitations.desc",
+    },
+    {
+      icon: CheckSquare,
+      titleKey: "landing.featuresSection.checklist.title",
+      descKey: "landing.featuresSection.checklist.desc",
+    },
+    {
+      icon: Calendar,
+      titleKey: "landing.featuresSection.vendors.title",
+      descKey: "landing.featuresSection.vendors.desc",
+    },
+    {
+      icon: Sparkles,
+      titleKey: "landing.featuresSection.ai.title",
+      descKey: "landing.featuresSection.ai.desc",
+    },
+  ];
+
+  const weddingFeatures = [
+    t("landing.weddingFeatures.guests"),
+    t("landing.weddingFeatures.budget"),
+    t("landing.weddingFeatures.checklist"),
+    t("landing.weddingFeatures.invitations"),
+  ];
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -102,19 +68,29 @@ export default function LandingPage() {
 
             <nav className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
-                Возможности
+                {t("landing.nav.features")}
               </a>
               <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-                Тарифы
+                {t("landing.nav.pricing")}
               </a>
             </nav>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Language Selector */}
+              <button
+                onClick={() => setLocale(locale === "kk" ? "ru" : "kk")}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                title={locale === "kk" ? "Русский" : "Қазақша"}
+              >
+                <Globe className="w-4 h-4" />
+                <span className="hidden sm:inline">{locale === "kk" ? "RU" : "ҚАЗ"}</span>
+              </button>
+
               <Link href="/login" className="btn-ghost btn-sm hidden sm:flex">
-                Войти
+                {t("landing.nav.login")}
               </Link>
               <Link href="/login" className="btn-primary btn-sm">
-                Начать бесплатно
+                {t("landing.startFree")}
               </Link>
             </div>
           </div>
@@ -127,29 +103,29 @@ export default function LandingPage() {
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 animate-fade-in">
               <Sparkles className="w-4 h-4" />
-              Тойды өзің жоспарла!
+              {t("landing.hero.badge")}
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-foreground mb-6 animate-slide-up">
-              Планируйте{" "}
-              <span className="text-primary">свадьбу</span>
+              {t("landing.hero.titlePart1")}{" "}
+              <span className="text-primary">{t("landing.hero.titleHighlight")}</span>
               <br />
-              легко и красиво
+              {t("landing.hero.titlePart2")}
             </h1>
 
             <p className="text-lg sm:text-xl text-muted-foreground mb-8 animate-slide-up" style={{ animationDelay: "0.1s" }}>
-              Гости, бюджет, задачи, приглашения — всё в одном месте.
+              {t("landing.hero.subtitle")}
               <br />
-              Организуйте идеальную свадьбу без стресса.
+              {t("landing.hero.subtitle2")}
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: "0.2s" }}>
               <Link href="/login" className="btn-primary btn-lg w-full sm:w-auto">
-                Создать мероприятие
+                {t("landing.hero.cta")}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
               <a href="#features" className="btn-outline btn-lg w-full sm:w-auto">
-                Узнать больше
+                {t("landing.hero.learnMore")}
               </a>
             </div>
           </div>
@@ -174,25 +150,25 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-display font-bold mb-4">
-              Всё для вашего мероприятия
+              {t("landing.featuresSection.title")}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Инструменты, которые помогут организовать идеальное торжество
+              {t("landing.featuresSection.subtitle")}
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
               <div
-                key={feature.title}
+                key={feature.titleKey}
                 className="card-hover"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4">
                   <feature.icon className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
+                <h3 className="text-lg font-semibold mb-2">{t(feature.titleKey)}</h3>
+                <p className="text-muted-foreground">{t(feature.descKey)}</p>
               </div>
             ))}
           </div>
@@ -204,52 +180,101 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-display font-bold mb-4">
-              Простые тарифы
+              {t("landing.pricing.title")}
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Выберите подходящий тариф. Без скрытых платежей.
+              {t("landing.pricing.subtitle")}
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {plans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`card relative ${
-                  plan.highlight ? "border-primary shadow-lg scale-105" : ""
-                }`}
-              >
-
-                <div className="text-center mb-6">
-                  <h3 className="text-lg font-semibold mb-1">{plan.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
-                  <div className="text-4xl font-bold">
-                    {plan.price}
-                    {plan.period && <span className="text-lg font-normal text-muted-foreground">{plan.period}</span>}
-                  </div>
-                </div>
-
-                <ul className="space-y-3 mb-6">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-3">
-                      <Check className="w-5 h-5 text-primary flex-shrink-0" />
-                      <span className="text-sm">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Link
-                  href="/login"
-                  className={`w-full ${plan.highlight ? "btn-primary" : "btn-outline"} btn-md`}
-                >
-                  {plan.cta}
-                </Link>
+            {/* Free Plan */}
+            <div className="card relative">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold mb-1">{t("landing.pricing.free.name")}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{t("landing.pricing.free.desc")}</p>
+                <div className="text-4xl font-bold">{t("landing.pricing.free.price")}</div>
               </div>
-            ))}
+
+              <ul className="space-y-3 mb-6">
+                {["Бюджет и расходы", "Чек-лист задач", "Программа вечера", "1 мероприятие"].map((feature, idx) => {
+                  const features = locale === "kk"
+                    ? ["Бюджет және шығындар", "Тапсырмалар тізімі", "Кеш бағдарламасы", "1 іс-шара"]
+                    : ["Бюджет и расходы", "Чек-лист задач", "Программа вечера", "1 мероприятие"];
+                  return (
+                    <li key={idx} className="flex items-center gap-3">
+                      <Check className="w-5 h-5 text-primary flex-shrink-0" />
+                      <span className="text-sm">{features[idx]}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <Link href="/login" className="w-full btn-outline btn-md">
+                {t("landing.pricing.free.cta")}
+              </Link>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="card relative border-primary shadow-lg scale-105">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold mb-1">{t("landing.pricing.pro.name")}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{t("landing.pricing.pro.desc")}</p>
+                <div className="text-4xl font-bold">{t("landing.pricing.pro.price")}</div>
+              </div>
+
+              <ul className="space-y-3 mb-6">
+                {[0, 1, 2, 3, 4, 5].map((idx) => {
+                  const features = locale === "kk"
+                    ? ["Барлық мүмкіндіктер", "Қонақтар тізімі және RSVP", "Қонақтарды орналастыру", "Шақырулар", "Сыйлықтар есебі", "Командамен бөлісу"]
+                    : ["Все функции", "Список гостей и RSVP", "Рассадка гостей", "Приглашения", "Учёт подарков", "Поделиться с командой"];
+                  return (
+                    <li key={idx} className="flex items-center gap-3">
+                      <Check className="w-5 h-5 text-primary flex-shrink-0" />
+                      <span className="text-sm">{features[idx]}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <Link href="/login" className="w-full btn-primary btn-md">
+                {t("landing.pricing.pro.cta")}
+              </Link>
+            </div>
+
+            {/* Studio Plan */}
+            <div className="card relative">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-semibold mb-1">{t("landing.pricing.studio.name")}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{t("landing.pricing.studio.desc")}</p>
+                <div className="text-4xl font-bold">
+                  {t("landing.pricing.studio.price")}
+                  <span className="text-lg font-normal text-muted-foreground">{t("landing.pricing.studio.period")}</span>
+                </div>
+              </div>
+
+              <ul className="space-y-3 mb-6">
+                {[0, 1, 2, 3].map((idx) => {
+                  const features = locale === "kk"
+                    ? ["Pro-дағы барлығы", "10 іс-шараға дейін", "Басым қолдау", "Командалық қол жеткізу"]
+                    : ["Всё из Pro", "До 10 мероприятий", "Приоритетная поддержка", "Командный доступ"];
+                  return (
+                    <li key={idx} className="flex items-center gap-3">
+                      <Check className="w-5 h-5 text-primary flex-shrink-0" />
+                      <span className="text-sm">{features[idx]}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <Link href="/login" className="w-full btn-outline btn-md">
+                {t("landing.pricing.studio.cta")}
+              </Link>
+            </div>
           </div>
 
           <p className="text-center text-sm text-muted-foreground mt-8">
-            Оплата через Kaspi Pay. Мгновенное подключение.
+            {t("landing.pricing.footer")}
           </p>
         </div>
       </section>
@@ -258,13 +283,13 @@ export default function LandingPage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-primary">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-display font-bold text-white mb-4">
-            Готовы начать планирование?
+            {t("landing.cta.title")}
           </h2>
           <p className="text-lg text-white/80 mb-8">
-            Создайте первое мероприятие бесплатно и оцените все возможности
+            {t("landing.cta.subtitle")}
           </p>
           <Link href="/login" className="btn bg-white text-primary hover:bg-white/90 btn-lg">
-            Создать мероприятие
+            {t("landing.cta.button")}
             <ArrowRight className="w-5 h-5 ml-2" />
           </Link>
         </div>
@@ -277,15 +302,15 @@ export default function LandingPage() {
             <Logo size="lg" href={undefined} />
 
             <p className="text-sm text-muted-foreground">
-              © 2024 Toilab. Все права защищены.
+              {t("landing.footer.copyright")}
             </p>
 
             <div className="flex items-center gap-6">
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Политика конфиденциальности
+                {t("landing.footer.privacy")}
               </a>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Условия использования
+                {t("landing.footer.terms")}
               </a>
             </div>
           </div>

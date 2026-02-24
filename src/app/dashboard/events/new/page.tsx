@@ -3,17 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Heart } from "lucide-react";
+import { ArrowLeft, Heart, Globe } from "lucide-react";
 import { events } from "@/lib/api";
 import { TimeInput } from "@/components/ui";
 import { CreateEventRequest, Country } from "@/lib/types";
 import { getExampleNames, currencyConfigs } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 export default function NewEventPage() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { t, locale, setLocale, canChangeLanguage } = useTranslation();
   const userCountry: Country = user?.country || "kz";
   const { person1: examplePerson1, person2: examplePerson2 } = getExampleNames(userCountry);
   const currencyName = currencyConfigs[userCountry]?.name?.toLowerCase() || "тенге";
@@ -29,18 +31,18 @@ export default function NewEventPage() {
     e.preventDefault();
 
     if (!formData.title) {
-      toast.error("Введите название свадьбы");
+      toast.error(t("event.enterWeddingTitle"));
       return;
     }
 
     setIsLoading(true);
     try {
       const event = await events.create(formData);
-      toast.success("Свадьба создана!");
+      toast.success(t("event.weddingCreated"));
       router.push(`/dashboard/events/${event.id}`);
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось создать свадьбу");
+      toast.error(err.message || t("event.createError"));
     } finally {
       setIsLoading(false);
     }
@@ -55,25 +57,61 @@ export default function NewEventPage() {
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
-          Назад
+          {t("common.back")}
         </Link>
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
             <Heart className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-display font-bold">Новая свадьба</h1>
-            <p className="text-muted-foreground">Заполните основную информацию</p>
+            <h1 className="text-2xl font-display font-bold">{t("event.newWedding")}</h1>
+            <p className="text-muted-foreground">{t("event.fillBasicInfo")}</p>
           </div>
         </div>
       </div>
+
+      {/* Language Selector for KZ users */}
+      {canChangeLanguage && (
+        <div className="card mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Globe className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm font-medium">{t("event.selectLanguage")}</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setLocale("kk")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  locale === "kk"
+                    ? "bg-primary text-white"
+                    : "bg-secondary hover:bg-secondary/80"
+                }`}
+              >
+                Қазақша
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocale("ru")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  locale === "ru"
+                    ? "bg-primary text-white"
+                    : "bg-secondary hover:bg-secondary/80"
+                }`}
+              >
+                Русский
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="card">
         <div className="space-y-5">
           {/* Title */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              Название *
+              {t("event.titleRequired")}
             </label>
             <input
               type="text"
@@ -81,7 +119,10 @@ export default function NewEventPage() {
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
-              placeholder={`Свадьба ${examplePerson1} и ${examplePerson2}`}
+              placeholder={locale === "kk"
+                ? `${examplePerson1} мен ${examplePerson2} тойы`
+                : `Свадьба ${examplePerson1} и ${examplePerson2}`
+              }
               className="input"
               required
               autoFocus
@@ -92,7 +133,7 @@ export default function NewEventPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Имя жениха
+                {t("event.groomName")}
               </label>
               <input
                 type="text"
@@ -106,7 +147,7 @@ export default function NewEventPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">
-                Имя невесты
+                {t("event.brideName")}
               </label>
               <input
                 type="text"
@@ -124,7 +165,7 @@ export default function NewEventPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Дата свадьбы
+                {t("event.weddingDate")}
               </label>
               <input
                 type="date"
@@ -140,7 +181,7 @@ export default function NewEventPage() {
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">
-                Время начала
+                {t("event.startTime")}
               </label>
               <TimeInput
                 value={formData.time || ""}
@@ -157,7 +198,7 @@ export default function NewEventPage() {
           {/* Guest limit */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              Количество гостей
+              {t("event.guestCount")}
             </label>
             <input
               type="number"
@@ -176,7 +217,7 @@ export default function NewEventPage() {
           {/* Budget */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              Планируемый бюджет ({currencyName})
+              {t("event.plannedBudget")} ({currencyName})
             </label>
             <input
               type="number"
@@ -191,7 +232,7 @@ export default function NewEventPage() {
               className="input"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              Можно изменить позже
+              {t("event.budgetHint")}
             </p>
           </div>
         </div>
@@ -199,14 +240,14 @@ export default function NewEventPage() {
         {/* Actions */}
         <div className="flex gap-3 mt-6 pt-6 border-t border-border">
           <Link href="/dashboard" className="btn-outline btn-md">
-            Отмена
+            {t("common.cancel")}
           </Link>
           <button
             type="submit"
             disabled={isLoading}
             className="btn-primary btn-md flex-1"
           >
-            {isLoading ? "Создание..." : "Создать свадьбу"}
+            {isLoading ? t("event.creating") : t("event.createWeddingButton")}
           </button>
         </div>
       </form>
