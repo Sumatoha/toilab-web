@@ -212,7 +212,7 @@ function SharedDashboardContent() {
     gifts,
   } = data;
 
-  const eventLabel = tLabel(eventTypeLabels[event.type]?.ru, eventTypeLabels[event.type]?.kk) || event.type;
+  const eventLabel = tLabel(eventTypeLabels[event.type]?.ru, eventTypeLabels[event.type]?.kz) || event.type;
   const hasWidget = (w: string) => widgets?.includes(w as (typeof widgets)[number]) ?? false;
 
   return (
