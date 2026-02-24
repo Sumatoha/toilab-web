@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { usePublicTranslation } from "@/hooks/use-translation";
 
 export default function TermsPage() {
+  const { t } = usePublicTranslation();
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 py-12">
@@ -10,69 +15,53 @@ export default function TermsPage() {
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8"
         >
           <ArrowLeft className="w-4 h-4" />
-          На главную
+          {t("terms.backToHome")}
         </Link>
 
         <h1 className="text-3xl font-display font-bold mb-8">
-          Условия использования
+          {t("terms.title")}
         </h1>
 
         <div className="prose prose-gray max-w-none space-y-6">
           <p className="text-muted-foreground">
-            Последнее обновление: Февраль 2024
+            {t("terms.lastUpdated")}
           </p>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold">1. Общие положения</h2>
-            <p>
-              Настоящие Условия регулируют использование сервиса Toilab для
-              планирования мероприятий. Используя сервис, вы соглашаетесь с
-              данными условиями.
-            </p>
+            <h2 className="text-xl font-semibold">{t("terms.section1Title")}</h2>
+            <p>{t("terms.section1Text")}</p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold">2. Услуги</h2>
-            <p>Toilab предоставляет следующие услуги:</p>
+            <h2 className="text-xl font-semibold">{t("terms.section2Title")}</h2>
+            <p>{t("terms.section2Intro")}</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Создание и управление мероприятиями</li>
-              <li>Управление списком гостей и RSVP</li>
-              <li>Планирование бюджета</li>
-              <li>Создание электронных приглашений</li>
-              <li>Чек-листы для подготовки</li>
+              <li>{t("terms.section2Item1")}</li>
+              <li>{t("terms.section2Item2")}</li>
+              <li>{t("terms.section2Item3")}</li>
+              <li>{t("terms.section2Item4")}</li>
+              <li>{t("terms.section2Item5")}</li>
             </ul>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold">3. Аккаунт пользователя</h2>
-            <p>
-              Вы несёте ответственность за сохранность данных вашего аккаунта.
-              Не передавайте свои учётные данные третьим лицам.
-            </p>
+            <h2 className="text-xl font-semibold">{t("terms.section3Title")}</h2>
+            <p>{t("terms.section3Text")}</p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold">4. Оплата</h2>
-            <p>
-              Стоимость услуг указана на странице тарифов. Оплата производится
-              через Kaspi Pay. Возврат средств возможен в течение 14 дней с
-              момента оплаты.
-            </p>
+            <h2 className="text-xl font-semibold">{t("terms.section4Title")}</h2>
+            <p>{t("terms.section4Text")}</p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold">5. Ограничение ответственности</h2>
-            <p>
-              Сервис предоставляется «как есть». Мы не несём ответственности за
-              убытки, связанные с использованием сервиса.
-            </p>
+            <h2 className="text-xl font-semibold">{t("terms.section5Title")}</h2>
+            <p>{t("terms.section5Text")}</p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold">6. Контакты</h2>
-            <p>
-              По вопросам использования сервиса: support@toilab.kz
-            </p>
+            <h2 className="text-xl font-semibold">{t("terms.section6Title")}</h2>
+            <p>{t("terms.section6Text")}</p>
           </section>
         </div>
       </div>

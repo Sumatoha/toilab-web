@@ -6,9 +6,11 @@ import { Plus, Calendar, Users, MapPin } from "lucide-react";
 import { events as eventsApi } from "@/lib/api";
 import { Event } from "@/lib/types";
 import { formatDate, eventTypeLabels } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 export default function EventsPage() {
+  const { t, tLabel } = useTranslation();
   const [eventsList, setEventsList] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -22,7 +24,7 @@ export default function EventsPage() {
       setEventsList(data || []);
     } catch (error) {
       console.error("Failed to load events:", error);
-      toast.error("Не удалось загрузить мероприятия");
+      toast.error(t("eventsPage.loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -40,25 +42,25 @@ export default function EventsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold">Мероприятия</h1>
-          <p className="text-muted-foreground">Все ваши мероприятия</p>
+          <h1 className="text-2xl font-display font-bold">{t("eventsPage.title")}</h1>
+          <p className="text-muted-foreground">{t("eventsPage.subtitle")}</p>
         </div>
         <Link href="/dashboard/events/new" className="btn-primary">
           <Plus className="w-4 h-4 mr-2" />
-          Новое мероприятие
+          {t("eventsPage.newEvent")}
         </Link>
       </div>
 
       {eventsList.length === 0 ? (
         <div className="card text-center py-12">
           <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Нет мероприятий</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("eventsPage.noEvents")}</h3>
           <p className="text-muted-foreground mb-4">
-            Создайте первое мероприятие, чтобы начать планирование
+            {t("eventsPage.createFirst")}
           </p>
           <Link href="/dashboard/events/new" className="btn-primary">
             <Plus className="w-4 h-4 mr-2" />
-            Создать мероприятие
+            {t("eventsPage.createEvent")}
           </Link>
         </div>
       ) : (
@@ -72,7 +74,7 @@ export default function EventsPage() {
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <span className="text-xs font-medium text-primary">
-                    {eventTypeLabels[event.type]?.ru || event.type}
+                    {tLabel(eventTypeLabels[event.type]?.ru, eventTypeLabels[event.type]?.kz) || event.type}
                   </span>
                   <h3 className="font-semibold mt-1">
                     {event.person1} & {event.person2}
@@ -84,7 +86,7 @@ export default function EventsPage() {
               <div className="space-y-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  {event.date ? formatDate(event.date) : "Дата не указана"}
+                  {event.date ? formatDate(event.date) : t("common.dateNotSet")}
                 </div>
                 {event.venue?.name && (
                   <div className="flex items-center gap-2">
@@ -94,7 +96,7 @@ export default function EventsPage() {
                 )}
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4" />
-                  {event.guestLimit} гостей макс.
+                  {event.guestLimit} {t("eventsPage.guestsMax")}
                 </div>
               </div>
             </Link>
