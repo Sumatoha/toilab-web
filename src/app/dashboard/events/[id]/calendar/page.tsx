@@ -556,7 +556,7 @@ function CalendarEventBlock({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">{event.title}</p>
-                <p className="text-xs text-muted-foreground">{tLabel(typeLabel.ru, typeLabel.kk)}</p>
+                <p className="text-xs text-muted-foreground">{tLabel(typeLabel.ru, typeLabel.kz)}</p>
               </div>
             </div>
 
@@ -863,7 +863,7 @@ function CalendarEventModal({
                   )}
                 >
                   <Icon className="w-4 h-4" />
-                  {tLabel(label.ru, label.kk)}
+                  {tLabel(label.ru, label.kz)}
                 </button>
               );
             })}
