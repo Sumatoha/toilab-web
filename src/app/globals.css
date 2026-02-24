@@ -506,16 +506,17 @@
   /* Chip filters */
   .chip {
     @apply inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full;
-    @apply border-2 border-border bg-white;
-    @apply transition-all duration-200 cursor-pointer;
+    @apply border-2 border-border bg-white text-muted-foreground;
+    @apply cursor-pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
   }
 
   .chip:hover {
-    @apply border-primary/30 bg-primary/5;
+    @apply border-primary/30 bg-primary/5 text-foreground;
   }
 
   .chip-active {
-    @apply chip border-primary bg-primary text-white;
+    @apply border-primary bg-primary/10 text-primary;
   }
 
   /* Glow effects */

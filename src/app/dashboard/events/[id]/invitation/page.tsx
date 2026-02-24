@@ -15,11 +15,13 @@ import {
 import { events, guests as guestsApi } from "@/lib/api";
 import { Event, Guest } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 export default function InvitationPage() {
   const params = useParams();
   const eventId = params.id as string;
+  const { t } = useTranslation();
 
   const [event, setEvent] = useState<Event | null>(null);
   const [guests, setGuests] = useState<Guest[]>([]);
@@ -44,7 +46,7 @@ export default function InvitationPage() {
       setExternalUrl(eventData.invitation?.externalUrl || "");
     } catch (error) {
       console.error("Failed to load data:", error);
-      toast.error("Не удалось загрузить данные");
+      toast.error(t("invitation.loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -56,10 +58,10 @@ export default function InvitationPage() {
     setIsSaving(true);
     try {
       await events.updateInvitation(eventId, { externalUrl });
-      toast.success("Ссылка сохранена");
+      toast.success(t("invitation.urlSaved"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось сохранить");
+      toast.error(err.message || t("invitation.saveError"));
     } finally {
       setIsSaving(false);
     }
@@ -67,31 +69,31 @@ export default function InvitationPage() {
 
   function copyWhatsAppMessage(guest: Guest) {
     if (!externalUrl) {
-      toast.error("Сначала добавьте ссылку на приглашение");
+      toast.error(t("invitation.addLinkFirst"));
       return;
     }
 
-    const message = `Здравствуйте, ${guest.name}! Приглашаем вас на наше мероприятие. Подробности по ссылке: ${externalUrl}`;
+    const message = t("invitation.inviteMessage").replace("{name}", guest.name).replace("{url}", externalUrl);
     navigator.clipboard.writeText(message);
     setCopiedGuestId(guest.id);
-    toast.success("Сообщение скопировано");
+    toast.success(t("invitation.messageCopied"));
 
     setTimeout(() => setCopiedGuestId(null), 2000);
   }
 
   function openWhatsApp(guest: Guest) {
     if (!externalUrl) {
-      toast.error("Сначала добавьте ссылку на приглашение");
+      toast.error(t("invitation.addLinkFirst"));
       return;
     }
 
     if (!guest.phone) {
-      toast.error("У гостя не указан номер телефона");
+      toast.error(t("invitation.noPhoneNumber"));
       return;
     }
 
     const message = encodeURIComponent(
-      `Здравствуйте, ${guest.name}! Приглашаем вас на наше мероприятие. Подробности по ссылке: ${externalUrl}`
+      t("invitation.inviteMessage").replace("{name}", guest.name).replace("{url}", externalUrl)
     );
     const phone = guest.phone.replace(/\D/g, "");
     window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
@@ -110,16 +112,16 @@ export default function InvitationPage() {
   }
 
   if (!event) {
-    return <div>Мероприятие не найдено</div>;
+    return <div>{t("invitation.eventNotFound")}</div>;
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-h1">Приглашение</h1>
+        <h1 className="text-h1">{t("invitation.title")}</h1>
         <p className="text-caption mt-1">
-          Добавьте ссылку и отправьте гостям
+          {t("invitation.description")}
         </p>
       </div>
 
@@ -127,10 +129,10 @@ export default function InvitationPage() {
       <div className="card p-4 sm:p-6">
         <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
           <Link2 className="w-5 h-5 text-primary" />
-          Ссылка на приглашение
+          {t("invitation.externalUrl")}
         </h3>
         <p className="text-xs sm:text-sm text-muted-foreground mb-4">
-          Вставьте ссылку (Canva, Tilda и т.д.)
+          {t("invitation.externalUrlHint")}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -138,7 +140,7 @@ export default function InvitationPage() {
             type="url"
             value={externalUrl}
             onChange={(e) => setExternalUrl(e.target.value)}
-            placeholder="https://www.canva.com/design/..."
+            placeholder={t("invitation.externalUrlPlaceholder")}
             className="flex-1 px-3 sm:px-4 py-2 sm:py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
           />
           <button
@@ -146,7 +148,7 @@ export default function InvitationPage() {
             disabled={isSaving}
             className="btn-primary px-4 sm:px-6 h-10 sm:h-auto"
           >
-            {isSaving ? "..." : "Сохранить"}
+            {isSaving ? "..." : t("common.save")}
           </button>
         </div>
 
@@ -155,12 +157,12 @@ export default function InvitationPage() {
             <button
               onClick={() => {
                 navigator.clipboard.writeText(externalUrl);
-                toast.success("Ссылка скопирована");
+                toast.success(t("invitation.linkCopied"));
               }}
               className="btn-outline btn-sm"
             >
               <Copy className="w-4 h-4" />
-              <span className="hidden sm:inline ml-2">Копировать</span>
+              <span className="hidden sm:inline ml-2">{t("common.copy")}</span>
             </button>
             <a
               href={externalUrl}
@@ -169,7 +171,7 @@ export default function InvitationPage() {
               className="btn-outline btn-sm"
             >
               <ExternalLink className="w-4 h-4" />
-              <span className="hidden sm:inline ml-2">Открыть</span>
+              <span className="hidden sm:inline ml-2">{t("invitation.open")}</span>
             </a>
           </div>
         )}
@@ -180,19 +182,19 @@ export default function InvitationPage() {
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <h3 className="text-base sm:text-lg font-semibold flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            <span className="hidden sm:inline">Рассылка по WhatsApp</span>
-            <span className="sm:hidden">WhatsApp</span>
+            <span className="hidden sm:inline">{t("invitation.whatsappBroadcast")}</span>
+            <span className="sm:hidden">{t("invitation.whatsapp")}</span>
           </h3>
           <span className="text-xs sm:text-sm text-muted-foreground">
-            {guests.length} гостей
+            {guests.length} {t("invitation.guestsCount")}
           </span>
         </div>
 
         {guests.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>Нет гостей</p>
-            <p className="text-sm">Добавьте гостей в разделе «Гости»</p>
+            <p>{t("invitation.noGuests")}</p>
+            <p className="text-sm">{t("invitation.noGuestsHint")}</p>
           </div>
         ) : (
           <>
@@ -203,7 +205,7 @@ export default function InvitationPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Поиск гостя..."
+                placeholder={t("invitation.searchGuest")}
                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary text-sm"
               />
             </div>
@@ -230,7 +232,7 @@ export default function InvitationPage() {
                         </p>
                       ) : (
                         <p className="text-xs sm:text-sm text-muted-foreground italic">
-                          Нет номера
+                          {t("invitation.noPhone")}
                         </p>
                       )}
                     </div>
@@ -242,7 +244,7 @@ export default function InvitationPage() {
                         "btn-outline btn-sm p-2",
                         copiedGuestId === guest.id && "bg-green-50 border-green-500 text-green-600"
                       )}
-                      title="Копировать сообщение"
+                      title={t("invitation.copyMessage")}
                     >
                       {copiedGuestId === guest.id ? (
                         <Check className="w-4 h-4" />
@@ -254,7 +256,7 @@ export default function InvitationPage() {
                       <button
                         onClick={() => openWhatsApp(guest)}
                         className="btn-sm bg-green-500 hover:bg-green-600 text-white p-2"
-                        title="Открыть WhatsApp"
+                        title={t("invitation.openWhatsApp")}
                       >
                         <MessageCircle className="w-4 h-4" />
                       </button>

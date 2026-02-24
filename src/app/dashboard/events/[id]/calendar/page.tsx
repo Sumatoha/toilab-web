@@ -21,6 +21,7 @@ import { calendar as calendarApi } from "@/lib/api";
 import { CalendarEvent, CalendarEventType } from "@/lib/types";
 import { cn, calendarEventTypeLabels } from "@/lib/utils";
 import { Modal, ModalFooter, ConfirmDialog, TimeInput } from "@/components/ui";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 const eventTypeIcons: Record<CalendarEventType, typeof Users> = {
@@ -66,7 +67,7 @@ function getEventTopOffset(time: string): number {
 export default function CalendarPage() {
   const params = useParams();
   const eventId = params.id as string;
-
+  const { t, tLabel } = useTranslation();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<ViewType>("week");
@@ -110,12 +111,12 @@ export default function CalendarPage() {
       setShowAddModal(false);
       setPrefilledDate("");
       setPrefilledTime("");
-      toast.success("Событие добавлено");
+      toast.success(t("calendar.eventAdded"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось добавить событие");
+      toast.error(err.message || t("calendar.addError"));
     }
-  }, [eventId]);
+  }, [eventId, t]);
 
   const handleUpdateEvent = useCallback(async (data: {
     title: string;
@@ -131,12 +132,12 @@ export default function CalendarPage() {
       const updated = await calendarApi.update(eventId, editingEvent.id, data);
       setEvents(prev => prev.map(e => e.id === updated.id ? updated : e));
       setEditingEvent(null);
-      toast.success("Событие обновлено");
+      toast.success(t("calendar.eventUpdated"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось обновить событие");
+      toast.error(err.message || t("calendar.updateError"));
     }
-  }, [eventId, editingEvent]);
+  }, [eventId, editingEvent, t]);
 
   const handleDeleteEvent = useCallback(async () => {
     if (!deleteEventId) return;
@@ -145,14 +146,14 @@ export default function CalendarPage() {
       await calendarApi.delete(eventId, deleteEventId);
       setEvents(prev => prev.filter(e => e.id !== deleteEventId));
       setDeleteEventId(null);
-      toast.success("Событие удалено");
+      toast.success(t("calendar.eventDeleted"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось удалить событие");
+      toast.error(err.message || t("calendar.deleteError"));
     } finally {
       setIsDeleting(false);
     }
-  }, [eventId, deleteEventId]);
+  }, [eventId, deleteEventId, t]);
 
   const handleAddFromSlot = useCallback((date: Date, hour?: number) => {
     const dateStr = date.toISOString().split("T")[0];
@@ -221,7 +222,7 @@ export default function CalendarPage() {
       {/* Header - minimal */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Календарь</h1>
+          <h1 className="text-2xl font-bold">{t("calendar.title")}</h1>
           <p className="text-sm text-muted-foreground">
             {view === "week"
               ? `${weekDays[0].toLocaleDateString("ru-KZ", { day: "numeric", month: "short" })} - ${weekDays[6].toLocaleDateString("ru-KZ", { day: "numeric", month: "short", year: "numeric" })}`
@@ -241,7 +242,7 @@ export default function CalendarPage() {
               )}
             >
               <LayoutGrid className="w-4 h-4" />
-              <span className="hidden sm:inline">Неделя</span>
+              <span className="hidden sm:inline">{t("calendar.week")}</span>
             </button>
             <button
               onClick={() => setView("month")}
@@ -251,7 +252,7 @@ export default function CalendarPage() {
               )}
             >
               <List className="w-4 h-4" />
-              <span className="hidden sm:inline">Месяц</span>
+              <span className="hidden sm:inline">{t("calendar.month")}</span>
             </button>
           </div>
 
@@ -260,21 +261,21 @@ export default function CalendarPage() {
             className="btn-primary btn-sm"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Добавить</span>
+            <span className="hidden sm:inline">{t("common.add")}</span>
           </button>
         </div>
       </div>
 
       {/* Navigation */}
       <div className="flex items-center gap-2">
-        <button onClick={goPrev} className="p-2 hover:bg-secondary rounded-lg transition-colors" aria-label="Предыдущий период">
+        <button onClick={goPrev} className="p-2 hover:bg-secondary rounded-lg transition-colors" aria-label={t("calendar.prevPeriod")}>
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <button onClick={goNext} className="p-2 hover:bg-secondary rounded-lg transition-colors" aria-label="Следующий период">
+        <button onClick={goNext} className="p-2 hover:bg-secondary rounded-lg transition-colors" aria-label={t("calendar.nextPeriod")}>
           <ChevronRight className="w-5 h-5" />
         </button>
         <button onClick={goToday} className="px-3 py-1.5 text-sm hover:bg-secondary rounded-lg transition-colors">
-          Сегодня
+          {t("calendar.today")}
         </button>
       </div>
 
@@ -365,6 +366,7 @@ export default function CalendarPage() {
                               heightPx={heightPx}
                               topOffsetPercent={topOffset}
                               onClick={() => setEditingEvent(event)}
+                              tLabel={tLabel}
                             />
                           );
                         })}
@@ -385,13 +387,14 @@ export default function CalendarPage() {
           onDateClick={(date) => handleAddFromSlot(date)}
           onEventClick={(event) => setEditingEvent(event)}
           getEventsForDate={getEventsForDate}
+          t={t}
         />
       )}
 
       {/* Upcoming Events List */}
       {events.filter(e => !e.isCompleted && new Date(e.date) >= today).length > 0 && (
         <div className="space-y-3">
-          <h2 className="font-semibold">Ближайшие события</h2>
+          <h2 className="font-semibold">{t("calendar.upcoming")}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {events
               .filter(e => !e.isCompleted && new Date(e.date) >= today)
@@ -403,6 +406,7 @@ export default function CalendarPage() {
                   event={event}
                   onEdit={() => setEditingEvent(event)}
                   onDelete={() => setDeleteEventId(event.id)}
+                  t={t}
                 />
               ))}
           </div>
@@ -415,12 +419,12 @@ export default function CalendarPage() {
           <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <CalendarIcon className="w-7 h-7 text-primary" />
           </div>
-          <h3 className="text-lg font-semibold mb-1">Календарь пуст</h3>
+          <h3 className="text-lg font-semibold mb-1">{t("calendar.emptyTitle")}</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Добавьте события: встречи, дедлайны, напоминания
+            {t("calendar.emptyDescription")}
           </p>
           <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
-            <Plus className="w-4 h-4" /> Добавить событие
+            <Plus className="w-4 h-4" /> {t("calendar.addEvent")}
           </button>
         </div>
       )}
@@ -432,6 +436,8 @@ export default function CalendarPage() {
           onSubmit={handleAddEvent}
           initialDate={prefilledDate}
           initialTime={prefilledTime}
+          t={t}
+          tLabel={tLabel}
         />
       )}
 
@@ -442,6 +448,8 @@ export default function CalendarPage() {
           onClose={() => setEditingEvent(null)}
           onSubmit={handleUpdateEvent}
           onDelete={() => { setDeleteEventId(editingEvent.id); setEditingEvent(null); }}
+          t={t}
+          tLabel={tLabel}
         />
       )}
 
@@ -450,10 +458,10 @@ export default function CalendarPage() {
         isOpen={!!deleteEventId}
         onClose={() => setDeleteEventId(null)}
         onConfirm={handleDeleteEvent}
-        title="Удалить событие?"
-        description="Событие будет удалено из календаря"
-        confirmText="Удалить"
-        cancelText="Отмена"
+        title={t("calendar.deleteTitle")}
+        description={t("calendar.deleteDescription")}
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
         variant="danger"
         isLoading={isDeleting}
       />
@@ -466,11 +474,13 @@ function CalendarEventBlock({
   heightPx,
   topOffsetPercent,
   onClick,
+  tLabel,
 }: {
   event: CalendarEvent;
   heightPx: number;
   topOffsetPercent: number;
   onClick: () => void;
+  tLabel: (ru: string, kz?: string) => string;
 }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0, showBelow: false });
@@ -546,7 +556,7 @@ function CalendarEventBlock({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate">{event.title}</p>
-                <p className="text-xs text-muted-foreground">{typeLabel.ru}</p>
+                <p className="text-xs text-muted-foreground">{tLabel(typeLabel.ru, typeLabel.kk)}</p>
               </div>
             </div>
 
@@ -596,11 +606,13 @@ function MonthView({
   onDateClick,
   onEventClick,
   getEventsForDate,
+  t,
 }: {
   currentDate: Date;
   onDateClick: (date: Date) => void;
   onEventClick: (event: CalendarEvent) => void;
   getEventsForDate: (date: Date) => CalendarEvent[];
+  t: (key: string) => string;
 }) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -617,11 +629,15 @@ function MonthView({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Get weekday names from translations (array format)
+  const weekDaysRaw = t("calendar.weekDays");
+  const weekDayNames = weekDaysRaw.startsWith("[") ? JSON.parse(weekDaysRaw) : ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+
   return (
     <div className="card overflow-hidden">
       {/* Day Headers */}
       <div className="grid grid-cols-7 border-b border-border bg-secondary/30">
-        {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((day, i) => (
+        {weekDayNames.map((day: string, i: number) => (
           <div key={day} className={cn(
             "text-center text-xs font-medium py-2",
             i >= 5 ? "text-muted-foreground/70" : "text-muted-foreground"
@@ -693,10 +709,12 @@ function EventCard({
   event,
   onEdit,
   onDelete,
+  t,
 }: {
   event: CalendarEvent;
   onEdit: () => void;
   onDelete: () => void;
+  t: (key: string) => string;
 }) {
   const Icon = eventTypeIcons[event.type];
   const colors = eventTypeColors[event.type];
@@ -721,8 +739,8 @@ function EventCard({
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate">{event.title}</p>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {isToday ? "Сегодня" :
-             isTomorrow ? "Завтра" :
+            {isToday ? t("calendar.today") :
+             isTomorrow ? t("calendar.tomorrow") :
              eventDate.toLocaleDateString("ru-KZ", { day: "numeric", month: "short" })}
             {event.time && ` • ${event.time}`}
           </p>
@@ -751,6 +769,8 @@ function CalendarEventModal({
   onDelete,
   initialDate,
   initialTime,
+  t,
+  tLabel,
 }: {
   event?: CalendarEvent;
   onClose: () => void;
@@ -766,6 +786,8 @@ function CalendarEventModal({
   onDelete?: () => void;
   initialDate?: string;
   initialTime?: string;
+  t: (key: string) => string;
+  tLabel: (ru: string, kz?: string) => string;
 }) {
   const getDateString = (date: string | Date | undefined): string => {
     if (!date) return new Date().toISOString().split("T")[0];
@@ -809,39 +831,39 @@ function CalendarEventModal({
   const timeSuggestions = ["09:00", "10:00", "12:00", "14:00", "16:00", "18:00"];
 
   return (
-    <Modal isOpen onClose={onClose} title={event ? "Редактировать" : "Новое событие"}>
+    <Modal isOpen onClose={onClose} title={event ? t("calendar.editEvent") : t("calendar.newEvent")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5">Название *</label>
+          <label className="block text-sm font-medium mb-1.5">{t("calendar.titleRequired")}</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="input"
-            placeholder="Встреча с ведущим"
+            placeholder={t("calendar.titlePlaceholder")}
             autoFocus
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Тип</label>
+          <label className="block text-sm font-medium mb-2">{t("calendar.type")}</label>
           <div className="flex flex-wrap gap-2">
-            {eventTypes.map((t) => {
-              const Icon = eventTypeIcons[t];
-              const colors = eventTypeColors[t];
-              const label = calendarEventTypeLabels[t];
+            {eventTypes.map((eventType) => {
+              const Icon = eventTypeIcons[eventType];
+              const colors = eventTypeColors[eventType];
+              const label = calendarEventTypeLabels[eventType];
               return (
                 <button
-                  key={t}
+                  key={eventType}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => setType(eventType)}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-all",
-                    type === t ? `${colors.bg} ${colors.text}` : "bg-secondary hover:bg-secondary/80"
+                    type === eventType ? `${colors.bg} ${colors.text}` : "bg-secondary hover:bg-secondary/80"
                   )}
                 >
                   <Icon className="w-4 h-4" />
-                  {label.ru}
+                  {tLabel(label.ru, label.kk)}
                 </button>
               );
             })}
@@ -849,51 +871,51 @@ function CalendarEventModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5">Дата *</label>
+          <label className="block text-sm font-medium mb-1.5">{t("calendar.dateRequired")}</label>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5">Время</label>
+          <label className="block text-sm font-medium mb-1.5">{t("calendar.time")}</label>
           <div className="flex flex-wrap gap-1.5 mb-2">
-            {timeSuggestions.map((t) => (
+            {timeSuggestions.map((timeSuggestion) => (
               <button
-                key={t}
+                key={timeSuggestion}
                 type="button"
-                onClick={() => setTime(t)}
+                onClick={() => setTime(timeSuggestion)}
                 className={cn(
                   "px-2.5 py-1 text-xs rounded-full transition-colors",
-                  time === t ? "bg-primary text-white" : "bg-secondary hover:bg-secondary/80"
+                  time === timeSuggestion ? "bg-primary text-white" : "bg-secondary hover:bg-secondary/80"
                 )}
               >
-                {t}
+                {timeSuggestion}
               </button>
             ))}
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <TimeInput value={time} onChange={setTime} placeholder="Начало" />
-            <TimeInput value={endTime} onChange={setEndTime} placeholder="Конец" />
+            <TimeInput value={time} onChange={setTime} placeholder={t("calendar.startPlaceholder")} />
+            <TimeInput value={endTime} onChange={setEndTime} placeholder={t("calendar.endPlaceholder")} />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5">Место</label>
+          <label className="block text-sm font-medium mb-1.5">{t("calendar.location")}</label>
           <input
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             className="input"
-            placeholder="Ресторан, офис, онлайн..."
+            placeholder={t("calendar.locationPlaceholder")}
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5">Заметка</label>
+          <label className="block text-sm font-medium mb-1.5">{t("calendar.note")}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="input min-h-[60px] resize-none"
-            placeholder="Дополнительная информация..."
+            placeholder={t("calendar.notePlaceholder")}
             rows={2}
           />
         </div>
@@ -904,9 +926,9 @@ function CalendarEventModal({
               <Trash2 className="w-4 h-4" />
             </button>
           )}
-          <button type="button" onClick={onClose} className="btn-outline btn-md">Отмена</button>
+          <button type="button" onClick={onClose} className="btn-outline btn-md">{t("common.cancel")}</button>
           <button type="submit" disabled={isSubmitting || !title.trim() || !date} className="btn-primary btn-md">
-            {isSubmitting ? "..." : event ? "Сохранить" : "Добавить"}
+            {isSubmitting ? "..." : event ? t("common.save") : t("common.add")}
           </button>
         </ModalFooter>
       </form>

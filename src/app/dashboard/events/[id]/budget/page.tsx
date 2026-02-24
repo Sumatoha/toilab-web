@@ -204,9 +204,9 @@ export default function BudgetPage() {
           <div className="lg:col-span-2 card p-4 sm:p-6">
             <div className="flex items-start justify-between gap-4 mb-4 sm:mb-6">
               <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-semibold mb-1">Обзор бюджета</h2>
+                <h2 className="text-base sm:text-lg font-semibold mb-1">{t("budget.budgetOverview")}</h2>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  {Math.round(budgetProgress)}% использовано
+                  {Math.round(budgetProgress)}% {t("budget.used")}
                 </p>
               </div>
               <CircularProgress
@@ -229,7 +229,7 @@ export default function BudgetPage() {
               <div className="p-3 sm:p-4 rounded-xl bg-blue-50">
                 <div className="flex items-center gap-2 mb-1 sm:mb-2">
                   <Target className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs sm:text-sm text-blue-600 font-medium">Запланировано</span>
+                  <span className="text-xs sm:text-sm text-blue-600 font-medium">{t("budget.totalPlanned")}</span>
                 </div>
                 <div className="text-lg sm:text-2xl font-bold text-blue-700">
                   {formatCurrency(summary.totalPlanned, userCountry)}
@@ -238,7 +238,7 @@ export default function BudgetPage() {
               <div className="p-3 sm:p-4 rounded-xl bg-emerald-50">
                 <div className="flex items-center gap-2 mb-1 sm:mb-2">
                   <CreditCard className="w-4 h-4 text-emerald-600" />
-                  <span className="text-xs sm:text-sm text-emerald-600 font-medium">Оплачено</span>
+                  <span className="text-xs sm:text-sm text-emerald-600 font-medium">{t("budget.paid")}</span>
                 </div>
                 <div className="text-lg sm:text-2xl font-bold text-emerald-700">
                   {formatCurrency(summary.totalPaid, userCountry)}
@@ -251,7 +251,7 @@ export default function BudgetPage() {
                 <div className="flex items-center gap-2 mb-1 sm:mb-2">
                   <Wallet className={cn("w-4 h-4", remaining >= 0 ? "text-amber-600" : "text-red-600")} />
                   <span className={cn("text-xs sm:text-sm font-medium", remaining >= 0 ? "text-amber-600" : "text-red-600")}>
-                    {remaining >= 0 ? "Осталось" : "Перерасход"}
+                    {remaining >= 0 ? t("budget.remaining") : t("budget.overspent")}
                   </span>
                 </div>
                 <div className={cn("text-lg sm:text-2xl font-bold", remaining >= 0 ? "text-amber-700" : "text-red-700")}>
@@ -263,25 +263,25 @@ export default function BudgetPage() {
 
           {/* Quick Stats */}
           <div className="card p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Статистика</h3>
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">{t("budget.statistics")}</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Всего расходов</span>
+                <span className="text-muted-foreground">{t("budget.totalExpenses")}</span>
                 <span className="font-semibold">{expensesList.length}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Категорий</span>
+                <span className="text-muted-foreground">{t("budget.categoriesCount")}</span>
                 <span className="font-semibold">{summary.byCategory.length}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Оплачено позиций</span>
+                <span className="text-muted-foreground">{t("budget.paidItems")}</span>
                 <span className="font-semibold">
                   {expensesList.filter(e => e.status === 'paid').length}
                 </span>
               </div>
               <div className="border-t border-border pt-4 mt-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Средний расход</span>
+                  <span className="text-muted-foreground">{t("budget.averageExpense")}</span>
                   <span className="font-semibold">
                     {expensesList.length > 0
                       ? formatCurrency(Math.round(summary.totalPlanned / expensesList.length), userCountry)
@@ -297,7 +297,7 @@ export default function BudgetPage() {
 
       {/* Categories */}
       <div className="card p-4 sm:p-6">
-        <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">По категориям</h2>
+        <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">{t("budget.byCategory")}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
           <button
             onClick={() => setSelectedCategory(null)}
@@ -308,9 +308,9 @@ export default function BudgetPage() {
                 : "border-transparent bg-secondary hover:bg-secondary/80"
             )}
           >
-            <p className="text-sm sm:text-base font-semibold">Все</p>
+            <p className="text-sm sm:text-base font-semibold">{t("common.all")}</p>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              {expensesList.length} расходов
+              {expensesList.length} {t("budget.expenses")}
             </p>
           </button>
           {summary?.byCategory.map((cat) => {
@@ -363,20 +363,20 @@ export default function BudgetPage() {
           <h2 className="text-lg font-semibold">
             {selectedCategory
               ? expenseCategoryLabels[selectedCategory]?.ru || selectedCategory
-              : "Все расходы"}
+              : t("budget.allExpenses")}
           </h2>
           <span className="text-sm text-muted-foreground">
-            {filteredExpenses.length} позиций
+            {filteredExpenses.length} {t("budget.items")}
           </span>
         </div>
 
         {filteredExpenses.length === 0 ? (
           <div className="card text-center py-12">
             <PieChart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">Нет расходов</p>
+            <p className="text-muted-foreground mb-4">{t("budget.noExpenses")}</p>
             <button onClick={() => setShowAddModal(true)} className="btn-primary btn-md">
               <Plus className="w-4 h-4" />
-              Добавить расход
+              {t("budget.addExpense")}
             </button>
           </div>
         ) : (
@@ -391,6 +391,7 @@ export default function BudgetPage() {
                   onEdit={() => setEditingExpense(expense)}
                   onDelete={() => setDeleteExpenseId(expense.id)}
                   className={`animate-in stagger-${Math.min(index + 1, 4)}`}
+                  t={t}
                 />
               ))}
             </div>
@@ -406,6 +407,7 @@ export default function BudgetPage() {
                     onEdit={() => setEditingExpense(expense)}
                     onDelete={() => setDeleteExpenseId(expense.id)}
                     className={`animate-in stagger-${Math.min(index + 1, 4)}`}
+                    t={t}
                   />
                 ))}
               </div>
@@ -421,6 +423,7 @@ export default function BudgetPage() {
           onAdd={handleAddExpense}
           vendors={vendorsList}
           country={userCountry}
+          t={t}
         />
       )}
 
@@ -432,6 +435,7 @@ export default function BudgetPage() {
           onSave={handleUpdateExpense}
           vendors={vendorsList}
           country={userCountry}
+          t={t}
         />
       )}
 
@@ -440,10 +444,10 @@ export default function BudgetPage() {
         isOpen={!!deleteExpenseId}
         onClose={() => setDeleteExpenseId(null)}
         onConfirm={handleDeleteExpense}
-        title="Удалить расход?"
-        description="Расход будет удалён из бюджета"
-        confirmText="Удалить"
-        cancelText="Отмена"
+        title={t("budget.deleteConfirm")}
+        description={t("budget.deleteDescription")}
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
         variant="danger"
         isLoading={isDeleting}
       />
@@ -458,12 +462,14 @@ function ExpenseCard({
   onEdit,
   onDelete,
   className,
+  t,
 }: {
   expense: Expense;
   country: Country;
   onEdit: () => void;
   onDelete: () => void;
   className?: string;
+  t: (key: string) => string;
 }) {
   const label = expenseCategoryLabels[expense.category];
   const colors = categoryColors[expense.category] || categoryColors.other;
@@ -472,9 +478,9 @@ function ExpenseCard({
   const paidPercent = plannedAmount > 0 ? Math.round((paidAmount / plannedAmount) * 100) : 0;
 
   const statusLabels: Record<ExpenseStatus, { text: string; class: string; icon: typeof Check }> = {
-    planned: { text: "План", class: "bg-slate-100 text-slate-700", icon: Target },
-    booked: { text: "Бронь", class: "bg-blue-100 text-blue-700", icon: CreditCard },
-    paid: { text: "Оплачено", class: "bg-emerald-100 text-emerald-700", icon: Check },
+    planned: { text: t("budget.statusShort.planned"), class: "bg-slate-100 text-slate-700", icon: Target },
+    booked: { text: t("budget.statusShort.booked"), class: "bg-blue-100 text-blue-700", icon: CreditCard },
+    paid: { text: t("budget.statusShort.paid"), class: "bg-emerald-100 text-emerald-700", icon: Check },
   };
 
   const status = statusLabels[expense.status] || statusLabels.planned;
@@ -510,7 +516,7 @@ function ExpenseCard({
           </span>
           {paidAmount > 0 && paidAmount < plannedAmount && (
             <span className="text-xs text-muted-foreground">
-              {paidPercent}% оплачено
+              {paidPercent}% {t("budget.percentPaid")}
             </span>
           )}
         </div>
@@ -519,14 +525,14 @@ function ExpenseCard({
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
             className="p-2.5 text-muted-foreground hover:text-primary active:bg-primary/10 rounded-xl transition-colors"
-            aria-label="Редактировать"
+            aria-label={t("common.edit")}
           >
             <Pencil className="w-4 h-4" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
             className="p-2.5 text-muted-foreground hover:text-red-500 active:bg-red-50 rounded-xl transition-colors"
-            aria-label="Удалить"
+            aria-label={t("common.delete")}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -537,7 +543,7 @@ function ExpenseCard({
       {plannedAmount > 0 && (
         <div className="mt-3 pt-3 border-t border-border">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-            <span>Оплачено</span>
+            <span>{t("budget.paid")}</span>
             <span>{formatCurrency(paidAmount, country)}</span>
           </div>
           <ProgressBar
@@ -559,12 +565,14 @@ function ExpenseRow({
   onEdit,
   onDelete,
   className,
+  t,
 }: {
   expense: Expense;
   country: Country;
   onEdit: () => void;
   onDelete: () => void;
   className?: string;
+  t: (key: string) => string;
 }) {
   const label = expenseCategoryLabels[expense.category];
   const colors = categoryColors[expense.category] || categoryColors.other;
@@ -576,9 +584,9 @@ function ExpenseRow({
       : 0;
 
   const statusLabels: Record<ExpenseStatus, { text: string; class: string; icon: typeof Check }> = {
-    planned: { text: "Запланировано", class: "badge-default", icon: Target },
-    booked: { text: "Забронировано", class: "badge-info", icon: CreditCard },
-    paid: { text: "Оплачено", class: "badge-success", icon: Check },
+    planned: { text: t("budget.status.planned"), class: "badge-default", icon: Target },
+    booked: { text: t("budget.status.booked"), class: "badge-info", icon: CreditCard },
+    paid: { text: t("budget.status.paid"), class: "badge-success", icon: Check },
   };
 
   const status = statusLabels[expense.status] || statusLabels.planned;
@@ -618,7 +626,7 @@ function ExpenseRow({
         <p className="font-semibold">{formatCurrency(plannedAmount, country)}</p>
         {paidAmount > 0 && (
           <p className="text-sm text-emerald-600">
-            {formatCurrency(paidAmount, country)} оплачено
+            {formatCurrency(paidAmount, country)} {t("budget.percentPaid")}
           </p>
         )}
         {paidAmount === 0 && plannedAmount > 0 && (
@@ -631,14 +639,14 @@ function ExpenseRow({
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
           className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-          title="Редактировать"
+          title={t("common.edit")}
         >
           <Pencil className="w-4 h-4" />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-          title="Удалить"
+          title={t("common.delete")}
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -652,11 +660,13 @@ function AddExpenseModal({
   onAdd,
   vendors,
   country,
+  t,
 }: {
   onClose: () => void;
   onAdd: (data: { category: ExpenseCategory; title: string; plannedAmount: number; vendorId?: string }) => void;
   vendors: Vendor[];
   country: Country;
+  t: (key: string) => string;
 }) {
   const currencyName = currencyConfigs[country]?.name || "Тенге";
   const [category, setCategory] = useState<ExpenseCategory>("venue");
@@ -692,10 +702,10 @@ function AddExpenseModal({
   ];
 
   return (
-    <Modal isOpen onClose={onClose} title="Добавить расход">
+    <Modal isOpen onClose={onClose} title={t("budget.addExpense")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1.5">Категория</label>
+          <label className="block text-sm font-medium mb-1.5">{t("budget.category")}</label>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {categories.map((cat) => {
               const colors = categoryColors[cat];
@@ -719,25 +729,25 @@ function AddExpenseModal({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">Название *</label>
+          <label className="block text-sm font-medium mb-1.5">{t("budget.titleRequired")}</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="input"
-            placeholder="Например: Зал на 200 человек"
+            placeholder={t("budget.exampleTitle")}
             autoFocus
           />
         </div>
         {vendors.length > 0 && (
           <div>
-            <label className="block text-sm font-medium mb-1.5">Подрядчик</label>
+            <label className="block text-sm font-medium mb-1.5">{t("budget.vendor")}</label>
             <select
               value={vendorId}
               onChange={(e) => setVendorId(e.target.value)}
               className="input"
             >
-              <option value="">Не выбран</option>
+              <option value="">{t("budget.notSelected")}</option>
               {vendors.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.name} ({vendorTypeLabels[v.category]?.ru || v.category})
@@ -747,7 +757,7 @@ function AddExpenseModal({
           </div>
         )}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Сумма ({currencyName.toLowerCase()})</label>
+          <label className="block text-sm font-medium mb-1.5">{t("budget.amount")} ({currencyName.toLowerCase()})</label>
           <input
             type="number"
             value={amount}
@@ -758,10 +768,10 @@ function AddExpenseModal({
         </div>
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
-            Отмена
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary btn-md">
-            Добавить
+            {t("common.add")}
           </button>
         </ModalFooter>
       </form>
@@ -775,12 +785,14 @@ function EditExpenseModal({
   onSave,
   vendors,
   country,
+  t,
 }: {
   expense: Expense;
   onClose: () => void;
   onSave: (data: UpdateExpenseRequest) => void;
   vendors: Vendor[];
   country: Country;
+  t: (key: string) => string;
 }) {
   const currencyName = currencyConfigs[country]?.name || "Тенге";
   const [title, setTitle] = useState(expense.title);
@@ -817,11 +829,11 @@ function EditExpenseModal({
   ];
 
   return (
-    <Modal isOpen onClose={onClose} title="Редактировать расход" size="md">
+    <Modal isOpen onClose={onClose} title={t("budget.editExpense")} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1.5">Название</label>
+            <label className="block text-sm font-medium mb-1.5">{t("common.name")}</label>
             <input
               type="text"
               value={title}
@@ -830,7 +842,7 @@ function EditExpenseModal({
             />
           </div>
           <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1.5">Категория</label>
+            <label className="block text-sm font-medium mb-1.5">{t("budget.category")}</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
@@ -845,13 +857,13 @@ function EditExpenseModal({
           </div>
           {vendors.length > 0 && (
             <div className="col-span-2">
-              <label className="block text-sm font-medium mb-1.5">Подрядчик</label>
+              <label className="block text-sm font-medium mb-1.5">{t("budget.vendor")}</label>
               <select
                 value={vendorId}
                 onChange={(e) => setVendorId(e.target.value)}
                 className="input"
               >
-                <option value="">Не выбран</option>
+                <option value="">{t("budget.notSelected")}</option>
                 {vendors.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name} ({vendorTypeLabels[v.category]?.ru || v.category})
@@ -863,10 +875,10 @@ function EditExpenseModal({
         </div>
 
         <div className="border-t border-border pt-4">
-          <h4 className="text-sm font-medium mb-3">Суммы ({currencyName.toLowerCase()})</h4>
+          <h4 className="text-sm font-medium mb-3">{t("budget.amounts")} ({currencyName.toLowerCase()})</h4>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Планировали</label>
+              <label className="block text-xs text-muted-foreground mb-1">{t("budget.plannedAmount")}</label>
               <input
                 type="number"
                 value={plannedAmount}
@@ -875,7 +887,7 @@ function EditExpenseModal({
               />
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Фактически</label>
+              <label className="block text-xs text-muted-foreground mb-1">{t("budget.actualAmount")}</label>
               <input
                 type="number"
                 value={actualAmount}
@@ -884,7 +896,7 @@ function EditExpenseModal({
               />
             </div>
             <div>
-              <label className="block text-xs text-muted-foreground mb-1">Оплачено</label>
+              <label className="block text-xs text-muted-foreground mb-1">{t("budget.paid")}</label>
               <input
                 type="number"
                 value={paidAmount}
@@ -896,12 +908,12 @@ function EditExpenseModal({
         </div>
 
         <div className="border-t border-border pt-4">
-          <label className="block text-sm font-medium mb-2">Статус</label>
+          <label className="block text-sm font-medium mb-2">{t("common.status")}</label>
           <div className="flex flex-wrap gap-2">
             {[
-              { value: "planned", label: "Запланировано", shortLabel: "План", icon: Target },
-              { value: "booked", label: "Забронировано", shortLabel: "Бронь", icon: CreditCard },
-              { value: "paid", label: "Оплачено", shortLabel: "Оплачено", icon: Check },
+              { value: "planned", labelKey: "budget.status.planned", icon: Target },
+              { value: "booked", labelKey: "budget.status.booked", icon: CreditCard },
+              { value: "paid", labelKey: "budget.status.paid", icon: Check },
             ].map((s) => {
               const Icon = s.icon;
               return (
@@ -917,7 +929,7 @@ function EditExpenseModal({
                   )}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span className="truncate">{s.label}</span>
+                  <span className="truncate">{t(s.labelKey)}</span>
                 </button>
               );
             })}
@@ -931,16 +943,16 @@ function EditExpenseModal({
             className="btn-outline btn-sm w-full"
           >
             <Check className="w-4 h-4" />
-            Отметить как полностью оплачено
+            {t("budget.markFullyPaid")}
           </button>
         </div>
 
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
-            Отмена
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary btn-md">
-            Сохранить
+            {t("common.save")}
           </button>
         </ModalFooter>
       </form>

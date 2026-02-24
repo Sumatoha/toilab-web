@@ -229,13 +229,13 @@ export default function LoginPage() {
             </div>
 
             <p className="text-xs text-center text-muted-foreground mt-6">
-              Продолжая, вы соглашаетесь с{" "}
+              {t("auth.termsPrefix")}{" "}
               <Link href="/terms" className="text-primary hover:underline">
-                условиями использования
+                {t("auth.termsLink")}
               </Link>{" "}
-              и{" "}
+              {t("auth.and")}{" "}
               <Link href="/privacy" className="text-primary hover:underline">
-                политикой конфиденциальности
+                {t("auth.privacyLink")}
               </Link>
             </p>
           </div>

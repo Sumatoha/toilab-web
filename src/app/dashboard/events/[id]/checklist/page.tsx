@@ -15,6 +15,7 @@ import { checklist as checklistApi, calendar as calendarApi } from "@/lib/api";
 import { ChecklistItem, ChecklistProgress, ChecklistCategory, CreateCalendarEventRequest } from "@/lib/types";
 import { cn, formatShortDate, checklistCategoryLabels } from "@/lib/utils";
 import { PageLoader, ConfirmDialog, Modal, ProgressBar, TimeInput } from "@/components/ui";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 // Suggested wedding tasks
@@ -46,6 +47,7 @@ export default function ChecklistPage() {
   const searchParams = useSearchParams();
   const eventId = params.id as string;
   const highlightTaskId = searchParams.get("task");
+  const { t, tLabel } = useTranslation();
 
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [progress, setProgress] = useState<ChecklistProgress | null>(null);
@@ -84,7 +86,7 @@ export default function ChecklistPage() {
       setProgress(progressData || { total: 0, completed: 0, percent: 0 });
     } catch (error) {
       console.error("Failed to load checklist:", error);
-      toast.error("Не удалось загрузить чек-лист");
+      toast.error(t("checklist.loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +115,7 @@ export default function ChecklistPage() {
       setItems(items);
       updateProgress(items);
       const err = error as Error;
-      toast.error(err.message || "Не удалось обновить задачу");
+      toast.error(err.message || t("checklist.updateError"));
     }
   };
 
@@ -128,10 +130,10 @@ export default function ChecklistPage() {
       const newItems = [...items, newItem];
       setItems(newItems);
       updateProgress(newItems);
-      toast.success("Задача добавлена");
+      toast.success(t("checklist.taskAdded"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось добавить задачу");
+      toast.error(err.message || t("checklist.addError"));
     }
   };
 
@@ -145,10 +147,10 @@ export default function ChecklistPage() {
       const updated = await checklistApi.update(eventId, itemId, data);
       setItems((prev) => prev.map((i) => i.id === itemId ? updated : i));
       setEditingItem(null);
-      toast.success("Задача обновлена");
+      toast.success(t("checklist.taskUpdated"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось обновить задачу");
+      toast.error(err.message || t("checklist.updateError"));
     }
   };
 
@@ -161,10 +163,10 @@ export default function ChecklistPage() {
       setItems(newItems);
       updateProgress(newItems);
       setDeleteItemId(null);
-      toast.success("Задача удалена");
+      toast.success(t("checklist.taskDeleted"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось удалить задачу");
+      toast.error(err.message || t("checklist.deleteError"));
     } finally {
       setIsDeleting(false);
     }
@@ -174,12 +176,12 @@ export default function ChecklistPage() {
     setIsApplyingTemplate(true);
     try {
       const result = await checklistApi.applyTemplate(eventId);
-      toast.success(`Добавлено ${result.count} задач из шаблона`);
+      toast.success(t("checklist.tasksFromTemplate").replace("{count}", result.count.toString()));
       // Template adds items, need to reload to get them
       loadData();
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось применить шаблон");
+      toast.error(err.message || t("checklist.templateError"));
     } finally {
       setIsApplyingTemplate(false);
     }
@@ -206,15 +208,15 @@ export default function ChecklistPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-h1">Чек-лист</h1>
+          <h1 className="text-h1">{t("checklist.title")}</h1>
           <p className="text-caption mt-1">
-            Отслеживайте задачи по подготовке
+            {t("checklist.description")}
           </p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
           <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Добавить задачу</span>
-          <span className="sm:hidden">Добавить</span>
+          <span className="hidden sm:inline">{t("checklist.addTask")}</span>
+          <span className="sm:hidden">{t("checklist.addTaskShort")}</span>
         </button>
       </div>
 
@@ -223,9 +225,9 @@ export default function ChecklistPage() {
         <div className="card p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Прогресс</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{t("checklist.progress")}</p>
               <p className="text-xl sm:text-2xl font-bold">
-                {progress.completed} из {progress.total}
+                {progress.completed} {t("common.of")} {progress.total}
               </p>
             </div>
             <div className="text-2xl sm:text-3xl font-bold text-primary">
@@ -244,9 +246,9 @@ export default function ChecklistPage() {
       {/* Filters */}
       <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
         {[
-          { key: "all", label: "Все" },
-          { key: "pending", label: "Не выполнено" },
-          { key: "completed", label: "Выполнено" },
+          { key: "all", label: t("checklist.filterAll") },
+          { key: "pending", label: t("checklist.incomplete") },
+          { key: "completed", label: t("checklist.completed") },
         ].map((f) => (
           <button
             key={f.key}
@@ -265,9 +267,9 @@ export default function ChecklistPage() {
       {items.length === 0 ? (
         <div className="card text-center py-12">
           <CheckSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Чек-лист пуст</h3>
+          <h3 className="text-lg font-semibold mb-2">{t("checklist.emptyTitle")}</h3>
           <p className="text-muted-foreground mb-6">
-            Примените готовый шаблон или добавьте задачи вручную
+            {t("checklist.emptyDescription")}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
@@ -276,11 +278,11 @@ export default function ChecklistPage() {
               className="btn-primary btn-md"
             >
               <Sparkles className="w-4 h-4" />
-              {isApplyingTemplate ? "Применение..." : "Применить шаблон"}
+              {isApplyingTemplate ? t("checklist.applying") : t("checklist.applyTemplate")}
             </button>
             <button onClick={() => setShowAddModal(true)} className="btn-outline btn-md">
               <Plus className="w-4 h-4" />
-              Добавить вручную
+              {t("checklist.addManually")}
             </button>
           </div>
         </div>
@@ -297,6 +299,8 @@ export default function ChecklistPage() {
                 onToggle={() => handleToggle(item)}
                 onEdit={() => setEditingItem(item)}
                 onDelete={() => setDeleteItemId(item.id)}
+                t={t}
+                tLabel={tLabel}
               />
             ))}
           </div>
@@ -313,6 +317,8 @@ export default function ChecklistPage() {
                   onToggle={() => handleToggle(item)}
                   onEdit={() => setEditingItem(item)}
                   onDelete={() => setDeleteItemId(item.id)}
+                  t={t}
+                  tLabel={tLabel}
                 />
               ))}
             </div>
@@ -329,6 +335,8 @@ export default function ChecklistPage() {
           suggestions={availableSuggestions}
           prefillSuggestion={prefillSuggestion}
           onSelectSuggestion={(s) => setPrefillSuggestion(s)}
+          t={t}
+          tLabel={tLabel}
         />
       )}
 
@@ -340,6 +348,8 @@ export default function ChecklistPage() {
           onClose={() => setEditingItem(null)}
           onSubmit={(data) => handleUpdate(editingItem.id, data)}
           suggestions={[]}
+          t={t}
+          tLabel={tLabel}
         />
       )}
 
@@ -348,10 +358,10 @@ export default function ChecklistPage() {
         isOpen={!!deleteItemId}
         onClose={() => setDeleteItemId(null)}
         onConfirm={handleDelete}
-        title="Удалить задачу?"
-        description="Задача будет удалена из чек-листа"
-        confirmText="Удалить"
-        cancelText="Отмена"
+        title={t("checklist.deleteConfirm")}
+        description={t("checklist.deleteDescription")}
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
         variant="danger"
         isLoading={isDeleting}
       />
@@ -366,7 +376,9 @@ const ChecklistCard = forwardRef<HTMLDivElement, {
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
-}>(({ item, isHighlighted, onToggle, onEdit, onDelete }, ref) => {
+  t: (key: string) => string;
+  tLabel: (ru: string, kz?: string) => string;
+}>(({ item, isHighlighted, onToggle, onEdit, onDelete, t, tLabel }, ref) => {
   const categoryLabel = checklistCategoryLabels[item.category];
 
   // Calculate days until deadline
@@ -386,9 +398,9 @@ const ChecklistCard = forwardRef<HTMLDivElement, {
 
   const getDeadlineLabel = () => {
     if (daysUntil === null) return null;
-    if (isOverdue) return `Просрочено на ${Math.abs(daysUntil)} дн.`;
-    if (daysUntil === 0) return "Сегодня";
-    if (daysUntil === 1) return "Завтра";
+    if (isOverdue) return t("checklist.overdueBy").replace("{count}", Math.abs(daysUntil).toString());
+    if (daysUntil === 0) return t("checklist.today");
+    if (daysUntil === 1) return t("checklist.tomorrow");
     return formatShortDate(item.dueDate!);
   };
 
@@ -429,21 +441,21 @@ const ChecklistCard = forwardRef<HTMLDivElement, {
             {item.title}
           </p>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {categoryLabel?.ru || item.category}
+            {categoryLabel ? tLabel(categoryLabel.ru, categoryLabel.kz) : item.category}
           </p>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={onEdit}
             className="p-2.5 text-muted-foreground hover:text-primary active:bg-primary/10 rounded-xl transition-colors"
-            aria-label="Редактировать"
+            aria-label={t("common.edit")}
           >
             <Pencil className="w-4 h-4" />
           </button>
           <button
             onClick={onDelete}
             className="p-2.5 text-muted-foreground hover:text-red-500 active:bg-red-50 rounded-xl transition-colors"
-            aria-label="Удалить"
+            aria-label={t("common.delete")}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -476,7 +488,7 @@ const ChecklistCard = forwardRef<HTMLDivElement, {
               "text-xs font-medium",
               isOverdue ? "text-red-600" : "text-amber-600"
             )}>
-              {isOverdue ? "Просрочено" : "Скоро срок"}
+              {isOverdue ? t("checklist.overdue") : t("checklist.urgentSoon")}
             </span>
           )}
         </div>
@@ -494,7 +506,9 @@ const ChecklistRow = forwardRef<HTMLDivElement, {
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
-}>(({ item, isHighlighted, onToggle, onEdit, onDelete }, ref) => {
+  t: (key: string) => string;
+  tLabel: (ru: string, kz?: string) => string;
+}>(({ item, isHighlighted, onToggle, onEdit, onDelete, t, tLabel }, ref) => {
   const categoryLabel = checklistCategoryLabels[item.category];
 
   // Calculate days until deadline
@@ -514,9 +528,9 @@ const ChecklistRow = forwardRef<HTMLDivElement, {
 
   const getDeadlineLabel = () => {
     if (daysUntil === null) return null;
-    if (isOverdue) return `Просрочено на ${Math.abs(daysUntil)} дн.`;
-    if (daysUntil === 0) return "Сегодня";
-    if (daysUntil === 1) return "Завтра";
+    if (isOverdue) return t("checklist.overdueBy").replace("{count}", Math.abs(daysUntil).toString());
+    if (daysUntil === 0) return t("checklist.today");
+    if (daysUntil === 1) return t("checklist.tomorrow");
     return formatShortDate(item.dueDate!);
   };
 
@@ -556,7 +570,7 @@ const ChecklistRow = forwardRef<HTMLDivElement, {
           {item.title}
         </p>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="truncate">{categoryLabel?.ru || item.category}</span>
+          <span className="truncate">{categoryLabel ? tLabel(categoryLabel.ru, categoryLabel.kz) : item.category}</span>
           {item.dueDate && (
             <>
               <span>•</span>
@@ -576,20 +590,20 @@ const ChecklistRow = forwardRef<HTMLDivElement, {
           "text-xs px-2 py-0.5 rounded-full flex-shrink-0",
           isOverdue ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
         )}>
-          {isOverdue ? "Просрочено" : "Скоро"}
+          {isOverdue ? t("checklist.overdue") : t("checklist.soon")}
         </span>
       )}
       <button
         onClick={onEdit}
         className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-        title="Редактировать"
+        title={t("common.edit")}
       >
         <Pencil className="w-4 h-4" />
       </button>
       <button
         onClick={onDelete}
         className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-        title="Удалить"
+        title={t("common.delete")}
       >
         <Trash2 className="w-4 h-4" />
       </button>
@@ -607,6 +621,8 @@ function TaskModal({
   suggestions = [],
   prefillSuggestion,
   onSelectSuggestion,
+  t,
+  tLabel,
 }: {
   eventId: string;
   item?: ChecklistItem;
@@ -615,6 +631,8 @@ function TaskModal({
   suggestions?: { title: string; category: ChecklistCategory }[];
   prefillSuggestion?: { title: string; category: ChecklistCategory } | null;
   onSelectSuggestion?: (s: { title: string; category: ChecklistCategory } | null) => void;
+  t: (key: string) => string;
+  tLabel: (ru: string, kz?: string) => string;
 }) {
   const isEditing = !!item;
   const showSuggestions = !isEditing && suggestions.length > 0 && !prefillSuggestion;
@@ -686,7 +704,7 @@ function TaskModal({
           autoCompleteTask,
         };
         await calendarApi.create(eventId, calendarData);
-        toast.success("Событие добавлено в календарь");
+        toast.success(t("checklist.calendarEventAdded"));
       }
 
       onClose();
@@ -712,7 +730,7 @@ function TaskModal({
     <Modal
       isOpen
       onClose={onClose}
-      title={isEditing ? "Редактировать задачу" : (prefillSuggestion ? "Добавить задачу" : "Добавить задачу")}
+      title={isEditing ? t("checklist.editTask") : t("checklist.addTask")}
       size="md"
     >
       {/* Tabs - only show for new tasks with suggestions */}
@@ -728,7 +746,7 @@ function TaskModal({
             )}
           >
             <Sparkles className="w-4 h-4" />
-            Предложенные
+            {t("checklist.suggested")}
           </button>
           <button
             onClick={() => setMode("form")}
@@ -740,7 +758,7 @@ function TaskModal({
             )}
           >
             <Plus className="w-4 h-4" />
-            {prefillSuggestion ? "С деталями" : "Своя задача"}
+            {prefillSuggestion ? t("checklist.withDetails") : t("checklist.customTask")}
           </button>
         </div>
       )}
@@ -750,12 +768,12 @@ function TaskModal({
           {suggestions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Check className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Все предложенные задачи добавлены!</p>
+              <p>{t("checklist.allSuggestionsAdded")}</p>
               <button
                 onClick={() => setMode("form")}
                 className="text-primary hover:underline mt-2"
               >
-                Создать свою задачу
+                {t("checklist.createCustomTask")}
               </button>
             </div>
           ) : (
@@ -775,30 +793,30 @@ function TaskModal({
                   <div>
                     <p className="font-medium">{suggestion.title}</p>
                     <p className="text-sm text-muted-foreground">
-                      {categoryLabel?.ru || suggestion.category}
+                      {categoryLabel ? tLabel(categoryLabel.ru, categoryLabel.kz) : suggestion.category}
                     </p>
                   </div>
                   {isAdded ? (
                     <span className="inline-flex items-center gap-1 text-emerald-600 text-sm">
                       <Check className="w-4 h-4" />
-                      Добавлено
+                      {t("checklist.added")}
                     </span>
                   ) : (
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleSelectSuggestion(suggestion)}
                         className="btn-outline btn-sm text-xs"
-                        title="Добавить с деталями"
+                        title={t("checklist.withDetails")}
                       >
                         <Pencil className="w-3 h-3" />
-                        Детали
+                        {t("checklist.details")}
                       </button>
                       <button
                         onClick={() => handleQuickAdd(suggestion)}
                         className="btn-primary btn-sm text-xs"
                       >
                         <Plus className="w-3 h-3" />
-                        Быстро
+                        {t("checklist.quick")}
                       </button>
                     </div>
                   )}
@@ -810,42 +828,45 @@ function TaskModal({
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1.5">Задача *</label>
+            <label className="block text-sm font-medium mb-1.5">{t("checklist.taskRequired")}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="input"
-              placeholder="Что нужно сделать?"
+              placeholder={t("checklist.taskPlaceholder")}
               autoFocus
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5">Описание</label>
+            <label className="block text-sm font-medium mb-1.5">{t("common.description")}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="input min-h-[60px] resize-none"
-              placeholder="Дополнительные детали..."
+              placeholder={t("checklist.descriptionPlaceholder")}
               rows={2}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5">Категория</label>
+            <label className="block text-sm font-medium mb-1.5">{t("budget.category")}</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as ChecklistCategory)}
               className="input"
             >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {checklistCategoryLabels[cat]?.ru || cat}
-                </option>
-              ))}
+              {categories.map((cat) => {
+                const label = checklistCategoryLabels[cat];
+                return (
+                  <option key={cat} value={cat}>
+                    {label ? tLabel(label.ru, label.kz) : cat}
+                  </option>
+                );
+              })}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5">Срок</label>
+            <label className="block text-sm font-medium mb-1.5">{t("checklist.dueDate")}</label>
             <input
               type="date"
               value={dueDate}
@@ -865,13 +886,13 @@ function TaskModal({
                   className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
                 <CalendarDays className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Добавить в календарь</span>
+                <span className="text-sm font-medium">{t("checklist.addToCalendar")}</span>
               </label>
 
               {addToCalendar && (
                 <>
                   <div>
-                    <label className="block text-sm text-muted-foreground mb-1">Время</label>
+                    <label className="block text-sm text-muted-foreground mb-1">{t("checklist.calendarTime")}</label>
                     <TimeInput
                       value={calendarTime}
                       onChange={setCalendarTime}
@@ -885,7 +906,7 @@ function TaskModal({
                       className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <span className="text-sm text-muted-foreground">
-                      Автоматически закрыть задачу после события
+                      {t("checklist.autoCompleteTask")}
                     </span>
                   </label>
                 </>
@@ -895,10 +916,10 @@ function TaskModal({
 
           <div className="flex justify-end gap-2 pt-4 border-t border-border">
             <button type="button" onClick={onClose} className="btn-outline btn-md">
-              Отмена
+              {t("common.cancel")}
             </button>
             <button type="submit" disabled={isSubmitting || !title.trim()} className="btn-primary btn-md">
-              {isSubmitting ? "..." : isEditing ? "Сохранить" : "Добавить"}
+              {isSubmitting ? "..." : isEditing ? t("common.save") : t("common.add")}
             </button>
           </div>
         </form>
@@ -907,7 +928,7 @@ function TaskModal({
       {mode === "suggestions" && (
         <div className="flex justify-end mt-6 pt-4 border-t border-border">
           <button onClick={onClose} className="btn-outline btn-md">
-            Закрыть
+            {t("common.close")}
           </button>
         </div>
       )}

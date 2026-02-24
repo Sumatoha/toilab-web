@@ -17,6 +17,7 @@ import { Gift, GiftStats, Guest, GiftType, Country } from "@/lib/types";
 import { cn, formatCurrency, isCentralAsian, currencyConfigs } from "@/lib/utils";
 import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog, Avatar } from "@/components/ui";
 import { useAuthStore } from "@/lib/store";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 export default function GiftsPage() {
@@ -24,6 +25,7 @@ export default function GiftsPage() {
   const eventId = params.id as string;
   const { user } = useAuthStore();
   const userCountry: Country = user?.country || "kz";
+  const { t } = useTranslation();
 
   const [giftList, setGiftList] = useState<Gift[]>([]);
   const [guestList, setGuestList] = useState<Guest[]>([]);
@@ -51,7 +53,7 @@ export default function GiftsPage() {
       setGuestList(guestsData || []);
     } catch (error) {
       console.error("Failed to load gifts:", error);
-      toast.error("Не удалось загрузить подарки");
+      toast.error(t("gifts.loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -116,10 +118,10 @@ export default function GiftsPage() {
       }
       setStats(recalculateStats(newList));
       setShowAddModal(false);
-      toast.success("Подарок добавлен");
+      toast.success(t("gifts.giftAdded"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось добавить подарок");
+      toast.error(err.message || t("gifts.addError"));
     }
   };
 
@@ -132,10 +134,10 @@ export default function GiftsPage() {
       setGiftList(newList);
       setStats(recalculateStats(newList));
       setDeleteGiftId(null);
-      toast.success("Подарок удалён");
+      toast.success(t("gifts.giftDeleted"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось удалить подарок");
+      toast.error(err.message || t("gifts.deleteError"));
     } finally {
       setIsDeleting(false);
     }
@@ -147,10 +149,10 @@ export default function GiftsPage() {
     setIsExporting(true);
     try {
       await gifts.export(eventId);
-      toast.success("Экспорт завершён");
+      toast.success(t("gifts.exportCompleted"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось экспортировать");
+      toast.error(err.message || t("gifts.exportError"));
     } finally {
       setIsExporting(false);
     }
@@ -165,21 +167,21 @@ export default function GiftsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-h1">Подарки</h1>
+          <h1 className="text-h1">{t("gifts.title")}</h1>
           <p className="text-caption mt-1">
-            {isCentralAsian(userCountry) ? "Учёт подарков и көрімдік" : "Учёт подарков"}
+            {isCentralAsian(userCountry) ? t("gifts.description") : t("gifts.descriptionSimple")}
           </p>
         </div>
         <div className="flex gap-2">
           {giftList.length > 0 && (
             <button onClick={handleExport} disabled={isExporting} className="btn-outline btn-sm">
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">{isExporting ? "..." : "Экспорт"}</span>
+              <span className="hidden sm:inline">{isExporting ? "..." : t("common.export")}</span>
             </button>
           )}
           <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Добавить</span>
+            <span className="hidden sm:inline">{t("common.add")}</span>
           </button>
         </div>
       </div>
@@ -189,24 +191,24 @@ export default function GiftsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
           <StatCard
             icon={GiftIcon}
-            label="Всего"
+            label={t("gifts.stats.total")}
             value={stats.totalGifts}
             color="indigo"
           />
           <StatCard
             icon={Banknote}
-            label="Деньги"
+            label={t("gifts.stats.money")}
             value={stats.moneyGifts}
             color="emerald"
           />
           <StatCard
             icon={Package}
-            label="Подарки"
+            label={t("gifts.stats.items")}
             value={stats.itemGifts}
             color="amber"
           />
           <div className="card p-3 sm:p-4">
-            <div className="text-xs sm:text-sm text-muted-foreground mb-1">Сумма</div>
+            <div className="text-xs sm:text-sm text-muted-foreground mb-1">{t("gifts.stats.totalAmount")}</div>
             <div className="text-lg sm:text-2xl font-bold text-emerald-600 truncate">
               {formatCurrency(stats.totalAmount, userCountry)}
             </div>
@@ -220,7 +222,7 @@ export default function GiftsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Поиск по имени гостя..."
+            placeholder={t("gifts.searchByGuestName")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input pl-10"
@@ -228,9 +230,9 @@ export default function GiftsPage() {
         </div>
         <div className="flex gap-2">
           {[
-            { key: "all", label: "Все", count: stats?.totalGifts },
-            { key: "money", label: "Деньги", count: stats?.moneyGifts },
-            { key: "item", label: "Подарки", count: stats?.itemGifts },
+            { key: "all", label: t("gifts.filterAll"), count: stats?.totalGifts },
+            { key: "money", label: t("gifts.filterMoney"), count: stats?.moneyGifts },
+            { key: "item", label: t("gifts.filterItems"), count: stats?.itemGifts },
           ].map((f) => (
             <button
               key={f.key}
@@ -259,13 +261,13 @@ export default function GiftsPage() {
         {filteredGifts.length === 0 ? (
           <EmptyState
             icon={GiftIcon}
-            title={giftList.length === 0 ? "Список подарков пуст" : "Нет подарков по заданным фильтрам"}
-            description={giftList.length === 0 ? "Добавьте первый подарок" : "Попробуйте изменить фильтры"}
+            title={giftList.length === 0 ? t("gifts.emptyTitle") : t("gifts.noMatchingGifts")}
+            description={giftList.length === 0 ? t("gifts.addFirstGift") : t("gifts.tryChangeFilters")}
             action={
               giftList.length === 0 ? (
                 <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
                   <Plus className="w-4 h-4" />
-                  Добавить подарок
+                  {t("gifts.addGift")}
                 </button>
               ) : undefined
             }
@@ -279,6 +281,7 @@ export default function GiftsPage() {
                 country={userCountry}
                 onDelete={() => setDeleteGiftId(gift.id)}
                 className={`animate-in stagger-${Math.min(index + 1, 4)}`}
+                t={t}
               />
             ))}
           </div>
@@ -292,6 +295,7 @@ export default function GiftsPage() {
           onAdd={handleAddGift}
           guests={guestList}
           country={userCountry}
+          t={t}
         />
       )}
 
@@ -300,10 +304,10 @@ export default function GiftsPage() {
         isOpen={!!deleteGiftId}
         onClose={() => setDeleteGiftId(null)}
         onConfirm={handleDeleteGift}
-        title="Удалить подарок?"
-        description="Запись о подарке будет удалена"
-        confirmText="Удалить"
-        cancelText="Отмена"
+        title={t("gifts.deleteTitle")}
+        description={t("gifts.deleteDescription")}
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
         variant="danger"
         isLoading={isDeleting}
       />
@@ -345,7 +349,7 @@ function StatCard({
   );
 }
 
-function GiftRow({ gift, country, onDelete, className }: { gift: Gift; country: Country; onDelete: () => void; className?: string }) {
+function GiftRow({ gift, country, onDelete, className, t }: { gift: Gift; country: Country; onDelete: () => void; className?: string; t: (key: string) => string }) {
   const formattedDate = new Date(gift.receivedAt).toLocaleDateString("ru-KZ", {
     day: "numeric",
     month: "short",
@@ -361,11 +365,11 @@ function GiftRow({ gift, country, onDelete, className }: { gift: Gift; country: 
           <span className="hidden sm:inline">{formattedDate}</span>
         </div>
       </div>
-      <GiftTypeBadge type={gift.type} amount={gift.amount} country={country} />
+      <GiftTypeBadge type={gift.type} amount={gift.amount} country={country} t={t} />
       <button
         onClick={onDelete}
         className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors sm:opacity-0 sm:group-hover:opacity-100"
-        title="Удалить"
+        title={t("common.delete")}
       >
         <Trash2 className="w-4 h-4" />
       </button>
@@ -373,7 +377,7 @@ function GiftRow({ gift, country, onDelete, className }: { gift: Gift; country: 
   );
 }
 
-function GiftTypeBadge({ type, amount, country }: { type: string; amount: number; country: Country }) {
+function GiftTypeBadge({ type, amount, country, t }: { type: string; amount: number; country: Country; t: (key: string) => string }) {
   if (type === "money") {
     return (
       <span className="inline-flex items-center gap-1.5 badge-success">
@@ -386,7 +390,7 @@ function GiftTypeBadge({ type, amount, country }: { type: string; amount: number
   return (
     <span className="inline-flex items-center gap-1.5 badge-info">
       <Package className="w-3 h-3" />
-      Подарок
+      {t("gifts.types.item")}
     </span>
   );
 }
@@ -396,6 +400,7 @@ function AddGiftModal({
   onAdd,
   guests,
   country,
+  t,
 }: {
   onClose: () => void;
   onAdd: (data: {
@@ -409,6 +414,7 @@ function AddGiftModal({
   }) => void;
   guests: Guest[];
   country: Country;
+  t: (key: string) => string;
 }) {
   const currencySymbol = currencyConfigs[country]?.symbol || "₸";
   const [mode, setMode] = useState<"existing" | "new">("existing");
@@ -433,7 +439,7 @@ function AddGiftModal({
       : guestName.trim();
 
     if (!finalGuestName) {
-      toast.error("Укажите имя гостя");
+      toast.error(t("gifts.specifyGuestName"));
       return;
     }
 
@@ -449,7 +455,7 @@ function AddGiftModal({
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Добавить подарок">
+    <Modal isOpen onClose={onClose} title={t("gifts.addGift")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Guest selection mode */}
         <div className="flex gap-2">
@@ -463,7 +469,7 @@ function AddGiftModal({
                 : "bg-secondary text-muted-foreground hover:text-foreground"
             )}
           >
-            Из списка гостей
+            {t("gifts.fromGuestList")}
           </button>
           <button
             type="button"
@@ -476,25 +482,25 @@ function AddGiftModal({
             )}
           >
             <UserPlus className="w-4 h-4 inline mr-1" />
-            Новый гость
+            {t("gifts.newGuest")}
           </button>
         </div>
 
         {/* Guest selection */}
         {mode === "existing" ? (
           <div>
-            <label className="block text-sm font-medium mb-1.5">Гость *</label>
+            <label className="block text-sm font-medium mb-1.5">{t("gifts.guestRequired")}</label>
             <input
               type="text"
               value={guestSearch}
               onChange={(e) => setGuestSearch(e.target.value)}
               className="input mb-2"
-              placeholder="Поиск гостя..."
+              placeholder={t("gifts.searchGuest")}
             />
             <div className="max-h-40 overflow-y-auto border border-border rounded-lg">
               {filteredGuests.length === 0 ? (
                 <div className="p-3 text-sm text-muted-foreground text-center">
-                  {guests.length === 0 ? "Нет гостей" : "Гость не найден"}
+                  {guests.length === 0 ? t("gifts.noGuests") : t("gifts.guestNotFound")}
                 </div>
               ) : (
                 filteredGuests.map((guest) => (
@@ -519,13 +525,13 @@ function AddGiftModal({
           </div>
         ) : (
           <div>
-            <label className="block text-sm font-medium mb-1.5">Имя гостя *</label>
+            <label className="block text-sm font-medium mb-1.5">{t("gifts.guestNameRequired")}</label>
             <input
               type="text"
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
               className="input"
-              placeholder="Имя гостя"
+              placeholder={t("gifts.guestNamePlaceholder")}
               autoFocus
             />
             <label className="flex items-center gap-2 mt-2 text-sm">
@@ -535,14 +541,14 @@ function AddGiftModal({
                 onChange={(e) => setCreateGuest(e.target.checked)}
                 className="rounded border-border"
               />
-              Добавить в список гостей
+              {t("gifts.addToGuestList")}
             </label>
           </div>
         )}
 
         {/* Gift type */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Тип подарка</label>
+          <label className="block text-sm font-medium mb-1.5">{t("gifts.giftType")}</label>
           <div className="flex gap-2">
             <button
               type="button"
@@ -555,7 +561,7 @@ function AddGiftModal({
               )}
             >
               <Banknote className="w-4 h-4" />
-              Деньги
+              {t("gifts.types.money")}
             </button>
             <button
               type="button"
@@ -568,7 +574,7 @@ function AddGiftModal({
               )}
             >
               <Package className="w-4 h-4" />
-              Подарок
+              {t("gifts.types.item")}
             </button>
           </div>
         </div>
@@ -576,7 +582,7 @@ function AddGiftModal({
         {/* Amount (for money) */}
         {type === "money" && (
           <div>
-            <label className="block text-sm font-medium mb-1.5">Сумма ({currencySymbol})</label>
+            <label className="block text-sm font-medium mb-1.5">{t("gifts.amountLabel")} ({currencySymbol})</label>
             <input
               type="number"
               value={amount}
@@ -591,35 +597,35 @@ function AddGiftModal({
         {/* Description (for item) */}
         {type === "item" && (
           <div>
-            <label className="block text-sm font-medium mb-1.5">Описание подарка</label>
+            <label className="block text-sm font-medium mb-1.5">{t("gifts.giftDescriptionLabel")}</label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="input"
-              placeholder="Набор посуды, бытовая техника..."
+              placeholder={t("gifts.giftDescriptionPlaceholder")}
             />
           </div>
         )}
 
         {/* Note */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Примечание</label>
+          <label className="block text-sm font-medium mb-1.5">{t("gifts.noteLabel")}</label>
           <input
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="input"
-            placeholder="Дополнительная информация"
+            placeholder={t("gifts.notePlaceholder")}
           />
         </div>
 
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
-            Отмена
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary btn-md">
-            Добавить
+            {t("common.add")}
           </button>
         </ModalFooter>
       </form>

@@ -31,6 +31,7 @@ import { Vendor, VendorStatus, CreateVendorRequest, ExpenseCategory, Expense, Co
 import { cn, formatCurrency, vendorTypeLabels, vendorStatusLabels, currencyConfigs } from "@/lib/utils";
 import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog } from "@/components/ui";
 import { useAuthStore } from "@/lib/store";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 const vendorTypeIcons: Record<string, LucideIcon> = {
@@ -73,6 +74,7 @@ export default function VendorsPage() {
   const params = useParams();
   const eventId = params.id as string;
   const { user } = useAuthStore();
+  const { t } = useTranslation();
   const userCountry: Country = user?.country || "kz";
 
   const [vendorList, setVendorList] = useState<Vendor[]>([]);
@@ -103,7 +105,7 @@ export default function VendorsPage() {
       setProgramItems(programData || []);
     } catch (error) {
       console.error("Failed to load vendors:", error);
-      toast.error("Не удалось загрузить подрядчиков");
+      toast.error(t("vendors.loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -139,12 +141,12 @@ export default function VendorsPage() {
 
       setShowAddModal(false);
       toast.success(data.totalAmount && data.totalAmount > 0
-        ? "Подрядчик добавлен и создан расход"
-        : "Подрядчик добавлен"
+        ? t("vendors.vendorAddedWithExpense")
+        : t("vendors.vendorAdded")
       );
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось добавить подрядчика");
+      toast.error(err.message || t("vendors.addError"));
     }
   };
 
@@ -153,10 +155,10 @@ export default function VendorsPage() {
       const updated = await vendors.update(eventId, vendorId, data);
       setVendorList((prev) => prev.map((v) => (v.id === vendorId ? updated : v)));
       setEditingVendor(null);
-      toast.success("Подрядчик обновлён");
+      toast.success(t("vendors.vendorUpdated"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось обновить подрядчика");
+      toast.error(err.message || t("vendors.updateError"));
     }
   };
 
@@ -175,12 +177,12 @@ export default function VendorsPage() {
       setAllExpenses((prev) => prev.filter((e) => e.vendorId !== deleteVendorId));
       setDeleteVendorId(null);
       toast.success(linkedExpenses.length > 0
-        ? "Подрядчик и связанные расходы удалены"
-        : "Подрядчик удалён"
+        ? t("vendors.vendorDeletedWithExpenses")
+        : t("vendors.vendorDeleted")
       );
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось удалить подрядчика");
+      toast.error(err.message || t("vendors.deleteError"));
     } finally {
       setIsDeleting(false);
     }
@@ -200,14 +202,14 @@ export default function VendorsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-h1">Подрядчики</h1>
+          <h1 className="text-h1">{t("vendors.title")}</h1>
           <p className="text-caption mt-1">
-            Фотографы, ведущие, музыканты и другие
+            {t("vendors.description")}
           </p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
           <Plus className="w-4 h-4" />
-          Добавить
+          {t("common.add")}
         </button>
       </div>
 
@@ -215,19 +217,19 @@ export default function VendorsPage() {
       {vendorList.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="card p-4">
-            <div className="text-sm text-muted-foreground mb-1">Подрядчиков</div>
+            <div className="text-sm text-muted-foreground mb-1">{t("vendors.summary.total")}</div>
             <div className="text-2xl font-bold">{vendorList.length}</div>
           </div>
           <div className="card p-4">
-            <div className="text-sm text-muted-foreground mb-1">Общая сумма</div>
+            <div className="text-sm text-muted-foreground mb-1">{t("vendors.totalAmount")}</div>
             <div className="text-2xl font-bold">{formatCurrency(totalCost, userCountry)}</div>
           </div>
           <div className="card p-4">
-            <div className="text-sm text-muted-foreground mb-1">Оплачено</div>
+            <div className="text-sm text-muted-foreground mb-1">{t("vendors.paidAmount")}</div>
             <div className="text-2xl font-bold text-emerald-600">{formatCurrency(totalPaid, userCountry)}</div>
           </div>
           <div className="card p-4">
-            <div className="text-sm text-muted-foreground mb-1">К оплате</div>
+            <div className="text-sm text-muted-foreground mb-1">{t("vendors.toPay")}</div>
             <div className="text-2xl font-bold text-amber-600">{formatCurrency(totalPending, userCountry)}</div>
           </div>
         </div>
@@ -239,7 +241,7 @@ export default function VendorsPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Поиск по имени..."
+            placeholder={t("vendors.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input pl-10"
@@ -250,7 +252,7 @@ export default function VendorsPage() {
           onChange={(e) => setFilterType(e.target.value)}
           className="input w-full sm:w-48"
         >
-          <option value="all">Все типы</option>
+          <option value="all">{t("vendors.allTypes")}</option>
           {vendorTypes.map((type) => (
             <option key={type} value={type}>
               {vendorTypeLabels[type]?.ru || type}
@@ -265,12 +267,12 @@ export default function VendorsPage() {
           <div className="col-span-full">
             <EmptyState
               icon={Camera}
-              title={vendorList.length === 0 ? "Нет подрядчиков" : "Не найдено"}
-              description={vendorList.length === 0 ? "Добавьте фотографа, ведущего или других подрядчиков" : "Попробуйте изменить фильтры"}
+              title={vendorList.length === 0 ? t("vendors.noVendors") : t("vendors.notFound")}
+              description={vendorList.length === 0 ? t("vendors.addDescription") : t("vendors.changeFilters")}
               action={
                 vendorList.length === 0 ? (
                   <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
-                    <Plus className="w-4 h-4" /> Добавить подрядчика
+                    <Plus className="w-4 h-4" /> {t("vendors.addVendor")}
                   </button>
                 ) : undefined
               }
@@ -288,6 +290,7 @@ export default function VendorsPage() {
               onView={() => setViewingVendor(vendor)}
               onEdit={() => setEditingVendor(vendor)}
               onDelete={() => setDeleteVendorId(vendor.id)}
+              t={t}
             />
           ))
         )}
@@ -299,6 +302,7 @@ export default function VendorsPage() {
           onClose={() => setShowAddModal(false)}
           onSubmit={handleAddVendor}
           country={userCountry}
+          t={t}
         />
       )}
 
@@ -309,6 +313,7 @@ export default function VendorsPage() {
           onClose={() => setEditingVendor(null)}
           onSubmit={(data) => handleUpdateVendor(editingVendor.id, data)}
           country={userCountry}
+          t={t}
         />
       )}
 
@@ -323,6 +328,7 @@ export default function VendorsPage() {
           linkedExpenses={allExpenses.filter(e => e.vendorId === viewingVendor.id)}
           onClose={() => setViewingVendor(null)}
           onEdit={() => { setViewingVendor(null); setEditingVendor(viewingVendor); }}
+          t={t}
         />
       )}
 
@@ -331,14 +337,14 @@ export default function VendorsPage() {
         isOpen={!!deleteVendorId}
         onClose={() => setDeleteVendorId(null)}
         onConfirm={handleDeleteVendor}
-        title="Удалить подрядчика?"
+        title={t("vendors.deleteConfirm")}
         description={
           deleteVendorId && allExpenses.filter((e) => e.vendorId === deleteVendorId).length > 0
-            ? `Подрядчик и ${allExpenses.filter((e) => e.vendorId === deleteVendorId).length} связанный расход будут удалены`
-            : "Подрядчик будет удалён из списка"
+            ? t("vendors.deleteWithExpenses").replace("{count}", allExpenses.filter((e) => e.vendorId === deleteVendorId).length.toString())
+            : t("vendors.deleteDescription")
         }
-        confirmText="Удалить"
-        cancelText="Отмена"
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
         variant="danger"
         isLoading={isDeleting}
       />
@@ -353,6 +359,7 @@ function VendorCard({
   onView,
   onEdit,
   onDelete,
+  t,
 }: {
   vendor: Vendor;
   country: Country;
@@ -360,6 +367,7 @@ function VendorCard({
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  t: (key: string) => string;
 }) {
   const Icon = vendorTypeIcons[vendor.category] || MoreHorizontal;
   const typeLabel = vendorTypeLabels[vendor.category]?.ru || vendor.category;
@@ -372,6 +380,12 @@ function VendorCard({
     deposit_paid: "bg-amber-100 text-amber-700",
     paid: "bg-emerald-100 text-emerald-700",
     cancelled: "bg-red-100 text-red-700",
+  };
+
+  const getProgramItemsText = (count: number) => {
+    if (count === 1) return t("vendors.programItems");
+    if (count >= 2 && count <= 4) return t("vendors.programItems2to4");
+    return t("vendors.programItems5plus");
   };
 
   return (
@@ -419,7 +433,7 @@ function VendorCard({
       {vendor.totalAmount > 0 && (
         <div className="mb-3">
           <div className="flex items-center justify-between text-sm mb-1.5">
-            <span className="text-muted-foreground">Оплачено</span>
+            <span className="text-muted-foreground">{t("vendors.paidAmount")}</span>
             <span className="font-medium">{formatCurrency(vendor.paidAmount, country)} / {formatCurrency(vendor.totalAmount, country)}</span>
           </div>
           <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -440,7 +454,7 @@ function VendorCard({
       {programItems.length > 0 && (
         <div className="flex items-center gap-1.5 text-xs text-primary mb-3">
           <Calendar className="w-3.5 h-3.5" />
-          <span>{programItems.length} {programItems.length === 1 ? "пункт" : programItems.length < 5 ? "пункта" : "пунктов"} программы</span>
+          <span>{programItems.length} {getProgramItemsText(programItems.length)}</span>
         </div>
       )}
 
@@ -450,7 +464,7 @@ function VendorCard({
           onClick={(e) => { e.stopPropagation(); onView(); }}
           className="flex-1 py-1.5 text-sm text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-lg transition-colors flex items-center justify-center gap-1"
         >
-          Подробнее
+          {t("vendors.details")}
           <ChevronRight className="w-4 h-4" />
         </button>
         <button
@@ -475,11 +489,13 @@ function VendorModal({
   onClose,
   onSubmit,
   country,
+  t,
 }: {
   vendor?: Vendor;
   onClose: () => void;
   onSubmit: (data: CreateVendorRequest) => void;
   country: Country;
+  t: (key: string) => string;
 }) {
   const currencySymbol = currencyConfigs[country]?.symbol || "₸";
   const [category, setCategory] = useState<string>(vendor?.category || "photographer");
@@ -488,7 +504,6 @@ function VendorModal({
   const [instagram, setInstagram] = useState(vendor?.instagram || "");
   const [totalAmount, setTotalAmount] = useState(vendor?.totalAmount?.toString() || "");
   const [paidAmount, setPaidAmount] = useState(vendor?.paidAmount?.toString() || "");
-  const [depositAmount, setDepositAmount] = useState(vendor?.depositAmount?.toString() || "");
   const [status, setStatus] = useState<VendorStatus>(vendor?.status || "contacted");
   const [note, setNote] = useState(vendor?.note || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -496,7 +511,7 @@ function VendorModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      toast.error("Введите название");
+      toast.error(t("vendors.enterName"));
       return;
     }
 
@@ -508,7 +523,6 @@ function VendorModal({
         phone: phone.trim() || undefined,
         instagram: instagram.trim() || undefined,
         totalAmount: parseInt(totalAmount) || 0,
-        depositAmount: parseInt(depositAmount) || 0,
         note: note.trim() || undefined,
         ...(vendor && {
           paidAmount: parseInt(paidAmount) || 0,
@@ -521,11 +535,11 @@ function VendorModal({
   };
 
   return (
-    <Modal isOpen onClose={onClose} title={vendor ? "Редактировать" : "Новый подрядчик"}>
+    <Modal isOpen onClose={onClose} title={vendor ? t("vendors.editVendor") : t("vendors.newVendor")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Type selection */}
         <div>
-          <label className="block text-sm font-medium mb-2">Тип</label>
+          <label className="block text-sm font-medium mb-2">{t("vendors.type")}</label>
           <div className="flex flex-wrap gap-2">
             {vendorTypes.slice(0, 6).map((type) => {
               const Icon = vendorTypeIcons[type];
@@ -574,13 +588,13 @@ function VendorModal({
 
         {/* Name */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Название / Имя *</label>
+          <label className="block text-sm font-medium mb-1.5">{t("vendors.nameRequired")}</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="input"
-            placeholder="Studio Photo, Асхат Ведущий..."
+            placeholder={t("vendors.namePlaceholder")}
             autoFocus
           />
         </div>
@@ -588,7 +602,7 @@ function VendorModal({
         {/* Contact */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium mb-1.5">Телефон</label>
+            <label className="block text-sm font-medium mb-1.5">{t("vendors.phone")}</label>
             <input
               type="tel"
               value={phone}
@@ -598,7 +612,7 @@ function VendorModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5">Instagram</label>
+            <label className="block text-sm font-medium mb-1.5">{t("vendors.instagram")}</label>
             <input
               type="text"
               value={instagram}
@@ -612,7 +626,7 @@ function VendorModal({
         {/* Amounts */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium mb-1.5">Сумма ({currencySymbol})</label>
+            <label className="block text-sm font-medium mb-1.5">{t("vendors.amount")} ({currencySymbol})</label>
             <input
               type="number"
               value={totalAmount}
@@ -621,23 +635,13 @@ function VendorModal({
               placeholder="150000"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Задаток ({currencySymbol})</label>
-            <input
-              type="number"
-              value={depositAmount}
-              onChange={(e) => setDepositAmount(e.target.value)}
-              className="input"
-              placeholder="50000"
-            />
-          </div>
         </div>
 
         {/* Edit-only fields */}
         {vendor && (
           <>
             <div>
-              <label className="block text-sm font-medium mb-1.5">Оплачено ({currencySymbol})</label>
+              <label className="block text-sm font-medium mb-1.5">{t("vendors.paidAmount")} ({currencySymbol})</label>
               <input
                 type="number"
                 value={paidAmount}
@@ -647,7 +651,7 @@ function VendorModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Статус</label>
+              <label className="block text-sm font-medium mb-2">{t("common.status")}</label>
               <div className="flex flex-wrap gap-2">
                 {vendorStatuses.map((s) => {
                   const label = vendorStatusLabels[s];
@@ -674,22 +678,22 @@ function VendorModal({
 
         {/* Note */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Заметка</label>
+          <label className="block text-sm font-medium mb-1.5">{t("vendors.notes")}</label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="input min-h-[60px] resize-none"
-            placeholder="Дополнительная информация..."
+            placeholder={t("vendors.notesPlaceholder")}
             rows={2}
           />
         </div>
 
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
-            Отмена
+            {t("common.cancel")}
           </button>
           <button type="submit" disabled={isSubmitting} className="btn-primary btn-md">
-            {isSubmitting ? "..." : vendor ? "Сохранить" : "Добавить"}
+            {isSubmitting ? "..." : vendor ? t("common.save") : t("common.add")}
           </button>
         </ModalFooter>
       </form>
@@ -704,6 +708,7 @@ function VendorDetailModal({
   linkedExpenses,
   onClose,
   onEdit,
+  t,
 }: {
   vendor: Vendor;
   country: Country;
@@ -711,6 +716,7 @@ function VendorDetailModal({
   linkedExpenses: Expense[];
   onClose: () => void;
   onEdit: () => void;
+  t: (key: string) => string;
 }) {
   const Icon = vendorTypeIcons[vendor.category] || MoreHorizontal;
   const typeLabel = vendorTypeLabels[vendor.category]?.ru || vendor.category;
@@ -754,7 +760,7 @@ function VendorDetailModal({
           {/* Contact */}
           {(vendor.phone || vendor.instagram) && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Контакты</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">{t("vendors.contacts")}</h3>
               <div className="space-y-1.5">
                 {vendor.phone && (
                   <a href={`tel:${vendor.phone}`} className="flex items-center gap-2 text-sm hover:text-primary">
@@ -780,18 +786,18 @@ function VendorDetailModal({
           {/* Payment */}
           {vendor.totalAmount > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Оплата</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">{t("vendors.payment")}</h3>
               <div className="card p-3 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span>Сумма</span>
+                  <span>{t("vendors.amount")}</span>
                   <span className="font-semibold">{formatCurrency(vendor.totalAmount, country)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span>Оплачено</span>
+                  <span>{t("vendors.paidAmount")}</span>
                   <span className="font-semibold text-emerald-600">{formatCurrency(vendor.paidAmount, country)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span>Осталось</span>
+                  <span>{t("vendors.remainingAmount")}</span>
                   <span className="font-semibold text-amber-600">{formatCurrency(vendor.totalAmount - vendor.paidAmount, country)}</span>
                 </div>
                 <div className="h-2 bg-secondary rounded-full overflow-hidden">
@@ -807,7 +813,7 @@ function VendorDetailModal({
           {/* Program responsibilities */}
           {programItems.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Ответственный за ({programItems.length})</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">{t("vendors.responsibleFor")} ({programItems.length})</h3>
               <div className="space-y-2">
                 {programItems.sort((a, b) => {
                   if (!a.startTime || !b.startTime) return 0;
@@ -822,7 +828,7 @@ function VendorDetailModal({
                       <p className="text-sm text-muted-foreground">
                         {item.startTime}
                         {item.endTime && ` - ${item.endTime}`}
-                        {item.duration && item.duration > 0 && ` (${item.duration} мин)`}
+                        {item.duration && item.duration > 0 && ` (${item.duration} ${t("program.minutes")})`}
                       </p>
                     </div>
                   </div>
@@ -834,7 +840,7 @@ function VendorDetailModal({
           {/* Linked expenses */}
           {linkedExpenses.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Связанные расходы ({linkedExpenses.length})</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">{t("vendors.linkedExpenses")} ({linkedExpenses.length})</h3>
               <div className="space-y-2">
                 {linkedExpenses.map((expense) => (
                   <div key={expense.id} className="card p-3 flex items-center justify-between">
@@ -849,7 +855,7 @@ function VendorDetailModal({
           {/* Note */}
           {vendor.note && (
             <div className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground">Заметка</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">{t("vendors.notes")}</h3>
               <p className="text-sm">{vendor.note}</p>
             </div>
           )}
@@ -857,10 +863,10 @@ function VendorDetailModal({
 
         {/* Footer */}
         <div className="p-4 border-t border-border flex justify-end gap-2">
-          <button onClick={onClose} className="btn-outline btn-md">Закрыть</button>
+          <button onClick={onClose} className="btn-outline btn-md">{t("common.close")}</button>
           <button onClick={onEdit} className="btn-primary btn-md">
             <Edit2 className="w-4 h-4" />
-            Редактировать
+            {t("common.edit")}
           </button>
         </div>
       </div>

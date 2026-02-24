@@ -8,6 +8,7 @@ import { Event, UpdateEventRequest, ShareLink, ShareAccessLevel, ShareWidget, Co
 import { PageLoader, ConfirmDialog, SuccessDialog, Modal, ModalFooter, TimeInput } from "@/components/ui";
 import { cn, getDefaultCity } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 export default function EventSettingsPage() {
@@ -15,6 +16,7 @@ export default function EventSettingsPage() {
   const router = useRouter();
   const eventId = params.id as string;
   const { user } = useAuthStore();
+  const { t } = useTranslation();
   const userCountry: Country = user?.country || "kz";
   const defaultCity = getDefaultCity(userCountry);
 
@@ -51,7 +53,7 @@ export default function EventSettingsPage() {
         loadShareLinks();
       } catch (error) {
         console.error("Failed to load event:", error);
-        toast.error("Не удалось загрузить");
+        toast.error(t("eventSettings.loadError"));
       } finally {
         setIsLoading(false);
       }
@@ -76,10 +78,10 @@ export default function EventSettingsPage() {
       const link = await shares.create(eventId, data);
       setShareLinks((prev) => [link, ...prev]);
       setShowShareModal(false);
-      toast.success("Ссылка создана");
+      toast.success(t("eventSettings.linkCreated"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось создать ссылку");
+      toast.error(err.message || t("eventSettings.linkCreateError"));
     }
   }
 
@@ -87,9 +89,9 @@ export default function EventSettingsPage() {
     try {
       await shares.deactivate(eventId, shareId);
       setShareLinks((prev) => prev.map((l) => (l.id === shareId ? { ...l, isActive: false } : l)));
-      toast.success("Ссылка деактивирована");
+      toast.success(t("eventSettings.linkDeactivated"));
     } catch {
-      toast.error("Не удалось деактивировать");
+      toast.error(t("eventSettings.deactivateError"));
     }
   }
 
@@ -97,9 +99,9 @@ export default function EventSettingsPage() {
     try {
       const link = await shares.regenerate(eventId, shareId);
       setShareLinks((prev) => prev.map((l) => (l.id === shareId ? link : l)));
-      toast.success("Ссылка обновлена");
+      toast.success(t("eventSettings.linkRefreshed"));
     } catch {
-      toast.error("Не удалось обновить");
+      toast.error(t("eventSettings.refreshError"));
     }
   }
 
@@ -107,9 +109,9 @@ export default function EventSettingsPage() {
     try {
       await shares.delete(eventId, shareId);
       setShareLinks((prev) => prev.filter((l) => l.id !== shareId));
-      toast.success("Ссылка удалена");
+      toast.success(t("eventSettings.linkDeleted"));
     } catch {
-      toast.error("Не удалось удалить");
+      toast.error(t("eventSettings.deleteError"));
     }
   }
 
@@ -120,7 +122,7 @@ export default function EventSettingsPage() {
 
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text);
-    toast.success("Скопировано");
+    toast.success(t("eventSettings.copied"));
   }
 
   async function handleSave() {
@@ -129,7 +131,7 @@ export default function EventSettingsPage() {
       await events.update(eventId, formData);
       setShowSuccessModal(true);
     } catch {
-      toast.error("Не удалось сохранить");
+      toast.error(t("eventSettings.saveError"));
     } finally {
       setIsSaving(false);
     }
@@ -141,7 +143,7 @@ export default function EventSettingsPage() {
       await events.delete(eventId);
       router.push("/dashboard");
     } catch {
-      toast.error("Не удалось удалить");
+      toast.error(t("eventSettings.deleteEventError"));
       setShowDeleteModal(false);
     } finally {
       setIsDeleting(false);
@@ -157,15 +159,15 @@ export default function EventSettingsPage() {
   return (
     <div className="max-w-2xl space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-h1">Настройки</h1>
-        <p className="text-caption mt-1">Редактирование мероприятия</p>
+        <h1 className="text-h1">{t("eventSettings.title")}</h1>
+        <p className="text-caption mt-1">{t("eventSettings.editing")}</p>
       </div>
 
       {/* Basic */}
       <section className="space-y-3 sm:space-y-4">
-        <h2 className="font-medium text-sm sm:text-base">Основное</h2>
+        <h2 className="font-medium text-sm sm:text-base">{t("eventSettings.basic")}</h2>
         <div>
-          <label className="block text-xs sm:text-sm mb-1.5">Название</label>
+          <label className="block text-xs sm:text-sm mb-1.5">{t("eventSettings.name")}</label>
           <input
             type="text"
             value={formData.title || ""}
@@ -175,7 +177,7 @@ export default function EventSettingsPage() {
         </div>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <label className="block text-xs sm:text-sm mb-1.5">Имя 1</label>
+            <label className="block text-xs sm:text-sm mb-1.5">{t("eventSettings.person1")}</label>
             <input
               type="text"
               value={formData.person1 || ""}
@@ -184,7 +186,7 @@ export default function EventSettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-xs sm:text-sm mb-1.5">Имя 2</label>
+            <label className="block text-xs sm:text-sm mb-1.5">{t("eventSettings.person2")}</label>
             <input
               type="text"
               value={formData.person2 || ""}
@@ -197,10 +199,10 @@ export default function EventSettingsPage() {
 
       {/* Date & Time */}
       <section className="space-y-3 sm:space-y-4">
-        <h2 className="font-medium text-sm sm:text-base">Дата и время</h2>
+        <h2 className="font-medium text-sm sm:text-base">{t("eventSettings.dateTime")}</h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
           <div>
-            <label className="block text-xs sm:text-sm mb-1.5">Дата</label>
+            <label className="block text-xs sm:text-sm mb-1.5">{t("eventSettings.date")}</label>
             <input
               type="date"
               value={formData.date || ""}
@@ -209,7 +211,7 @@ export default function EventSettingsPage() {
             />
           </div>
           <div>
-            <label className="block text-xs sm:text-sm mb-1.5">Время</label>
+            <label className="block text-xs sm:text-sm mb-1.5">{t("eventSettings.time")}</label>
             <TimeInput
               value={formData.time || ""}
               onChange={(value) => setFormData({ ...formData, time: value })}
@@ -220,44 +222,44 @@ export default function EventSettingsPage() {
 
       {/* Venue */}
       <section className="space-y-4">
-        <h2 className="font-medium">Место</h2>
+        <h2 className="font-medium">{t("eventSettings.venue")}</h2>
         <div>
-          <label className="block text-sm mb-1.5">Название</label>
+          <label className="block text-sm mb-1.5">{t("eventSettings.venueName")}</label>
           <input
             type="text"
             value={formData.venue?.name || ""}
             onChange={(e) => setFormData({ ...formData, venue: { ...formData.venue, name: e.target.value } })}
             className="input"
-            placeholder="Ресторан"
+            placeholder={t("eventSettings.venueNamePlaceholder")}
           />
         </div>
         <div>
-          <label className="block text-sm mb-1.5">Адрес</label>
+          <label className="block text-sm mb-1.5">{t("eventSettings.address")}</label>
           <input
             type="text"
             value={formData.venue?.address || ""}
             onChange={(e) => setFormData({ ...formData, venue: { ...formData.venue, address: e.target.value } })}
             className="input"
-            placeholder="ул. Абая 150"
+            placeholder={t("eventSettings.addressPlaceholder")}
           />
         </div>
         <div>
-          <label className="block text-sm mb-1.5">Город</label>
+          <label className="block text-sm mb-1.5">{t("eventSettings.city")}</label>
           <input
             type="text"
             value={formData.venue?.city || ""}
             onChange={(e) => setFormData({ ...formData, venue: { ...formData.venue, city: e.target.value } })}
             className="input"
-            placeholder={defaultCity || "Город"}
+            placeholder={defaultCity || t("eventSettings.cityPlaceholder")}
           />
         </div>
       </section>
 
       {/* Budget */}
       <section className="space-y-4">
-        <h2 className="font-medium">Бюджет</h2>
+        <h2 className="font-medium">{t("eventSettings.budget")}</h2>
         <div>
-          <label className="block text-sm mb-1.5">Общий бюджет (тенге)</label>
+          <label className="block text-sm mb-1.5">{t("eventSettings.totalBudget")}</label>
           <input
             type="number"
             value={formData.totalBudget || ""}
@@ -269,24 +271,24 @@ export default function EventSettingsPage() {
 
       {/* Invitation text */}
       <section className="space-y-4">
-        <h2 className="font-medium">Приглашение</h2>
+        <h2 className="font-medium">{t("eventSettings.invitation")}</h2>
         <div>
-          <label className="block text-sm mb-1.5">Приветствие</label>
+          <label className="block text-sm mb-1.5">{t("eventSettings.greeting")}</label>
           <textarea
             value={formData.greetingRu || ""}
             onChange={(e) => setFormData({ ...formData, greetingRu: e.target.value })}
             className="input min-h-[80px]"
-            placeholder="Приглашаем вас..."
+            placeholder={t("eventSettings.greetingPlaceholder")}
           />
         </div>
         <div>
-          <label className="block text-sm mb-1.5">Хэштег</label>
+          <label className="block text-sm mb-1.5">{t("eventSettings.hashtag")}</label>
           <input
             type="text"
             value={formData.hashtag || ""}
             onChange={(e) => setFormData({ ...formData, hashtag: e.target.value })}
             className="input"
-            placeholder="#НашаСвадьба"
+            placeholder={t("eventSettings.hashtagPlaceholder")}
           />
         </div>
       </section>
@@ -297,23 +299,23 @@ export default function EventSettingsPage() {
           <div>
             <h2 className="font-medium text-sm sm:text-base flex items-center gap-2">
               <Link2 className="w-4 h-4" />
-              Доступ по ссылке
+              {t("eventSettings.sharing")}
             </h2>
-            <p className="text-xs sm:text-sm text-muted-foreground">Поделитесь с партнёром</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">{t("eventSettings.sharePartner")}</p>
           </div>
           <button onClick={() => setShowShareModal(true)} className="btn-primary btn-sm">
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Создать</span> ссылку
+            {t("eventSettings.createLink")}
           </button>
         </div>
 
         {isLoadingShares ? (
-          <div className="text-center py-4 text-muted-foreground">Загрузка...</div>
+          <div className="text-center py-4 text-muted-foreground">{t("eventSettings.loading")}</div>
         ) : shareLinks.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
             <Link2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p>Нет активных ссылок</p>
-            <p className="text-sm">Создайте ссылку для доступа к дашборду</p>
+            <p>{t("eventSettings.noLinks")}</p>
+            <p className="text-sm">{t("eventSettings.noLinksHint")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -331,12 +333,12 @@ export default function EventSettingsPage() {
                       {link.accessLevel === "editor" ? (
                         <span className="badge-success flex items-center gap-1 text-xs">
                           <Edit3 className="w-3 h-3" />
-                          Редактор
+                          {t("eventSettings.editor")}
                         </span>
                       ) : (
                         <span className="badge-default flex items-center gap-1 text-xs">
                           <Eye className="w-3 h-3" />
-                          Просмотр
+                          {t("eventSettings.view")}
                         </span>
                       )}
                       {link.pinCode && (
@@ -346,7 +348,7 @@ export default function EventSettingsPage() {
                         </span>
                       )}
                       {!link.isActive && (
-                        <span className="badge-default text-xs">Неактивна</span>
+                        <span className="badge-default text-xs">{t("eventSettings.inactive")}</span>
                       )}
                     </div>
                     {link.label && (
@@ -356,12 +358,7 @@ export default function EventSettingsPage() {
                       <div className="flex flex-wrap gap-1 mt-1">
                         {link.widgets.map((w) => (
                           <span key={w} className="text-xs px-1.5 py-0.5 bg-secondary rounded">
-                            {w === "guests" && "Гости"}
-                            {w === "budget" && "Бюджет"}
-                            {w === "checklist" && "Чек-лист"}
-                            {w === "program" && "Программа"}
-                            {w === "seating" && "Рассадка"}
-                            {w === "gifts" && "Подарки"}
+                            {t(`eventSettings.widgets.${w}`)}
                           </span>
                         ))}
                       </div>
@@ -375,28 +372,28 @@ export default function EventSettingsPage() {
                       <button
                         onClick={() => copyToClipboard(getShareUrl(link.token))}
                         className="btn-ghost btn-sm"
-                        title="Копировать ссылку"
+                        title={t("eventSettings.copyLink")}
                       >
                         <Copy className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleRegenerateShare(link.id)}
                         className="btn-ghost btn-sm"
-                        title="Обновить токен"
+                        title={t("eventSettings.refreshToken")}
                       >
                         <RefreshCw className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeactivateShare(link.id)}
                         className="btn-ghost btn-sm text-amber-600"
-                        title="Деактивировать"
+                        title={t("eventSettings.deactivate")}
                       >
                         <X className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteShare(link.id)}
                         className="btn-ghost btn-sm text-red-600"
-                        title="Удалить"
+                        title={t("eventSettings.delete")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -413,10 +410,10 @@ export default function EventSettingsPage() {
       <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-border">
         <button onClick={() => setShowDeleteModal(true)} className="btn-ghost btn-sm text-red-600 hover:bg-red-50 justify-center sm:justify-start">
           <Trash2 className="w-4 h-4" />
-          Удалить
+          {t("eventSettings.delete")}
         </button>
         <button onClick={handleSave} disabled={isSaving} className="btn-primary btn-md w-full sm:w-auto">
-          {isSaving ? "Сохранение..." : "Сохранить"}
+          {isSaving ? t("eventSettings.saving") : t("eventSettings.save")}
         </button>
       </div>
 
@@ -424,9 +421,9 @@ export default function EventSettingsPage() {
       <SuccessDialog
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
-        title="Сохранено"
-        description="Настройки мероприятия успешно обновлены"
-        buttonText="К мероприятию"
+        title={t("eventSettings.saved")}
+        description={t("eventSettings.savedDesc")}
+        buttonText={t("eventSettings.toEvent")}
         onButtonClick={() => router.push(`/dashboard/events/${eventId}`)}
       />
 
@@ -435,10 +432,10 @@ export default function EventSettingsPage() {
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDelete}
-        title="Удалить мероприятие?"
-        description="Это действие нельзя отменить. Все данные мероприятия будут удалены."
-        confirmText="Удалить"
-        cancelText="Отмена"
+        title={t("eventSettings.deleteTitle")}
+        description={t("eventSettings.deleteDesc")}
+        confirmText={t("eventSettings.delete")}
+        cancelText={t("eventSettings.cancel")}
         variant="danger"
         isLoading={isDeleting}
       />
@@ -448,6 +445,7 @@ export default function EventSettingsPage() {
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
         onSubmit={handleCreateShare}
+        t={t}
       />
     </div>
   );
@@ -457,18 +455,12 @@ interface CreateShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: { accessLevel: ShareAccessLevel; widgets?: ShareWidget[]; pinCode?: string; label?: string }) => void;
+  t: (key: string) => string;
 }
 
-const WIDGET_OPTIONS: { key: ShareWidget; label: string; description: string }[] = [
-  { key: "guests", label: "Гости", description: "Статистика гостей и RSVP" },
-  { key: "budget", label: "Бюджет", description: "Расходы и оплаты" },
-  { key: "checklist", label: "Чек-лист", description: "Прогресс подготовки" },
-  { key: "program", label: "Программа", description: "Тайминг мероприятия" },
-  { key: "seating", label: "Рассадка", description: "Схема столов и места" },
-  { key: "gifts", label: "Подарки", description: "Учёт подарков" },
-];
+const WIDGET_KEYS: ShareWidget[] = ["guests", "budget", "checklist", "program", "seating", "gifts"];
 
-function CreateShareModal({ isOpen, onClose, onSubmit }: CreateShareModalProps) {
+function CreateShareModal({ isOpen, onClose, onSubmit, t }: CreateShareModalProps) {
   const [accessLevel, setAccessLevel] = useState<ShareAccessLevel>("view");
   const [selectedWidgets, setSelectedWidgets] = useState<ShareWidget[]>(["guests", "checklist", "program"]);
   const [usePin, setUsePin] = useState(false);
@@ -511,10 +503,10 @@ function CreateShareModal({ isOpen, onClose, onSubmit }: CreateShareModalProps) 
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Создать ссылку доступа">
+    <Modal isOpen={isOpen} onClose={onClose} title={t("eventSettings.createAccessLink")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Уровень доступа</label>
+          <label className="block text-sm font-medium mb-2">{t("eventSettings.accessLevel")}</label>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
@@ -528,10 +520,10 @@ function CreateShareModal({ isOpen, onClose, onSubmit }: CreateShareModalProps) 
             >
               <div className="flex items-center gap-2 mb-1">
                 <Eye className="w-4 h-4" />
-                <span className="font-medium">Просмотр</span>
+                <span className="font-medium">{t("eventSettings.view")}</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Только просмотр статистики
+                {t("eventSettings.viewOnly")}
               </p>
             </button>
             <button
@@ -546,54 +538,54 @@ function CreateShareModal({ isOpen, onClose, onSubmit }: CreateShareModalProps) 
             >
               <div className="flex items-center gap-2 mb-1">
                 <Edit3 className="w-4 h-4" />
-                <span className="font-medium">Редактор</span>
+                <span className="font-medium">{t("eventSettings.editor")}</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Просмотр и редактирование
+                {t("eventSettings.viewAndEdit")}
               </p>
             </button>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Виджеты для отображения</label>
+          <label className="block text-sm font-medium mb-2">{t("eventSettings.widgetsToShow")}</label>
           <div className="grid grid-cols-2 gap-2">
-            {WIDGET_OPTIONS.map((widget) => (
+            {WIDGET_KEYS.map((widgetKey) => (
               <label
-                key={widget.key}
+                key={widgetKey}
                 className={cn(
                   "flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors",
-                  selectedWidgets.includes(widget.key)
+                  selectedWidgets.includes(widgetKey)
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-primary/50"
                 )}
               >
                 <input
                   type="checkbox"
-                  checked={selectedWidgets.includes(widget.key)}
-                  onChange={() => toggleWidget(widget.key)}
+                  checked={selectedWidgets.includes(widgetKey)}
+                  onChange={() => toggleWidget(widgetKey)}
                   className="mt-0.5 rounded border-border"
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium">{widget.label}</span>
-                  <p className="text-xs text-muted-foreground">{widget.description}</p>
+                  <span className="text-sm font-medium">{t(`eventSettings.widgets.${widgetKey}`)}</span>
+                  <p className="text-xs text-muted-foreground">{t(`eventSettings.widgets.${widgetKey}Desc`)}</p>
                 </div>
               </label>
             ))}
           </div>
           {selectedWidgets.length === 0 && (
-            <p className="text-xs text-red-500 mt-1">Выберите хотя бы один виджет</p>
+            <p className="text-xs text-red-500 mt-1">{t("eventSettings.selectOneWidget")}</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5">Название (опционально)</label>
+          <label className="block text-sm font-medium mb-1.5">{t("eventSettings.labelOptional")}</label>
           <input
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             className="input"
-            placeholder="Для координатора"
+            placeholder={t("eventSettings.labelPlaceholder")}
           />
         </div>
 
@@ -608,13 +600,13 @@ function CreateShareModal({ isOpen, onClose, onSubmit }: CreateShareModalProps) 
               }}
               className="rounded border-border"
             />
-            <span className="text-sm">Защитить PIN-кодом</span>
+            <span className="text-sm">{t("eventSettings.protectPin")}</span>
           </label>
 
           {usePin && (
             <div>
               <label className="block text-sm text-muted-foreground mb-1.5">
-                4-значный PIN-код
+                {t("eventSettings.pinDigits")}
               </label>
               <input
                 type="text"
@@ -632,14 +624,14 @@ function CreateShareModal({ isOpen, onClose, onSubmit }: CreateShareModalProps) 
 
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-ghost btn-md">
-            Отмена
+            {t("eventSettings.cancel")}
           </button>
           <button
             type="submit"
             disabled={isSubmitting || (usePin && pinCode.length !== 4) || selectedWidgets.length === 0}
             className="btn-primary btn-md"
           >
-            {isSubmitting ? "Создание..." : "Создать"}
+            {isSubmitting ? t("eventSettings.creating") : t("eventSettings.create")}
           </button>
         </ModalFooter>
       </form>

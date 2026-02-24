@@ -19,6 +19,7 @@ import {
 import { program, events, vendors as vendorsApi } from "@/lib/api";
 import { ProgramItem, ProgramTemplate, Event, Vendor } from "@/lib/types";
 import { cn, eventTypeLabels, formatDate, vendorTypeLabels } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 import { PageLoader, Modal, ModalFooter, EmptyState, ConfirmDialog, TimeInput } from "@/components/ui";
 import toast from "react-hot-toast";
 import jsPDF from "jspdf";
@@ -38,6 +39,7 @@ function sortByTime(items: ProgramItem[]): ProgramItem[] {
 export default function ProgramPage() {
   const params = useParams();
   const eventId = params.id as string;
+  const { t, tLabel } = useTranslation();
 
   const [items, setItems] = useState<ProgramItem[]>([]);
   const [event, setEvent] = useState<Event | null>(null);
@@ -72,7 +74,7 @@ export default function ProgramPage() {
       setVendors(vendorsData || []);
     } catch (error) {
       console.error("Failed to load program:", error);
-      toast.error("Не удалось загрузить программу");
+      toast.error(t("program.loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -90,10 +92,10 @@ export default function ProgramPage() {
       const newItem = await program.create(eventId, data);
       setItems((prev) => sortByTime([...prev, newItem]));
       setShowAddModal(false);
-      toast.success("Пункт добавлен");
+      toast.success(t("program.itemAdded"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось добавить пункт");
+      toast.error(err.message || t("program.addError"));
     }
   };
 
@@ -109,10 +111,10 @@ export default function ProgramPage() {
       const updatedItem = await program.update(eventId, itemId, data);
       setItems((prev) => sortByTime(prev.map((item) => (item.id === itemId ? updatedItem : item))));
       setEditingItem(null);
-      toast.success("Пункт обновлён");
+      toast.success(t("program.itemUpdated"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось обновить пункт");
+      toast.error(err.message || t("program.updateError"));
     }
   };
 
@@ -123,10 +125,10 @@ export default function ProgramPage() {
       await program.delete(eventId, deleteItemId);
       setItems((prev) => prev.filter((item) => item.id !== deleteItemId));
       setDeleteItemId(null);
-      toast.success("Пункт удалён");
+      toast.success(t("program.itemDeleted"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось удалить пункт");
+      toast.error(err.message || t("program.deleteError"));
     } finally {
       setIsDeleting(false);
     }
@@ -137,10 +139,10 @@ export default function ProgramPage() {
       const newItems = await program.applyTemplate(eventId, eventType);
       setItems(newItems);
       setShowTemplateModal(false);
-      toast.success("Шаблон применён");
+      toast.success(t("program.templateApplied"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось применить шаблон");
+      toast.error(err.message || t("program.templateError"));
     }
   };
 
@@ -198,7 +200,7 @@ export default function ProgramPage() {
       });
     } catch (error) {
       console.error("Failed to reorder:", error);
-      toast.error("Не удалось сохранить порядок");
+      toast.error(t("program.reorderError"));
       loadData(); // Reload to get correct order
     }
   }, [draggedId, items, eventId]);
@@ -216,11 +218,11 @@ export default function ProgramPage() {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     if (hours > 0 && mins > 0) {
-      return `${hours} ч ${mins} мин`;
+      return t("program.hoursAndMinutes").replace("{hours}", hours.toString()).replace("{minutes}", mins.toString());
     } else if (hours > 0) {
-      return `${hours} ч`;
+      return `${hours} ${t("program.hours")}`;
     }
-    return `${mins} мин`;
+    return `${mins} ${t("program.minutes")}`;
   };
 
   const handleDownloadPdf = async () => {
@@ -256,13 +258,13 @@ export default function ProgramPage() {
 
       pdf.addImage(imgData, "JPEG", imgX, imgY, imgWidth * ratio, imgHeight * ratio, undefined, "FAST");
 
-      const eventTitle = event?.title || "Программа";
-      pdf.save(`${eventTitle} - Программа.pdf`);
+      const eventTitle = event?.title || t("program.title");
+      pdf.save(`${eventTitle} - ${t("program.title")}.pdf`);
 
-      toast.success("PDF скачан");
+      toast.success(t("program.pdfDownloaded"));
     } catch (error) {
       console.error("Failed to generate PDF:", error);
-      toast.error("Не удалось создать PDF");
+      toast.error(t("program.pdfError"));
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -277,9 +279,9 @@ export default function ProgramPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-h1">Программа</h1>
+          <h1 className="text-h1">{t("program.title")}</h1>
           <p className="text-caption mt-1">
-            Расписание мероприятия для подрядчиков
+            {t("program.description")}
           </p>
         </div>
         <div className="flex gap-2">
@@ -291,14 +293,14 @@ export default function ProgramPage() {
                 className="btn-outline btn-sm"
               >
                 <Download className="w-4 h-4" />
-                {isGeneratingPdf ? "..." : "Скачать"}
+                {isGeneratingPdf ? "..." : t("common.download")}
               </button>
               <button
                 onClick={() => window.print()}
                 className="btn-outline btn-sm"
               >
                 <Printer className="w-4 h-4" />
-                Печать
+                {t("program.print")}
               </button>
             </>
           )}
@@ -307,14 +309,14 @@ export default function ProgramPage() {
             className="btn-outline btn-sm"
           >
             <Sparkles className="w-4 h-4" />
-            Шаблон
+            {t("program.template")}
           </button>
           <button
             onClick={() => setShowAddModal(true)}
             className="btn-primary btn-sm"
           >
             <Plus className="w-4 h-4" />
-            Добавить
+            {t("common.add")}
           </button>
         </div>
       </div>
@@ -329,7 +331,7 @@ export default function ProgramPage() {
               </div>
               <div>
                 <div className="text-2xl font-bold">{items.length}</div>
-                <div className="text-sm text-muted-foreground">пунктов</div>
+                <div className="text-sm text-muted-foreground">{t("program.itemsCount")}</div>
               </div>
             </div>
           </div>
@@ -340,7 +342,7 @@ export default function ProgramPage() {
               </div>
               <div>
                 <div className="text-2xl font-bold">{formatDuration(calculateTotalDuration())}</div>
-                <div className="text-sm text-muted-foreground">общая длительность</div>
+                <div className="text-sm text-muted-foreground">{t("program.totalDuration")}</div>
               </div>
             </div>
           </div>
@@ -352,7 +354,7 @@ export default function ProgramPage() {
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{items[0]?.startTime} – {items[items.length - 1]?.startTime}</div>
-                  <div className="text-sm text-muted-foreground">время проведения</div>
+                  <div className="text-sm text-muted-foreground">{t("program.timeRange")}</div>
                 </div>
               </div>
             </div>
@@ -365,17 +367,17 @@ export default function ProgramPage() {
         {items.length === 0 ? (
           <EmptyState
             icon={Clock}
-            title="Программа пуста"
-            description="Добавьте пункты вручную или используйте готовый шаблон"
+            title={t("program.emptyTitle")}
+            description={t("program.emptyDescription")}
             action={
               <div className="flex gap-2">
                 <button onClick={() => setShowTemplateModal(true)} className="btn-outline btn-sm">
                   <Sparkles className="w-4 h-4" />
-                  Использовать шаблон
+                  {t("program.useTemplate")}
                 </button>
                 <button onClick={() => setShowAddModal(true)} className="btn-primary btn-sm">
                   <Plus className="w-4 h-4" />
-                  Добавить пункт
+                  {t("program.addItem")}
                 </button>
               </div>
             }
@@ -400,6 +402,7 @@ export default function ProgramPage() {
                 onDrop={(e) => handleDrop(e, item.id)}
                 onDragEnd={handleDragEnd}
                 className={`animate-in stagger-${Math.min(index + 1, 4)}`}
+                t={t}
               />
             ))}
           </div>
@@ -410,7 +413,7 @@ export default function ProgramPage() {
       <div className="fixed left-[-9999px] top-0">
         <div ref={printRef} className="bg-white p-8" style={{ width: "595px" }}>
           <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold mb-1">{event?.title || "Программа мероприятия"}</h1>
+            <h1 className="text-2xl font-bold mb-1">{event?.title || t("program.eventProgram")}</h1>
             {event?.date && (
               <p className="text-gray-600">{formatDate(event.date)}</p>
             )}
@@ -431,7 +434,7 @@ export default function ProgramPage() {
                   <div className="text-sm text-gray-500">{item.responsible}</div>
                 )}
                 {item.duration > 0 && (
-                  <div className="text-sm text-gray-500">{item.duration} мин</div>
+                  <div className="text-sm text-gray-500">{item.duration} {t("program.minutes")}</div>
                 )}
               </div>
             ))}
@@ -469,6 +472,7 @@ export default function ProgramPage() {
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddItem}
           vendors={vendors}
+          t={t}
         />
       )}
 
@@ -479,6 +483,8 @@ export default function ProgramPage() {
           currentEventType={event?.type}
           onClose={() => setShowTemplateModal(false)}
           onApply={handleApplyTemplate}
+          t={t}
+          tLabel={tLabel}
         />
       )}
 
@@ -487,10 +493,10 @@ export default function ProgramPage() {
         isOpen={!!deleteItemId}
         onClose={() => setDeleteItemId(null)}
         onConfirm={handleDeleteItem}
-        title="Удалить пункт?"
-        description="Пункт программы будет удалён"
-        confirmText="Удалить"
-        cancelText="Отмена"
+        title={t("program.deleteTitle")}
+        description={t("program.deleteDescription")}
+        confirmText={t("common.delete")}
+        cancelText={t("common.cancel")}
         variant="danger"
         isLoading={isDeleting}
       />
@@ -514,6 +520,7 @@ function ProgramItemRow({
   onDrop,
   onDragEnd,
   className,
+  t,
 }: {
   item: ProgramItem;
   vendors: Vendor[];
@@ -530,6 +537,7 @@ function ProgramItemRow({
   onDrop: (e: React.DragEvent) => void;
   onDragEnd: () => void;
   className?: string;
+  t: (key: string) => string;
 }) {
   // Check if responsible is a known vendor
   const isKnownVendor = item.responsible
@@ -561,7 +569,7 @@ function ProgramItemRow({
               value={editData.title}
               onChange={(e) => setEditData({ ...editData, title: e.target.value })}
               className="input text-sm"
-              placeholder="Название"
+              placeholder={t("program.itemTitle")}
             />
           </div>
           <div className="col-span-3">
@@ -570,7 +578,7 @@ function ProgramItemRow({
               value={editData.description}
               onChange={(e) => setEditData({ ...editData, description: e.target.value })}
               className="input text-sm"
-              placeholder="Описание"
+              placeholder={t("common.description")}
             />
           </div>
           <div className="col-span-2">
@@ -587,13 +595,13 @@ function ProgramItemRow({
                 }}
                 className="input text-sm"
               >
-                <option value="">Не указан</option>
+                <option value="">{t("program.notAssigned")}</option>
                 {vendors.map((v) => (
                   <option key={v.id} value={v.name}>
                     {v.name}
                   </option>
                 ))}
-                <option value="custom">Другой...</option>
+                <option value="custom">{t("program.other")}</option>
               </select>
             ) : (
               <div className="flex gap-1">
@@ -602,14 +610,14 @@ function ProgramItemRow({
                   value={editData.responsible}
                   onChange={(e) => setEditData({ ...editData, responsible: e.target.value })}
                   className="input text-sm flex-1"
-                  placeholder="Исполнитель"
+                  placeholder={t("program.responsiblePlaceholder")}
                 />
                 {vendors.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setIsCustomResponsible(false)}
                     className="p-2 text-muted-foreground hover:bg-secondary rounded-lg"
-                    title="Выбрать из списка"
+                    title={t("program.selectFromList")}
                   >
                     <User className="w-4 h-4" />
                   </button>
@@ -671,7 +679,7 @@ function ProgramItemRow({
           <User className="w-3.5 h-3.5" />
           <span>{item.responsible}</span>
           {!isKnownVendor && vendors.length > 0 && (
-            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded" title="Подрядчик не найден">
+            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded" title={t("program.vendorNotFound")}>
               ?
             </span>
           )}
@@ -680,21 +688,21 @@ function ProgramItemRow({
       {item.duration > 0 && (
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Clock className="w-3.5 h-3.5" />
-          {item.duration} мин
+          {item.duration} {t("program.minutes")}
         </div>
       )}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={onEdit}
           className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
-          title="Редактировать"
+          title={t("common.edit")}
         >
           <Edit2 className="w-4 h-4" />
         </button>
         <button
           onClick={onDelete}
           className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-          title="Удалить"
+          title={t("common.delete")}
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -707,6 +715,7 @@ function AddProgramItemModal({
   onClose,
   onAdd,
   vendors,
+  t,
 }: {
   onClose: () => void;
   onAdd: (data: {
@@ -718,6 +727,7 @@ function AddProgramItemModal({
     duration?: number;
   }) => void;
   vendors: Vendor[];
+  t: (key: string) => string;
 }) {
   const [startTime, setStartTime] = useState("18:00");
   const [title, setTitle] = useState("");
@@ -729,7 +739,7 @@ function AddProgramItemModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !startTime) {
-      toast.error("Укажите время и название");
+      toast.error(t("program.timeAndTitleRequired"));
       return;
     }
     const finalResponsible = responsible === "custom" ? customResponsible.trim() : responsible;
@@ -743,18 +753,18 @@ function AddProgramItemModal({
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Добавить пункт программы">
+    <Modal isOpen onClose={onClose} title={t("program.addItemTitle")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1.5">Время начала *</label>
+            <label className="block text-sm font-medium mb-1.5">{t("program.startTimeRequired")}</label>
             <TimeInput
               value={startTime}
               onChange={setStartTime}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1.5">Длительность (мин)</label>
+            <label className="block text-sm font-medium mb-1.5">{t("program.durationMinutes")}</label>
             <input
               type="number"
               value={duration}
@@ -766,28 +776,28 @@ function AddProgramItemModal({
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">Название *</label>
+          <label className="block text-sm font-medium mb-1.5">{t("program.titleRequired")}</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="input"
-            placeholder="Бата, Первый танец, Торт..."
+            placeholder={t("program.titlePlaceholder")}
             autoFocus
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">Описание</label>
+          <label className="block text-sm font-medium mb-1.5">{t("common.description")}</label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="input"
-            placeholder="Дополнительная информация"
+            placeholder={t("program.descriptionPlaceholder")}
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1.5">Исполнитель</label>
+          <label className="block text-sm font-medium mb-1.5">{t("program.responsible")}</label>
           {vendors.length > 0 ? (
             <>
               <select
@@ -795,13 +805,13 @@ function AddProgramItemModal({
                 onChange={(e) => setResponsible(e.target.value)}
                 className="input"
               >
-                <option value="">Не указан</option>
+                <option value="">{t("program.notAssigned")}</option>
                 {vendors.map((v) => (
                   <option key={v.id} value={v.name}>
                     {v.name} ({vendorTypeLabels[v.category]?.ru || v.category})
                   </option>
                 ))}
-                <option value="custom">Другой...</option>
+                <option value="custom">{t("program.other")}</option>
               </select>
               {responsible === "custom" && (
                 <input
@@ -809,7 +819,7 @@ function AddProgramItemModal({
                   value={customResponsible}
                   onChange={(e) => setCustomResponsible(e.target.value)}
                   className="input mt-2"
-                  placeholder="Введите имя исполнителя"
+                  placeholder={t("program.enterResponsible")}
                 />
               )}
             </>
@@ -819,16 +829,16 @@ function AddProgramItemModal({
               value={responsible}
               onChange={(e) => setResponsible(e.target.value)}
               className="input"
-              placeholder="Ведущий, DJ, Ресторан..."
+              placeholder={t("program.responsibleExamples")}
             />
           )}
         </div>
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
-            Отмена
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary btn-md">
-            Добавить
+            {t("common.add")}
           </button>
         </ModalFooter>
       </form>
@@ -841,11 +851,15 @@ function TemplateModal({
   currentEventType,
   onClose,
   onApply,
+  t,
+  tLabel,
 }: {
   templates: ProgramTemplate[];
   currentEventType?: string;
   onClose: () => void;
   onApply: (eventType: string) => void;
+  t: (key: string) => string;
+  tLabel: (ru: string, kz?: string) => string;
 }) {
   const [selectedType, setSelectedType] = useState(currentEventType || "wedding");
   const [isApplying, setIsApplying] = useState(false);
@@ -863,8 +877,8 @@ function TemplateModal({
     <Modal
       isOpen
       onClose={onClose}
-      title="Выбрать шаблон"
-      description="Шаблон заменит текущую программу"
+      title={t("program.selectTemplate")}
+      description={t("program.templateWillReplace")}
     >
       <div className="space-y-3">
         {templates.map((template) => {
@@ -882,9 +896,9 @@ function TemplateModal({
               )}
             >
               <div className="flex-1">
-                <div className="font-medium">{label.ru}</div>
+                <div className="font-medium">{tLabel(label.ru, label.kz)}</div>
                 <div className="text-sm text-muted-foreground">
-                  {template.itemCount} пунктов программы
+                  {template.itemCount} {t("program.itemsInTemplate")}
                 </div>
               </div>
               {selectedType === template.eventType && (
@@ -896,7 +910,7 @@ function TemplateModal({
       </div>
       <ModalFooter>
         <button type="button" onClick={onClose} className="btn-outline btn-md">
-          Отмена
+          {t("common.cancel")}
         </button>
         <button
           type="button"
@@ -904,7 +918,7 @@ function TemplateModal({
           disabled={isApplying}
           className="btn-primary btn-md"
         >
-          {isApplying ? "Применение..." : "Применить шаблон"}
+          {isApplying ? t("program.applying") : t("program.applyTemplate")}
         </button>
       </ModalFooter>
     </Modal>

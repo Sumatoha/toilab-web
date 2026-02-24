@@ -31,6 +31,7 @@ import {
 } from "@/lib/types";
 import { PageLoader, Modal, ModalFooter, ProgressBar } from "@/components/ui";
 import { cn, formatTableName } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
 
 // Canvas is now responsive, these are minimum dimensions
@@ -53,6 +54,7 @@ export default function SeatingPage() {
   const eventId = params.id as string;
   const canvasRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
   const [tables, setTables] = useState<TableWithGuests[]>([]);
@@ -227,7 +229,7 @@ export default function SeatingPage() {
       setUnseatedGuests(unseated);
     } catch (error) {
       console.error("Failed to load seating data:", error);
-      toast.error("Не удалось загрузить данные");
+      toast.error(t("seating.loadError"));
     } finally {
       setIsLoading(false);
     }
@@ -241,9 +243,9 @@ export default function SeatingPage() {
       setTables(newTables);
       setStats(recalculateStats(newTables, unseatedGuests));
       setShowCreateModal(false);
-      toast.success(data.shape === "scene" ? "Сцена создана" : "Стол создан");
+      toast.success(data.shape === "scene" ? t("seating.sceneCreated") : t("seating.tableCreated"));
     } catch {
-      toast.error("Не удалось создать");
+      toast.error(t("seating.createError"));
     }
   };
 
@@ -260,9 +262,9 @@ export default function SeatingPage() {
       setStats(recalculateStats(newTables, newUnseated));
       setSelectedTable(null);
       setMobileSelectedTable(null);
-      toast.success(table?.shape === "scene" ? "Сцена удалена" : "Стол удалён");
+      toast.success(table?.shape === "scene" ? t("seating.sceneDeleted") : t("seating.tableDeleted"));
     } catch {
-      toast.error("Не удалось удалить");
+      toast.error(t("seating.deleteError"));
     }
   };
 
@@ -286,10 +288,10 @@ export default function SeatingPage() {
           setMobileSelectedTable(newTables.find(t => t.id === tableId) || null);
         }
       }
-      toast.success("Гость добавлен");
+      toast.success(t("seating.guestAssigned"));
     } catch (error) {
       const err = error as Error;
-      toast.error(err.message || "Не удалось добавить гостя");
+      toast.error(err.message || t("seating.guestAddError"));
     }
   };
 
@@ -314,9 +316,9 @@ export default function SeatingPage() {
           setMobileSelectedTable(newTables.find(t => t.id === tableId) || null);
         }
       }
-      toast.success("Гость удалён со стола");
+      toast.success(t("seating.guestRemoved"));
     } catch {
-      toast.error("Не удалось удалить гостя");
+      toast.error(t("seating.guestRemoveError"));
     }
   };
 
@@ -394,21 +396,21 @@ export default function SeatingPage() {
         {/* Mobile Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold">Рассадка</h1>
+            <h1 className="text-xl font-bold">{t("seating.titleShort")}</h1>
             <p className="text-sm text-muted-foreground">
-              {stats?.seatedGuests || 0} из {totalGuests} рассажены
+              {t("seating.description").replace("{count}", (stats?.seatedGuests || 0).toString()).replace("{total}", totalGuests.toString())}
             </p>
           </div>
           <button onClick={() => setShowCreateModal(true)} className="btn-primary btn-sm">
             <Plus className="w-4 h-4" />
-            Стол
+            {t("seating.addTableShort")}
           </button>
         </div>
 
         {/* Progress */}
         <div className="card p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Прогресс рассадки</span>
+            <span className="text-sm font-medium">{t("seating.progress")}</span>
             <span className="text-sm text-muted-foreground">{seatedPercent}%</span>
           </div>
           <ProgressBar value={seatedPercent} max={100} />
@@ -421,7 +423,7 @@ export default function SeatingPage() {
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-amber-600" />
                 <span className="font-medium text-sm text-amber-700">
-                  Нераспределённые: {unseatedGuests.length}
+                  {t("seating.unassigned")}: {unseatedGuests.length}
                 </span>
               </div>
             </div>
@@ -440,7 +442,7 @@ export default function SeatingPage() {
                 ))}
                 {unseatedGuests.length > 12 && (
                   <span className="px-2 py-1 text-xs text-muted-foreground">
-                    и ещё {unseatedGuests.length - 12}...
+                    {t("seating.andMore").replace("{count}", (unseatedGuests.length - 12).toString())}
                   </span>
                 )}
               </div>
@@ -451,7 +453,7 @@ export default function SeatingPage() {
         {/* Tables List */}
         <div className="space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider px-1">
-            Столы ({tables.filter(t => t.shape !== "scene").length})
+            {t("seating.table")} ({tables.filter(t => t.shape !== "scene").length})
           </h2>
 
           {tables.filter(t => t.shape !== "scene").length === 0 ? (
@@ -459,12 +461,12 @@ export default function SeatingPage() {
               <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
                 <Circle className="w-7 h-7 text-primary" />
               </div>
-              <h3 className="font-semibold mb-1">Нет столов</h3>
+              <h3 className="font-semibold mb-1">{t("seating.noTables")}</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Создайте столы для рассадки гостей
+                {t("seating.noTablesDescription")}
               </p>
               <button onClick={() => setShowCreateModal(true)} className="btn-primary btn-sm">
-                <Plus className="w-4 h-4" /> Создать стол
+                <Plus className="w-4 h-4" /> {t("seating.createTable")}
               </button>
             </div>
           ) : (
@@ -484,7 +486,7 @@ export default function SeatingPage() {
           {tables.filter(t => t.shape === "scene").length > 0 && (
             <>
               <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider px-1 mt-6">
-                Сцены и декорации
+                {t("seating.scenesAndDecor")}
               </h2>
               <div className="space-y-2">
                 {tables.filter(t => t.shape === "scene").map((table) => (
@@ -496,7 +498,7 @@ export default function SeatingPage() {
                       <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
                         <Theater className="w-5 h-5 text-amber-600" />
                       </div>
-                      <span className="font-medium">{table.name || "Сцена"}</span>
+                      <span className="font-medium">{table.name || t("seating.scene")}</span>
                     </div>
                     <button
                       onClick={() => handleDeleteTable(table.id)}
@@ -517,9 +519,9 @@ export default function SeatingPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-semibold">Рассадка гостей</h1>
+            <h1 className="text-2xl font-semibold">{t("seating.title")}</h1>
             <p className="text-muted-foreground">
-              {stats?.seatedGuests || 0} из {totalGuests} гостей рассажены
+              {t("seating.descriptionFull").replace("{count}", (stats?.seatedGuests || 0).toString()).replace("{total}", totalGuests.toString())}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -546,7 +548,7 @@ export default function SeatingPage() {
             </div>
             <button onClick={() => setShowCreateModal(true)} className="btn-primary btn-md">
               <Plus className="w-4 h-4" />
-              Добавить
+              {t("seating.addElement")}
             </button>
           </div>
         </div>
@@ -560,7 +562,7 @@ export default function SeatingPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <Move className="w-4 h-4 text-amber-600" />
                   <span className="text-sm font-medium text-amber-700">
-                    Перетащите на план рассадки
+                    {t("seating.dragToCanvas")}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -636,7 +638,7 @@ export default function SeatingPage() {
                 {!isSelectedScene && (
                   <>
                     <div className="text-sm text-muted-foreground">
-                      {selectedTableData.guests.reduce((sum, g) => sum + 1 + g.plusCount, 0)} / {selectedTableData.capacity} мест
+                      {selectedTableData.guests.reduce((sum, g) => sum + 1 + g.plusCount, 0)} / {selectedTableData.capacity} {t("seating.seats")}
                     </div>
                     <div className="space-y-2">
                       {selectedTableData.guests.map((guest) => (
@@ -665,14 +667,14 @@ export default function SeatingPage() {
                         className="btn-ghost btn-sm w-full"
                       >
                         <UserPlus className="w-4 h-4" />
-                        Добавить гостя
+                        {t("seating.addGuest")}
                       </button>
                     )}
                   </>
                 )}
                 {isSelectedScene && (
                   <div className="text-sm text-muted-foreground">
-                    Сцена / декорация
+                    {t("seating.sceneDecoration")}
                   </div>
                 )}
               </div>
@@ -682,13 +684,13 @@ export default function SeatingPage() {
             <div className="card p-4 flex-1 overflow-hidden flex flex-col">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="w-4 h-4 text-muted-foreground" />
-                <h3 className="font-medium">Нераспределённые</h3>
+                <h3 className="font-medium">{t("seating.unassigned")}</h3>
                 <span className="badge-default text-xs">{unseatedGuests.length}</span>
               </div>
               <div className="flex-1 overflow-auto space-y-1">
                 {unseatedGuests.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    Все гости рассажены
+                    {t("seating.allSeated")}
                   </p>
                 ) : (
                   unseatedGuests.map((guest) => (
@@ -718,6 +720,7 @@ export default function SeatingPage() {
         onClose={() => setShowCreateModal(false)}
         onSubmit={handleCreateTable}
         nextTableNumber={Math.max(0, ...tables.filter(t => t.shape !== "scene").map(t => t.number)) + 1}
+        t={t}
       />
 
       {/* Desktop Assign Guest Modal */}
@@ -731,6 +734,7 @@ export default function SeatingPage() {
           }}
           unseatedGuests={unseatedGuests}
           table={selectedTableData}
+          t={t}
         />
       )}
 
@@ -742,6 +746,7 @@ export default function SeatingPage() {
           onRemoveGuest={(guestId) => handleRemoveGuest(mobileSelectedTable.id, guestId)}
           onAddGuest={() => setShowMobileAssignModal(true)}
           unseatedGuests={unseatedGuests}
+          t={t}
         />
       )}
 
@@ -755,6 +760,7 @@ export default function SeatingPage() {
             setShowMobileAssignModal(false);
           }}
           unseatedGuests={unseatedGuests}
+          t={t}
         />
       )}
     </>
@@ -889,9 +895,10 @@ interface CreateTableModalProps {
   onClose: () => void;
   onSubmit: (data: CreateTableRequest) => void;
   nextTableNumber: number;
+  t: (key: string) => string;
 }
 
-function CreateTableModal({ isOpen, onClose, onSubmit, nextTableNumber }: CreateTableModalProps) {
+function CreateTableModal({ isOpen, onClose, onSubmit, nextTableNumber, t }: CreateTableModalProps) {
   const [name, setName] = useState("");
   const [shape, setShape] = useState<TableShape>("round");
   const [capacity, setCapacity] = useState(8);
@@ -918,10 +925,10 @@ function CreateTableModal({ isOpen, onClose, onSubmit, nextTableNumber }: Create
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Добавить элемент">
+    <Modal isOpen={isOpen} onClose={onClose} title={t("seating.addTable")}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Тип</label>
+          <label className="block text-sm font-medium mb-2">{t("seating.type")}</label>
           <div className="grid grid-cols-5 gap-2">
             {(["round", "rect", "square", "oval", "scene"] as TableShape[]).map((s) => {
               const Icon = tableShapeIcons[s];
@@ -939,11 +946,11 @@ function CreateTableModal({ isOpen, onClose, onSubmit, nextTableNumber }: Create
                 >
                   <Icon className="w-5 h-5" />
                   <span className="text-xs">
-                    {s === "round" && "Круг"}
-                    {s === "rect" && "Прямоуг."}
-                    {s === "square" && "Квадрат"}
-                    {s === "oval" && "Овал"}
-                    {s === "scene" && "Сцена"}
+                    {s === "round" && t("seating.shape.roundShort")}
+                    {s === "rect" && t("seating.shape.rectShort")}
+                    {s === "square" && t("seating.shape.squareShort")}
+                    {s === "oval" && t("seating.shape.ovalShort")}
+                    {s === "scene" && t("seating.shape.scene")}
                   </span>
                 </button>
               );
@@ -954,32 +961,32 @@ function CreateTableModal({ isOpen, onClose, onSubmit, nextTableNumber }: Create
         {!isScene && (
           <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
             <span className="text-sm text-primary font-medium">
-              Будет создан: Стол {nextTableNumber}
+              {t("seating.willBeCreated").replace("{number}", nextTableNumber.toString())}
             </span>
           </div>
         )}
 
         <div>
           <label className="block text-sm font-medium mb-1.5">
-            {isScene ? "Название" : "Название (необязательно)"}
+            {isScene ? t("common.name") : t("seating.tableNameOptional")}
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="input"
-            placeholder={isScene ? "Сцена" : "Друзья, Родственники..."}
+            placeholder={isScene ? t("seating.scene") : t("seating.tableNamePlaceholder")}
           />
           {!isScene && name && (
             <p className="text-xs text-muted-foreground mt-1.5">
-              Отображение: Стол {nextTableNumber}: {name}
+              {t("seating.displayAs").replace("{number}", nextTableNumber.toString()).replace("{name}", name)}
             </p>
           )}
         </div>
 
         {!isScene && (
           <div>
-            <label className="block text-sm font-medium mb-1.5">Вместимость</label>
+            <label className="block text-sm font-medium mb-1.5">{t("seating.tableCapacity")}</label>
             <input
               type="number"
               value={capacity}
@@ -993,10 +1000,10 @@ function CreateTableModal({ isOpen, onClose, onSubmit, nextTableNumber }: Create
 
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-ghost btn-md">
-            Отмена
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary btn-md">
-            Создать
+            {t("common.create")}
           </button>
         </ModalFooter>
       </form>
@@ -1010,6 +1017,7 @@ interface AssignGuestModalProps {
   onAssign: (guestId: string) => void;
   unseatedGuests: Guest[];
   table: TableWithGuests;
+  t: (key: string) => string;
 }
 
 function AssignGuestModal({
@@ -1018,6 +1026,7 @@ function AssignGuestModal({
   onAssign,
   unseatedGuests,
   table,
+  t,
 }: AssignGuestModalProps) {
   const [search, setSearch] = useState("");
 
@@ -1028,21 +1037,21 @@ function AssignGuestModal({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Добавить гостя - ${formatTableName(table.number, table.name)}`}>
+    <Modal isOpen={isOpen} onClose={onClose} title={`${t("seating.addGuest")} - ${formatTableName(table.number, table.name)}`}>
       <div className="space-y-4">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input"
-          placeholder="Поиск гостя..."
+          placeholder={t("seating.searchGuest")}
           autoFocus
         />
 
         <div className="max-h-64 overflow-auto space-y-1">
           {filteredGuests.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Нет гостей для добавления
+              {t("seating.noGuestsToAdd")}
             </p>
           ) : (
             filteredGuests.map((guest) => (
@@ -1062,7 +1071,7 @@ function AssignGuestModal({
 
         <ModalFooter>
           <button onClick={onClose} className="btn-ghost btn-md">
-            Закрыть
+            {t("common.close")}
           </button>
         </ModalFooter>
       </div>
@@ -1164,6 +1173,7 @@ interface MobileTableDetailModalProps {
   onRemoveGuest: (guestId: string) => void;
   onAddGuest: () => void;
   unseatedGuests: Guest[];
+  t: (key: string) => string;
 }
 
 function MobileTableDetailModal({
@@ -1172,6 +1182,7 @@ function MobileTableDetailModal({
   onRemoveGuest,
   onAddGuest,
   unseatedGuests,
+  t,
 }: MobileTableDetailModalProps) {
   const occupiedSeats = table.guests.reduce((sum, g) => sum + 1 + g.plusCount, 0);
   const isFull = occupiedSeats >= table.capacity;
@@ -1195,7 +1206,7 @@ function MobileTableDetailModal({
               <span className="text-base font-normal text-muted-foreground">/{table.capacity}</span>
             </div>
             <div className="text-sm text-muted-foreground">
-              {isFull ? "Стол заполнен" : `Свободно ${freeSeats} мест`}
+              {isFull ? t("seating.tableFull") : t("seating.freeSeats").replace("{count}", freeSeats.toString())}
             </div>
           </div>
         </div>
@@ -1203,11 +1214,11 @@ function MobileTableDetailModal({
         {/* Guest List */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium text-sm">Гости за столом</h4>
+            <h4 className="font-medium text-sm">{t("seating.guestsAtTable")}</h4>
             {freeSeats > 0 && unseatedGuests.length > 0 && (
               <button onClick={onAddGuest} className="btn-primary btn-sm">
                 <UserPlus className="w-4 h-4" />
-                Добавить
+                {t("common.add")}
               </button>
             )}
           </div>
@@ -1215,11 +1226,11 @@ function MobileTableDetailModal({
           {table.guests.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Нет гостей за этим столом</p>
+              <p className="text-sm">{t("seating.noGuestsAtTable")}</p>
               {unseatedGuests.length > 0 && (
                 <button onClick={onAddGuest} className="btn-primary btn-sm mt-3">
                   <UserPlus className="w-4 h-4" />
-                  Добавить гостя
+                  {t("seating.addGuest")}
                 </button>
               )}
             </div>
@@ -1255,7 +1266,7 @@ function MobileTableDetailModal({
 
         <ModalFooter>
           <button onClick={onClose} className="btn-outline btn-md flex-1">
-            Закрыть
+            {t("common.close")}
           </button>
         </ModalFooter>
       </div>
@@ -1268,6 +1279,7 @@ interface MobileAssignGuestModalProps {
   onClose: () => void;
   onAssign: (guestId: string) => void;
   unseatedGuests: Guest[];
+  t: (key: string) => string;
 }
 
 function MobileAssignGuestModal({
@@ -1275,6 +1287,7 @@ function MobileAssignGuestModal({
   onClose,
   onAssign,
   unseatedGuests,
+  t,
 }: MobileAssignGuestModalProps) {
   const [search, setSearch] = useState("");
 
@@ -1285,14 +1298,14 @@ function MobileAssignGuestModal({
   if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Выбрать гостя">
+    <Modal isOpen={isOpen} onClose={onClose} title={t("seating.selectGuest")}>
       <div className="space-y-4">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input"
-          placeholder="Поиск по имени..."
+          placeholder={t("seating.searchByName")}
           autoFocus
         />
 
@@ -1301,7 +1314,7 @@ function MobileAssignGuestModal({
             <div className="text-center py-8 text-muted-foreground">
               <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
               <p className="text-sm">
-                {search ? "Гость не найден" : "Нет свободных гостей"}
+                {search ? t("seating.guestNotFound") : t("seating.noFreeGuests")}
               </p>
             </div>
           ) : (
@@ -1317,7 +1330,7 @@ function MobileAssignGuestModal({
                 <div className="flex-1 min-w-0">
                   <span className="font-medium block truncate">{guest.name}</span>
                   {guest.plusCount > 0 && (
-                    <span className="text-xs text-muted-foreground">+{guest.plusCount} гостей</span>
+                    <span className="text-xs text-muted-foreground">{t("seating.plusGuests").replace("{count}", guest.plusCount.toString())}</span>
                   )}
                 </div>
                 <Plus className="w-5 h-5 text-primary flex-shrink-0" />
@@ -1328,7 +1341,7 @@ function MobileAssignGuestModal({
 
         <ModalFooter>
           <button onClick={onClose} className="btn-outline btn-md flex-1">
-            Отмена
+            {t("common.cancel")}
           </button>
         </ModalFooter>
       </div>

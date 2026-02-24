@@ -33,32 +33,7 @@ import {
   Gift as GiftType,
 } from "@/lib/types";
 import { cn, formatCurrency, formatDate, eventTypeLabels } from "@/lib/utils";
-
-// Category labels
-const expenseCategoryLabels: Record<string, string> = {
-  venue: "Площадка",
-  catering: "Кейтеринг",
-  decoration: "Декор",
-  photo: "Фото",
-  video: "Видео",
-  music: "Музыка",
-  attire: "Наряды",
-  transport: "Транспорт",
-  invitation: "Приглашения",
-  gift: "Подарки",
-  beauty: "Красота",
-  other: "Другое",
-};
-
-const checklistCategoryLabels: Record<string, string> = {
-  venue: "Площадка",
-  attire: "Наряды",
-  decor: "Декор",
-  food: "Питание",
-  entertainment: "Развлечения",
-  documents: "Документы",
-  other: "Другое",
-};
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function SharedDashboardPage() {
   return (
@@ -91,6 +66,7 @@ function SharedDashboardContent() {
   const searchParams = useSearchParams();
   const token = params.token as string;
   const pinFromUrl = searchParams.get("pin");
+  const { t, tLabel } = useTranslation();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -128,7 +104,7 @@ function SharedDashboardContent() {
         loadData(pinFromUrl || "");
       }
     } catch {
-      setError("Ссылка не найдена или истекла");
+      setError(t("sharePage.linkNotFound"));
       setIsLoading(false);
     }
   }
@@ -142,9 +118,9 @@ function SharedDashboardContent() {
       const error = err as Error;
       if (error.message.includes("PIN")) {
         setShowPinForm(true);
-        setError("Неверный PIN-код");
+        setError(t("sharePage.invalidPin"));
       } else {
-        setError("Не удалось загрузить данные");
+        setError(t("sharePage.loadError"));
       }
     } finally {
       setIsLoading(false);
@@ -169,7 +145,7 @@ function SharedDashboardContent() {
           <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-6">
             <Lock className="w-10 h-10 text-red-400" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Ссылка недоступна</h1>
+          <h1 className="text-2xl font-bold mb-2">{t("sharePage.linkUnavailable")}</h1>
           <p className="text-slate-500">{error}</p>
         </div>
       </div>
@@ -184,7 +160,7 @@ function SharedDashboardContent() {
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
               <Lock className="w-10 h-10 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold">Введите PIN-код</h1>
+            <h1 className="text-2xl font-bold">{t("sharePage.enterPin")}</h1>
             {checkData?.label && (
               <p className="text-slate-500 mt-2">{checkData.label}</p>
             )}
@@ -209,7 +185,7 @@ function SharedDashboardContent() {
               disabled={pin.length !== 4}
               className="w-full mt-6 h-14 bg-primary text-white font-semibold rounded-2xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              Войти
+              {t("sharePage.enter")}
             </button>
           </form>
         </div>
@@ -236,7 +212,7 @@ function SharedDashboardContent() {
     gifts,
   } = data;
 
-  const eventLabel = eventTypeLabels[event.type]?.ru || event.type;
+  const eventLabel = tLabel(eventTypeLabels[event.type]?.ru, eventTypeLabels[event.type]?.kk) || event.type;
   const hasWidget = (w: string) => widgets?.includes(w as (typeof widgets)[number]) ?? false;
 
   return (
@@ -257,7 +233,7 @@ function SharedDashboardContent() {
                     : "bg-slate-100 text-slate-600"
                 )}>
                   {accessLevel === "editor" ? <Edit3 className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  {accessLevel === "editor" ? "Редактор" : "Просмотр"}
+                  {accessLevel === "editor" ? t("sharePage.editor") : t("sharePage.viewOnly")}
                 </span>
               </div>
               <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">{event.title}</h1>
@@ -290,7 +266,7 @@ function SharedDashboardContent() {
               iconBg="bg-indigo-100"
               iconColor="text-indigo-600"
               value={`${guestStats.accepted}/${guestStats.total}`}
-              label="придут"
+              label={t("sharePage.willCome")}
             />
           )}
           {hasWidget("budget") && budgetSummary && (
@@ -299,7 +275,7 @@ function SharedDashboardContent() {
               iconBg="bg-emerald-100"
               iconColor="text-emerald-600"
               value={`${Math.round((budgetSummary.totalPaid / (budgetSummary.totalPlanned || 1)) * 100)}%`}
-              label="оплачено"
+              label={t("sharePage.paid")}
             />
           )}
           {hasWidget("checklist") && checklistStats && (
@@ -308,7 +284,7 @@ function SharedDashboardContent() {
               iconBg="bg-violet-100"
               iconColor="text-violet-600"
               value={`${checklistStats.percent}%`}
-              label="готово"
+              label={t("sharePage.ready")}
             />
           )}
           {hasWidget("seating") && seatingStats && (
@@ -317,7 +293,7 @@ function SharedDashboardContent() {
               iconBg="bg-sky-100"
               iconColor="text-sky-600"
               value={`${seatingStats.seatedGuests}/${seatingStats.totalCapacity}`}
-              label="рассажено"
+              label={t("sharePage.seated")}
             />
           )}
           {hasWidget("gifts") && giftStats && (
@@ -326,7 +302,7 @@ function SharedDashboardContent() {
               iconBg="bg-pink-100"
               iconColor="text-pink-600"
               value={formatCurrency(giftStats.totalCash)}
-              label="подарков"
+              label={t("sharePage.gifts")}
               small
             />
           )}
@@ -335,80 +311,80 @@ function SharedDashboardContent() {
         {/* Guests */}
         {hasWidget("guests") && guests && guests.length > 0 && (
           <CollapsibleSection
-            title="Гости"
+            title={t("sharePage.guestsTitle")}
             icon={Users}
             iconColor="text-indigo-600"
-            badge={`${guestStats?.accepted || 0} из ${guestStats?.total || 0}`}
+            badge={`${guestStats?.accepted || 0} ${t("sharePage.of")} ${guestStats?.total || 0}`}
             expanded={expanded.guests}
             onToggle={() => toggleSection("guests")}
           >
-            <GuestList guests={guests} tables={tables || []} />
+            <GuestList guests={guests} tables={tables || []} t={t} />
           </CollapsibleSection>
         )}
 
         {/* Budget */}
         {hasWidget("budget") && expenses && expenses.length > 0 && (
           <CollapsibleSection
-            title="Бюджет"
+            title={t("sharePage.budgetTitle")}
             icon={Wallet}
             iconColor="text-emerald-600"
             badge={budgetSummary ? formatCurrency(budgetSummary.totalPaid) : undefined}
             expanded={expanded.budget}
             onToggle={() => toggleSection("budget")}
           >
-            <ExpenseList expenses={expenses} summary={budgetSummary} />
+            <ExpenseList expenses={expenses} summary={budgetSummary} t={t} />
           </CollapsibleSection>
         )}
 
         {/* Checklist */}
         {hasWidget("checklist") && checklist && checklist.length > 0 && (
           <CollapsibleSection
-            title="Чек-лист"
+            title={t("sharePage.checklistTitle")}
             icon={CheckSquare}
             iconColor="text-violet-600"
             badge={checklistStats ? `${checklistStats.completed}/${checklistStats.total}` : undefined}
             expanded={expanded.checklist}
             onToggle={() => toggleSection("checklist")}
           >
-            <ChecklistList items={checklist} />
+            <ChecklistList items={checklist} t={t} />
           </CollapsibleSection>
         )}
 
         {/* Program */}
         {hasWidget("program") && program && program.length > 0 && (
           <CollapsibleSection
-            title="Программа"
+            title={t("sharePage.programTitle")}
             icon={Clock}
             iconColor="text-amber-600"
-            badge={`${program.length} пунктов`}
+            badge={`${program.length} ${t("sharePage.items")}`}
             expanded={expanded.program}
             onToggle={() => toggleSection("program")}
           >
-            <ProgramList items={program} />
+            <ProgramList items={program} t={t} />
           </CollapsibleSection>
         )}
 
         {/* Seating */}
         {hasWidget("seating") && tables && tables.length > 0 && (
           <CollapsibleSection
-            title="Рассадка"
+            title={t("sharePage.seatingTitle")}
             icon={LayoutGrid}
             iconColor="text-sky-600"
-            badge={seatingStats ? `${seatingStats.totalTables} столов` : undefined}
+            badge={seatingStats ? `${seatingStats.totalTables} ${t("sharePage.tables")}` : undefined}
             expanded={expanded.seating}
             onToggle={() => toggleSection("seating")}
           >
-            <SeatingView tables={tables} guests={guests || []} />
+            <SeatingView tables={tables} guests={guests || []} t={t} />
           </CollapsibleSection>
         )}
 
         {/* Gifts */}
         {hasWidget("gifts") && gifts && gifts.length > 0 && (
           <CollapsibleSection
-            title="Подарки"
+            title={t("sharePage.giftsTitle")}
             icon={Gift}
             iconColor="text-pink-600"
-            badge={giftStats ? `${giftStats.totalGifts} шт` : undefined}
+            badge={giftStats ? `${giftStats.totalGifts} ${t("sharePage.pcs")}` : undefined}
             expanded={expanded.gifts}
             onToggle={() => toggleSection("gifts")}
           >
@@ -504,12 +480,12 @@ function CollapsibleSection({
 }
 
 // Guest List
-function GuestList({ guests, tables }: { guests: Guest[]; tables: SeatingTable[] }) {
+function GuestList({ guests, tables, t }: { guests: Guest[]; tables: SeatingTable[]; t: (key: string) => string }) {
   const getTableName = (tableId?: string) => {
     if (!tableId) return null;
-    const table = tables.find((t) => t.id === tableId);
+    const table = tables.find((tbl) => tbl.id === tableId);
     if (!table) return null;
-    return table.name ? `${table.number}: ${table.name}` : `Стол ${table.number}`;
+    return table.name ? `${table.number}: ${table.name}` : `${t("sharePage.table")} ${table.number}`;
   };
 
   return (
@@ -557,7 +533,7 @@ function GuestList({ guests, tables }: { guests: Guest[]; tables: SeatingTable[]
 }
 
 // Expense List
-function ExpenseList({ expenses, summary }: { expenses: Expense[]; summary?: { totalPlanned: number; totalActual: number; totalPaid: number; remaining: number } }) {
+function ExpenseList({ expenses, summary, t }: { expenses: Expense[]; summary?: { totalPlanned: number; totalActual: number; totalPaid: number; remaining: number }; t: (key: string) => string }) {
   // Group by category
   const byCategory = useMemo(() => {
     const grouped: Record<string, { expenses: Expense[]; total: number; paid: number }> = {};
@@ -577,19 +553,19 @@ function ExpenseList({ expenses, summary }: { expenses: Expense[]; summary?: { t
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 rounded-xl">
           <div>
-            <div className="text-xs text-slate-500">План</div>
+            <div className="text-xs text-slate-500">{t("sharePage.plan")}</div>
             <div className="font-semibold text-slate-900">{formatCurrency(summary.totalPlanned)}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Факт</div>
+            <div className="text-xs text-slate-500">{t("sharePage.actual")}</div>
             <div className="font-semibold text-slate-900">{formatCurrency(summary.totalActual)}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Оплачено</div>
+            <div className="text-xs text-slate-500">{t("sharePage.paidAmount")}</div>
             <div className="font-semibold text-emerald-600">{formatCurrency(summary.totalPaid)}</div>
           </div>
           <div>
-            <div className="text-xs text-slate-500">Осталось</div>
+            <div className="text-xs text-slate-500">{t("sharePage.remaining")}</div>
             <div className={cn("font-semibold", summary.remaining < 0 ? "text-red-600" : "text-slate-900")}>
               {formatCurrency(Math.abs(summary.remaining))}
             </div>
@@ -600,7 +576,7 @@ function ExpenseList({ expenses, summary }: { expenses: Expense[]; summary?: { t
         {Object.entries(byCategory).map(([category, { expenses: catExp, total, paid }]) => (
           <div key={category} className="border border-slate-100 rounded-xl overflow-hidden">
             <div className="flex items-center justify-between p-3 bg-slate-50">
-              <span className="font-medium text-slate-700">{expenseCategoryLabels[category] || category}</span>
+              <span className="font-medium text-slate-700">{t(`budget.categories.${category}`)}</span>
               <div className="text-sm">
                 <span className="text-emerald-600 font-medium">{formatCurrency(paid)}</span>
                 <span className="text-slate-400"> / {formatCurrency(total)}</span>
@@ -617,7 +593,7 @@ function ExpenseList({ expenses, summary }: { expenses: Expense[]; summary?: { t
                       exp.status === "booked" && "bg-amber-100 text-amber-700",
                       exp.status === "planned" && "bg-slate-100 text-slate-600"
                     )}>
-                      {exp.status === "paid" ? "Оплачено" : exp.status === "booked" ? "Забронировано" : "План"}
+                      {exp.status === "paid" ? t("sharePage.statusPaid") : exp.status === "booked" ? t("sharePage.statusBooked") : t("sharePage.statusPlan")}
                     </span>
                     <span className="font-medium text-slate-900">{formatCurrency(exp.actualAmount || exp.plannedAmount)}</span>
                   </div>
@@ -632,7 +608,7 @@ function ExpenseList({ expenses, summary }: { expenses: Expense[]; summary?: { t
 }
 
 // Checklist
-function ChecklistList({ items }: { items: ChecklistItem[] }) {
+function ChecklistList({ items, t }: { items: ChecklistItem[]; t: (key: string) => string }) {
   const completed = items.filter((i) => i.isCompleted);
   const pending = items.filter((i) => !i.isCompleted);
 
@@ -640,17 +616,17 @@ function ChecklistList({ items }: { items: ChecklistItem[] }) {
     <div className="space-y-4">
       {pending.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Осталось ({pending.length})</div>
+          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t("sharePage.remaining")} ({pending.length})</div>
           {pending.map((item) => (
-            <ChecklistRow key={item.id} item={item} />
+            <ChecklistRow key={item.id} item={item} t={t} />
           ))}
         </div>
       )}
       {completed.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Выполнено ({completed.length})</div>
+          <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">{t("sharePage.completed")} ({completed.length})</div>
           {completed.map((item) => (
-            <ChecklistRow key={item.id} item={item} />
+            <ChecklistRow key={item.id} item={item} t={t} />
           ))}
         </div>
       )}
@@ -658,7 +634,7 @@ function ChecklistList({ items }: { items: ChecklistItem[] }) {
   );
 }
 
-function ChecklistRow({ item }: { item: ChecklistItem }) {
+function ChecklistRow({ item, t }: { item: ChecklistItem; t: (key: string) => string }) {
   return (
     <div className={cn(
       "flex items-start gap-3 p-3 rounded-xl",
@@ -679,14 +655,14 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
         )}
       </div>
       <span className="text-xs text-slate-400 shrink-0">
-        {checklistCategoryLabels[item.category] || item.category}
+        {t(`checklist.categories.${item.category}`)}
       </span>
     </div>
   );
 }
 
 // Program
-function ProgramList({ items }: { items: ProgramItem[] }) {
+function ProgramList({ items, t }: { items: ProgramItem[]; t: (key: string) => string }) {
   return (
     <div className="relative">
       <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-200" />
@@ -698,7 +674,7 @@ function ProgramList({ items }: { items: ProgramItem[] }) {
               <div className="flex items-baseline gap-2 flex-wrap">
                 <span className="text-lg font-bold text-primary font-mono">{item.startTime}</span>
                 {item.duration > 0 && (
-                  <span className="text-xs text-slate-400">{item.duration} мин</span>
+                  <span className="text-xs text-slate-400">{item.duration} {t("sharePage.min")}</span>
                 )}
               </div>
               <div className="font-medium text-slate-900 mt-1">{item.title}</div>
@@ -706,7 +682,7 @@ function ProgramList({ items }: { items: ProgramItem[] }) {
                 <div className="text-sm text-slate-500 mt-0.5">{item.description}</div>
               )}
               {item.responsible && (
-                <div className="text-xs text-slate-400 mt-1">Ответственный: {item.responsible}</div>
+                <div className="text-xs text-slate-400 mt-1">{t("sharePage.responsible")}: {item.responsible}</div>
               )}
             </div>
           </div>
@@ -717,13 +693,13 @@ function ProgramList({ items }: { items: ProgramItem[] }) {
 }
 
 // Seating View
-function SeatingView({ tables, guests }: { tables: SeatingTable[]; guests: Guest[] }) {
+function SeatingView({ tables, guests, t }: { tables: SeatingTable[]; guests: Guest[]; t: (key: string) => string }) {
   const padding = 40;
   const bounds = useMemo(() => {
     let maxX = 600, maxY = 400;
-    tables.forEach((t) => {
-      maxX = Math.max(maxX, t.positionX + t.width + padding);
-      maxY = Math.max(maxY, t.positionY + t.height + padding);
+    tables.forEach((tbl) => {
+      maxX = Math.max(maxX, tbl.positionX + tbl.width + padding);
+      maxY = Math.max(maxY, tbl.positionY + tbl.height + padding);
     });
     return { width: maxX, height: maxY };
   }, [tables]);
@@ -759,7 +735,7 @@ function SeatingView({ tables, guests }: { tables: SeatingTable[]; guests: Guest
               }}
             >
               <span className="text-xs font-bold text-slate-700">
-                {isScene ? (table.name || "Сцена") : table.name || table.number}
+                {isScene ? (table.name || t("sharePage.scene")) : table.name || table.number}
               </span>
               {!isScene && (
                 <span className="text-[10px] text-slate-500">

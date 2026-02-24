@@ -9,24 +9,24 @@ import { User, CreditCard, Bell, Check, Sparkles, Crown, Zap, Gift, Globe } from
 import { cn, formatDate } from "@/lib/utils";
 import { Plan } from "@/lib/types";
 
-interface PlanInfo {
+interface PlanInfoDef {
   nameKey: string;
   price: number;
   period?: string;
   descriptionKey: string;
-  features: string[];
-  limitations?: string[];
+  featureKeys: string[];
+  limitationKeys?: string[];
   icon: typeof Zap;
   color: string;
 }
 
-const PLANS: Record<Plan, PlanInfo> = {
+const PLANS_DEF: Record<Plan, PlanInfoDef> = {
   free: {
     nameKey: "Toilab",
     price: 0,
     descriptionKey: "settings.plans.free",
-    features: ["1 мероприятие", "Бюджет", "Чек-лист", "Программа"],
-    limitations: ["Без гостей", "Без рассадки", "Без приглашений"],
+    featureKeys: ["settings.planFeatures.oneEvent", "settings.planFeatures.budget", "settings.planFeatures.checklist", "settings.planFeatures.program"],
+    limitationKeys: ["settings.planFeatures.noGuests", "settings.planFeatures.noSeating", "settings.planFeatures.noInvitations"],
     icon: Zap,
     color: "slate",
   },
@@ -34,7 +34,7 @@ const PLANS: Record<Plan, PlanInfo> = {
     nameKey: "Toilab Pro",
     price: 7990,
     descriptionKey: "settings.plans.single",
-    features: ["Все функции", "Список гостей", "Рассадка", "Приглашения", "Подарки", "Поделиться"],
+    featureKeys: ["settings.planFeatures.allFeatures", "settings.planFeatures.guestList", "settings.planFeatures.seating", "settings.planFeatures.invitations", "settings.planFeatures.gifts", "settings.planFeatures.share"],
     icon: Sparkles,
     color: "primary",
   },
@@ -43,7 +43,7 @@ const PLANS: Record<Plan, PlanInfo> = {
     price: 24990,
     period: "/мес",
     descriptionKey: "settings.plans.pro",
-    features: ["До 10 мероприятий", "Все функции", "Приоритетная поддержка"],
+    featureKeys: ["settings.planFeatures.upTo10Events", "settings.planFeatures.allFeatures", "settings.planFeatures.prioritySupport"],
     icon: Crown,
     color: "amber",
   },
@@ -51,7 +51,7 @@ const PLANS: Record<Plan, PlanInfo> = {
     nameKey: "Toilab Pro",
     price: 0,
     descriptionKey: "settings.plans.trial",
-    features: ["Все функции Pro", "Ограниченный срок"],
+    featureKeys: ["settings.planFeatures.allProFeatures", "settings.planFeatures.limitedTime"],
     icon: Sparkles,
     color: "emerald",
   },
@@ -98,7 +98,7 @@ export default function SettingsPage() {
     }
   };
 
-  const currentPlan = PLANS[user?.plan as Plan] || PLANS.free;
+  const currentPlanDef = PLANS_DEF[user?.plan as Plan] || PLANS_DEF.free;
   const isPaid = user?.plan === "single" || user?.plan === "pro" || user?.plan === "trial";
 
   return (
@@ -198,20 +198,20 @@ export default function SettingsPage() {
                 "w-12 h-12 rounded-xl flex items-center justify-center",
                 isPaid ? "bg-primary text-white" : "bg-slate-200 text-slate-600"
               )}>
-                <currentPlan.icon className="w-6 h-6" />
+                <currentPlanDef.icon className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold">{currentPlan.nameKey}</h3>
-                <p className="text-sm text-muted-foreground">{t(currentPlan.descriptionKey)}</p>
+                <h3 className="text-lg font-bold">{currentPlanDef.nameKey}</h3>
+                <p className="text-sm text-muted-foreground">{t(currentPlanDef.descriptionKey)}</p>
               </div>
             </div>
-            {currentPlan.price > 0 && (
+            {currentPlanDef.price > 0 && (
               <div className="text-right">
                 <div className="text-2xl font-bold">
-                  {currentPlan.price.toLocaleString()} ₸
+                  {currentPlanDef.price.toLocaleString()} ₸
                 </div>
-                {currentPlan.period && (
-                  <div className="text-sm text-muted-foreground">{currentPlan.period}</div>
+                {currentPlanDef.period && (
+                  <div className="text-sm text-muted-foreground">{currentPlanDef.period}</div>
                 )}
               </div>
             )}
@@ -221,12 +221,12 @@ export default function SettingsPage() {
           {(user?.plan === "pro" || user?.plan === "trial") && (
             <div className="mt-4 pt-4 border-t border-border">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Мероприятий в этом месяце:</span>
+                <span className="text-muted-foreground">{t("settings.eventsThisMonth")}:</span>
                 <span className="font-medium">{user?.monthlyEventsCreated || 0} / 10</span>
               </div>
               {user?.monthlyResetAt && (
                 <div className="flex items-center justify-between text-sm mt-1">
-                  <span className="text-muted-foreground">Обновление лимита:</span>
+                  <span className="text-muted-foreground">{t("settings.limitReset")}:</span>
                   <span className="font-medium">{formatDate(user.monthlyResetAt)}</span>
                 </div>
               )}
@@ -238,7 +238,7 @@ export default function SettingsPage() {
             <div className="mt-4 pt-4 border-t border-border">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  {user?.plan === "trial" ? "Пробный период до:" : "Подписка активна до:"}
+                  {user?.plan === "trial" ? t("settings.trialUntil") : t("settings.subscriptionUntil")}:
                 </span>
                 <span className="font-medium">{formatDate(user.planExpiresAt)}</span>
               </div>
@@ -248,10 +248,10 @@ export default function SettingsPage() {
           {/* Features */}
           <div className="mt-4 pt-4 border-t border-border">
             <div className="grid grid-cols-2 gap-2">
-              {currentPlan.features.map((feature) => (
-                <div key={feature} className="flex items-center gap-2 text-sm">
+              {currentPlanDef.featureKeys.map((featureKey) => (
+                <div key={featureKey} className="flex items-center gap-2 text-sm">
                   <Check className="w-4 h-4 text-emerald-500" />
-                  <span>{feature}</span>
+                  <span>{t(featureKey)}</span>
                 </div>
               ))}
             </div>
@@ -278,10 +278,10 @@ export default function SettingsPage() {
               </div>
               <div className="text-2xl font-bold mb-3">7 990 ₸</div>
               <ul className="space-y-1.5 mb-4">
-                {PLANS.single.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm">
+                {PLANS_DEF.single.featureKeys.map((fKey) => (
+                  <li key={fKey} className="flex items-center gap-2 text-sm">
                     <Check className="w-3.5 h-3.5 text-emerald-500" />
-                    {f}
+                    {t(fKey)}
                   </li>
                 ))}
               </ul>
@@ -303,10 +303,10 @@ export default function SettingsPage() {
                 24 990 ₸<span className="text-sm font-normal text-muted-foreground">/мес</span>
               </div>
               <ul className="space-y-1.5 mb-4">
-                {PLANS.pro.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm">
+                {PLANS_DEF.pro.featureKeys.map((fKey) => (
+                  <li key={fKey} className="flex items-center gap-2 text-sm">
                     <Check className="w-3.5 h-3.5 text-emerald-500" />
-                    {f}
+                    {t(fKey)}
                   </li>
                 ))}
               </ul>
@@ -346,17 +346,17 @@ export default function SettingsPage() {
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
           <Bell className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">Уведомления</h2>
+          <h2 className="text-lg font-semibold">{t("settings.notifications")}</h2>
         </div>
 
         <div className="space-y-3">
           <label className="flex items-center gap-3">
             <input type="checkbox" defaultChecked className="rounded" />
-            <span className="text-sm">Email о новых RSVP ответах</span>
+            <span className="text-sm">{t("settings.emailRsvp")}</span>
           </label>
           <label className="flex items-center gap-3">
             <input type="checkbox" defaultChecked className="rounded" />
-            <span className="text-sm">Напоминания о задачах</span>
+            <span className="text-sm">{t("settings.taskReminders")}</span>
           </label>
         </div>
       </div>
