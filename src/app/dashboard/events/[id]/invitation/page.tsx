@@ -82,7 +82,7 @@ export default function InvitationPage() {
     try {
       const newShare = await shares.create(eventId, {
         label: "Приглашение",
-        accessLevel: "viewer",
+        accessLevel: "view",
         widgets: ["guests"], // Minimal access for RSVP
       });
       setShareLinks([...shareLinks, newShare]);
