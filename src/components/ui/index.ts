@@ -20,3 +20,4 @@ export { Avatar, AvatarGroup } from "./Avatar";
 export { StatsGrid, StatItem, StatusBadge } from "./StatsGrid";
 export { Logo } from "./Logo";
 export { TimeInput } from "./TimeInput";
+export { PaymentModal } from "./PaymentModal";

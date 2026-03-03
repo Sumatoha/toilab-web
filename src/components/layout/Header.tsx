@@ -1,38 +1,22 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { LogOut, User } from "lucide-react";
+import Link from "next/link";
 import { useAuthStore } from "@/lib/store";
 import { Logo } from "@/components/ui";
 import { useTranslation } from "@/hooks/use-translation";
 
 export function Header() {
-  const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const { t, locale, setLocale, canChangeLanguage } = useTranslation();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
       <div className="flex h-14 items-center px-4 lg:px-6">
-        {/* Logo */}
+        {/* Logo - links to dashboard */}
         <div className="mr-4 lg:mr-8">
           <Logo size="md" href="/dashboard" />
         </div>
-
-        {/* Nav - hidden on mobile when inside event */}
-        <nav className="hidden sm:flex items-center gap-6 text-sm">
-          <Link
-            href="/dashboard"
-            className={
-              pathname === "/dashboard" || pathname.startsWith("/dashboard/events")
-                ? "text-foreground font-medium"
-                : "text-muted-foreground hover:text-foreground transition-colors"
-            }
-          >
-            {t("nav.myEvents")}
-          </Link>
-        </nav>
 
         {/* Right side */}
         <div className="ml-auto flex items-center gap-1 sm:gap-2">

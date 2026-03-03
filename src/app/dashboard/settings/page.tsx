@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuthStore } from "@/lib/store";
 import { auth } from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import toast from "react-hot-toast";
-import { User, CreditCard, Bell, Check, Sparkles, Crown, Zap, Gift, Globe } from "lucide-react";
+import { User, CreditCard, Bell, Check, Sparkles, Crown, Zap, Globe } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { Plan } from "@/lib/types";
+import { PaymentModal } from "@/components/ui";
 
 interface PlanInfoDef {
   nameKey: string;
@@ -31,29 +32,21 @@ const PLANS_DEF: Record<Plan, PlanInfoDef> = {
     color: "slate",
   },
   single: {
-    nameKey: "Toilab Pro",
+    nameKey: "Toilab One",
     price: 7990,
     descriptionKey: "settings.plans.single",
-    featureKeys: ["settings.planFeatures.allFeatures", "settings.planFeatures.guestList", "settings.planFeatures.seating", "settings.planFeatures.invitations", "settings.planFeatures.gifts", "settings.planFeatures.share"],
+    featureKeys: ["settings.planFeatures.allFeatures", "settings.planFeatures.guestList", "settings.planFeatures.seating", "settings.planFeatures.invitations", "settings.planFeatures.share"],
     icon: Sparkles,
     color: "primary",
   },
   pro: {
-    nameKey: "Toilab Studio",
+    nameKey: "Toilab Pro",
     price: 24990,
     period: "/мес",
     descriptionKey: "settings.plans.pro",
     featureKeys: ["settings.planFeatures.upTo10Events", "settings.planFeatures.allFeatures", "settings.planFeatures.prioritySupport"],
     icon: Crown,
     color: "amber",
-  },
-  trial: {
-    nameKey: "Toilab Pro",
-    price: 0,
-    descriptionKey: "settings.plans.trial",
-    featureKeys: ["settings.planFeatures.allProFeatures", "settings.planFeatures.limitedTime"],
-    icon: Sparkles,
-    color: "emerald",
   },
 };
 
@@ -62,8 +55,24 @@ export default function SettingsPage() {
   const { t, locale, setLocale, canChangeLanguage } = useTranslation();
   const [name, setName] = useState(user?.name || "");
   const [saving, setSaving] = useState(false);
-  const [promoCode, setPromoCode] = useState("");
-  const [activatingPromo, setActivatingPromo] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<"single" | "pro">("single");
+
+  const handleUpgrade = useCallback((plan: "single" | "pro") => {
+    setSelectedPlan(plan);
+    setShowPaymentModal(true);
+  }, []);
+
+  const handlePaymentSuccess = useCallback(async () => {
+    // Refresh user data to get updated plan
+    try {
+      const updatedUser = await auth.me();
+      setUser(updatedUser);
+      toast.success(t("payment.success"));
+    } catch {
+      // User will see updated plan on next page load
+    }
+  }, [setUser, t]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -79,27 +88,8 @@ export default function SettingsPage() {
     }
   };
 
-  const handleActivatePromo = async () => {
-    if (!promoCode.trim()) {
-      toast.error(t("errors.required"));
-      return;
-    }
-    setActivatingPromo(true);
-    try {
-      const updated = await auth.activatePromo(promoCode.trim().toUpperCase());
-      setUser(updated);
-      setPromoCode("");
-      toast.success(t("settings.promoActivated"));
-    } catch (error) {
-      const err = error as Error;
-      toast.error(err.message || t("settings.promoError"));
-    } finally {
-      setActivatingPromo(false);
-    }
-  };
-
   const currentPlanDef = PLANS_DEF[user?.plan as Plan] || PLANS_DEF.free;
-  const isPaid = user?.plan === "single" || user?.plan === "pro" || user?.plan === "trial";
+  const isPaid = user?.plan === "single" || user?.plan === "pro";
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -217,8 +207,8 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Pro plan stats */}
-          {(user?.plan === "pro" || user?.plan === "trial") && (
+          {/* Pro plan stats - multiple events */}
+          {user?.plan === "pro" && (
             <div className="mt-4 pt-4 border-t border-border">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{t("settings.eventsThisMonth")}:</span>
@@ -233,13 +223,11 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* Plan expires */}
-          {user?.planExpiresAt && (user?.plan === "pro" || user?.plan === "trial") && (
+          {/* Subscription expires */}
+          {user?.planExpiresAt && user?.plan === "pro" && (
             <div className="mt-4 pt-4 border-t border-border">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {user?.plan === "trial" ? t("settings.trialUntil") : t("settings.subscriptionUntil")}:
-                </span>
+                <span className="text-muted-foreground">{t("settings.subscriptionUntil")}:</span>
                 <span className="font-medium">{formatDate(user.planExpiresAt)}</span>
               </div>
             </div>
@@ -265,14 +253,14 @@ export default function SettingsPage() {
           <h2 className="text-lg font-semibold mb-2">{t("pro.upgradeDescription")}</h2>
           <p className="text-sm text-muted-foreground mb-4">{t("pro.features")}</p>
           <div className="grid sm:grid-cols-2 gap-4">
-            {/* Pro */}
+            {/* Toilab One */}
             <div className="p-4 rounded-xl border-2 border-primary bg-primary/5">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="font-bold">Toilab Pro</h3>
+                  <h3 className="font-bold">Toilab One</h3>
                   <p className="text-xs text-muted-foreground">{t("settings.plans.single")}</p>
                 </div>
               </div>
@@ -285,17 +273,22 @@ export default function SettingsPage() {
                   </li>
                 ))}
               </ul>
-              <button className="btn-primary w-full h-10">{t("settings.upgrade")}</button>
+              <button
+                onClick={() => handleUpgrade("single")}
+                className="btn-primary w-full h-10"
+              >
+                {t("settings.upgrade")}
+              </button>
             </div>
 
-            {/* Studio */}
+            {/* Toilab Pro */}
             <div className="p-4 rounded-xl border-2 border-amber-400 bg-amber-50">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-lg bg-amber-400 flex items-center justify-center">
                   <Crown className="w-5 h-5 text-amber-900" />
                 </div>
                 <div>
-                  <h3 className="font-bold">Toilab Studio</h3>
+                  <h3 className="font-bold">Toilab Pro</h3>
                   <p className="text-xs text-muted-foreground">{t("settings.plans.pro")}</p>
                 </div>
               </div>
@@ -310,37 +303,25 @@ export default function SettingsPage() {
                   </li>
                 ))}
               </ul>
-              <button className="w-full h-10 bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold rounded-lg transition-colors">
-                {t("settings.upgrade")}
-              </button>
-            </div>
-          </div>
-
-          {/* Promo code */}
-          <div className="mt-6 pt-6 border-t border-border">
-            <div className="flex items-center gap-2 mb-3">
-              <Gift className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">{t("settings.promoCode")}</span>
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value)}
-                placeholder={t("settings.promoCode")}
-                className="input flex-1"
-              />
               <button
-                onClick={handleActivatePromo}
-                disabled={activatingPromo || !promoCode.trim()}
-                className="btn-primary px-6"
+                onClick={() => handleUpgrade("pro")}
+                className="w-full h-10 bg-amber-400 hover:bg-amber-500 text-amber-900 font-semibold rounded-lg transition-colors"
               >
-                {activatingPromo ? "..." : t("settings.activatePromo")}
+                {t("settings.upgrade")}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        plan={selectedPlan}
+        country={user?.country || "kz"}
+        onSuccess={handlePaymentSuccess}
+      />
 
       {/* Notifications */}
       <div className="card">

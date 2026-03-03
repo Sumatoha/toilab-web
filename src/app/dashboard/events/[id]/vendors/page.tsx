@@ -111,11 +111,13 @@ export default function VendorsPage() {
     }
   }
 
-  const filteredVendors = vendorList.filter((v) => {
-    if (filterType !== "all" && v.category !== filterType) return false;
-    if (search && !v.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filteredVendors = vendorList
+    .filter((v) => {
+      if (filterType !== "all" && v.category !== filterType) return false;
+      if (search && !v.name.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const handleAddVendor = async (data: CreateVendorRequest) => {
     try {

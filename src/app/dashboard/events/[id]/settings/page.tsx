@@ -458,7 +458,7 @@ interface CreateShareModalProps {
   t: (key: string) => string;
 }
 
-const WIDGET_KEYS: ShareWidget[] = ["guests", "budget", "checklist", "program", "seating", "gifts"];
+const WIDGET_KEYS: ShareWidget[] = ["guests", "budget", "checklist", "program", "seating"];
 
 function CreateShareModal({ isOpen, onClose, onSubmit, t }: CreateShareModalProps) {
   const [accessLevel, setAccessLevel] = useState<ShareAccessLevel>("view");

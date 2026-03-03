@@ -15,6 +15,12 @@ import {
   Eye,
   UserCheck,
   Share2,
+  Calendar,
+  Clock,
+  MapPin,
+  Heart,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { events, guests as guestsApi, shares } from "@/lib/api";
 import { Event, Guest, ShareLink } from "@/lib/types";
@@ -188,14 +194,17 @@ export default function InvitationPage() {
 
       {activeTab === "builtin" && (
         <>
+          {/* Template Preview */}
+          <InvitationPreview event={event} />
+
           {/* Built-in Invitation Template */}
           <div className="card p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-primary" />
-              Шаблон приглашения Toilab
+              Ссылки для приглашения
             </h3>
             <p className="text-xs sm:text-sm text-muted-foreground mb-4">
-              Красивый интерактивный шаблон с автозаполнением данных вашего события и отслеживанием RSVP
+              Создайте ссылку и отправьте гостям — они смогут подтвердить участие
             </p>
 
             {!invitationShare ? (
@@ -389,6 +398,9 @@ export default function InvitationPage() {
 
       {activeTab === "external" && (
         <>
+          {/* External Template Preview */}
+          {event && <InvitationPreview event={event} />}
+
           {/* External URL */}
           <div className="card p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
@@ -550,6 +562,162 @@ export default function InvitationPage() {
             )}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// Inline invitation preview component
+function InvitationPreview({ event }: { event: Event }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Format date
+  const formattedDate = event.date
+    ? new Date(event.date).toLocaleDateString("ru-RU", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : "";
+
+  return (
+    <div className="card overflow-hidden">
+      {/* Preview Header */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-4 flex items-center justify-between hover:bg-secondary/50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] flex items-center justify-center">
+            <Heart className="w-5 h-5 text-[#D4AF37]" />
+          </div>
+          <div className="text-left">
+            <h3 className="font-semibold text-sm sm:text-base">Превью приглашения</h3>
+            <p className="text-xs text-muted-foreground">
+              {event.person1} & {event.person2}
+            </p>
+          </div>
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="w-5 h-5 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="w-5 h-5 text-muted-foreground" />
+        )}
+      </button>
+
+      {/* Expanded Preview */}
+      {isExpanded && (
+        <div className="border-t border-border">
+          {/* Mini Template Preview */}
+          <div className="bg-gradient-to-b from-[#0a0a0a] via-[#1a1a1a] to-[#0a0a0a] text-white p-6 sm:p-8">
+            {/* Decorative dots */}
+            <div className="relative">
+              <div className="absolute -top-2 -left-2 w-2 h-2 bg-[#D4AF37] rounded-full opacity-40" />
+              <div className="absolute -top-1 right-4 w-1.5 h-1.5 bg-[#D4AF37] rounded-full opacity-30" />
+              <div className="absolute top-8 -right-1 w-1 h-1 bg-[#D4AF37] rounded-full opacity-50" />
+            </div>
+
+            {/* Content */}
+            <div className="text-center space-y-4">
+              {/* Ornament */}
+              <svg className="w-12 h-6 mx-auto text-[#D4AF37]" viewBox="0 0 100 50">
+                <path
+                  d="M50 5 Q30 25 10 25 Q30 25 50 45 Q70 25 90 25 Q70 25 50 5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+              </svg>
+
+              {/* Invitation text */}
+              <p className="text-[#D4AF37]/80 text-xs tracking-[0.2em] uppercase">
+                Приглашаем вас на свадьбу
+              </p>
+
+              {/* Names */}
+              <div className="relative">
+                <h2 className="font-display text-2xl sm:text-3xl font-light tracking-wide">
+                  <span className="text-[#D4AF37]">{event.person1 || "Имя"}</span>
+                  <span className="mx-2 text-white/40">&</span>
+                  <span className="text-[#D4AF37]">{event.person2 || "Имя"}</span>
+                </h2>
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-16 h-px bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent" />
+              </div>
+
+              {/* Date & Time */}
+              <div className="flex items-center justify-center gap-2 text-white/60 text-sm pt-2">
+                <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>{formattedDate}</span>
+                {event.time && (
+                  <>
+                    <span className="text-white/30">•</span>
+                    <Clock className="w-3.5 h-3.5 text-[#D4AF37]" />
+                    <span>{event.time}</span>
+                  </>
+                )}
+              </div>
+
+              {/* Countdown preview */}
+              <div className="grid grid-cols-4 gap-2 max-w-xs mx-auto pt-2">
+                {["дни", "часы", "мин", "сек"].map((label) => (
+                  <div key={label} className="text-center">
+                    <div className="w-12 h-12 rounded-lg border border-[#D4AF37]/30 bg-[#D4AF37]/5 flex items-center justify-center">
+                      <span className="text-lg font-light text-[#D4AF37]">00</span>
+                    </div>
+                    <span className="text-[10px] text-white/40 uppercase tracking-wider">{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Venue */}
+              {(event.venue?.name || event.venue?.address) && (
+                <div className="pt-4 text-center">
+                  <div className="inline-flex items-center gap-1.5 text-[#D4AF37] text-xs mb-2">
+                    <MapPin className="w-3.5 h-3.5" />
+                    <span className="tracking-wider uppercase">Место</span>
+                  </div>
+                  {event.venue?.name && (
+                    <p className="text-white text-sm">{event.venue.name}</p>
+                  )}
+                  {event.venue?.address && (
+                    <p className="text-white/50 text-xs">{event.venue.address}</p>
+                  )}
+                </div>
+              )}
+
+              {/* RSVP buttons preview */}
+              <div className="flex flex-col sm:flex-row gap-2 justify-center pt-4">
+                <div className="px-6 py-2.5 rounded-full bg-gradient-to-r from-[#D4AF37] to-[#B8860B] flex items-center justify-center gap-2">
+                  <Heart className="w-3.5 h-3.5 text-[#0a0a0a]" />
+                  <span className="text-[#0a0a0a] font-medium text-sm">Я буду</span>
+                </div>
+                <div className="px-6 py-2.5 rounded-full border border-white/20 text-white/60 text-sm">
+                  К сожалению, не смогу
+                </div>
+              </div>
+            </div>
+
+            {/* Footer ornament */}
+            <div className="flex justify-center mt-6">
+              <svg className="w-16 h-8 text-[#D4AF37]/30" viewBox="0 0 100 50">
+                <path
+                  d="M10 25 Q25 10 50 25 Q75 40 90 25"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                />
+                <circle cx="50" cy="25" r="2" fill="currentColor" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Preview note */}
+          <div className="p-3 bg-secondary/30 text-center">
+            <p className="text-xs text-muted-foreground">
+              Так будет выглядеть приглашение для гостей
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

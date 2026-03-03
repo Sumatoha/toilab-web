@@ -84,11 +84,13 @@ export default function GuestsPage() {
     };
   };
 
-  const filteredGuests = guestList.filter((guest) => {
-    if (filter !== "all" && guest.rsvpStatus !== filter) return false;
-    if (search && !guest.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filteredGuests = guestList
+    .filter((guest) => {
+      if (filter !== "all" && guest.rsvpStatus !== filter) return false;
+      if (search && !guest.name.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const handleAddGuest = async (data: { name: string; phone?: string; email?: string; tableId?: string; rsvpStatus?: string; plusCount?: number }) => {
     try {

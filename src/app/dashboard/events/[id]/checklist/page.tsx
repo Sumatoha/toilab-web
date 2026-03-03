@@ -9,10 +9,11 @@ import {
   Trash2,
   Sparkles,
   CalendarDays,
+  Clock,
   Pencil,
 } from "lucide-react";
-import { checklist as checklistApi, calendar as calendarApi } from "@/lib/api";
-import { ChecklistItem, ChecklistProgress, ChecklistCategory, CreateCalendarEventRequest } from "@/lib/types";
+import { checklist as checklistApi } from "@/lib/api";
+import { ChecklistItem, ChecklistProgress, ChecklistCategory } from "@/lib/types";
 import { cn, formatShortDate, checklistCategoryLabels } from "@/lib/utils";
 import { PageLoader, ConfirmDialog, Modal, ProgressBar, TimeInput } from "@/components/ui";
 import { useTranslation } from "@/hooks/use-translation";
@@ -123,6 +124,7 @@ export default function ChecklistPage() {
     title: string;
     category: ChecklistCategory;
     dueDate?: string;
+    dueTime?: string;
     description?: string;
   }) => {
     try {
@@ -141,6 +143,7 @@ export default function ChecklistPage() {
     title?: string;
     category?: ChecklistCategory;
     dueDate?: string;
+    dueTime?: string;
     description?: string;
   }) => {
     try {
@@ -187,11 +190,13 @@ export default function ChecklistPage() {
     }
   };
 
-  const filteredItems = items.filter((item) => {
-    if (filter === "pending" && item.isCompleted) return false;
-    if (filter === "completed" && !item.isCompleted) return false;
-    return true;
-  });
+  const filteredItems = items
+    .filter((item) => {
+      if (filter === "pending" && item.isCompleted) return false;
+      if (filter === "completed" && !item.isCompleted) return false;
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Get suggestions that haven't been added yet
   const existingTitles = new Set(items.map(i => i.title.toLowerCase()));
@@ -329,7 +334,6 @@ export default function ChecklistPage() {
       {/* Add Modal */}
       {showAddModal && (
         <TaskModal
-          eventId={eventId}
           onClose={() => { setShowAddModal(false); setPrefillSuggestion(null); }}
           onSubmit={handleAdd}
           suggestions={availableSuggestions}
@@ -343,7 +347,6 @@ export default function ChecklistPage() {
       {/* Edit Modal */}
       {editingItem && (
         <TaskModal
-          eventId={eventId}
           item={editingItem}
           onClose={() => setEditingItem(null)}
           onSubmit={(data) => handleUpdate(editingItem.id, data)}
@@ -470,19 +473,27 @@ const ChecklistCard = forwardRef<HTMLDivElement, {
       {/* Deadline badge */}
       {item.dueDate && (
         <div className="mt-3 pt-3 border-t border-border/50 flex items-center justify-between">
-          <span className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium",
-            item.isCompleted
-              ? "bg-emerald-100 text-emerald-700"
-              : isOverdue
-                ? "bg-red-100 text-red-700"
-                : isUrgent
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-secondary text-muted-foreground"
-          )}>
-            <CalendarDays className="w-3.5 h-3.5" />
-            {getDeadlineLabel()}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium",
+              item.isCompleted
+                ? "bg-emerald-100 text-emerald-700"
+                : isOverdue
+                  ? "bg-red-100 text-red-700"
+                  : isUrgent
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-secondary text-muted-foreground"
+            )}>
+              <CalendarDays className="w-3.5 h-3.5" />
+              {getDeadlineLabel()}
+            </span>
+            {item.dueTime && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-secondary text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                {item.dueTime}
+              </span>
+            )}
+          </div>
           {!item.isCompleted && (isOverdue || isUrgent) && (
             <span className={cn(
               "text-xs font-medium",
@@ -580,6 +591,7 @@ const ChecklistRow = forwardRef<HTMLDivElement, {
                 !item.isCompleted && isUrgent && "text-amber-600 font-medium"
               )}>
                 {getDeadlineLabel()}
+                {item.dueTime && ` в ${item.dueTime}`}
               </span>
             </>
           )}
@@ -614,7 +626,6 @@ const ChecklistRow = forwardRef<HTMLDivElement, {
 ChecklistRow.displayName = "ChecklistRow";
 
 function TaskModal({
-  eventId,
   item,
   onClose,
   onSubmit,
@@ -624,10 +635,9 @@ function TaskModal({
   t,
   tLabel,
 }: {
-  eventId: string;
   item?: ChecklistItem;
   onClose: () => void;
-  onSubmit: (data: { title: string; category: ChecklistCategory; dueDate?: string; description?: string }) => void;
+  onSubmit: (data: { title: string; category: ChecklistCategory; dueDate?: string; dueTime?: string; description?: string }) => void;
   suggestions?: { title: string; category: ChecklistCategory }[];
   prefillSuggestion?: { title: string; category: ChecklistCategory } | null;
   onSelectSuggestion?: (s: { title: string; category: ChecklistCategory } | null) => void;
@@ -644,10 +654,8 @@ function TaskModal({
     item?.category || prefillSuggestion?.category || "other"
   );
   const [dueDate, setDueDate] = useState(item?.dueDate?.split("T")[0] || "");
+  const [dueTime, setDueTime] = useState(item?.dueTime || "");
   const [addedTasks, setAddedTasks] = useState<Set<string>>(new Set());
-  const [addToCalendar, setAddToCalendar] = useState(false);
-  const [calendarTime, setCalendarTime] = useState("");
-  const [autoCompleteTask, setAutoCompleteTask] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // When prefillSuggestion changes, switch to form mode
@@ -686,31 +694,16 @@ function TaskModal({
 
     setIsSubmitting(true);
     try {
-      // Add/update the task
       onSubmit({
         title: title.trim(),
         category,
         dueDate: dueDate || undefined,
+        dueTime: dueTime || undefined,
         description: description.trim() || undefined,
       });
-
-      // Create calendar event if checkbox is checked and date is set (only for new tasks)
-      if (!isEditing && addToCalendar && dueDate) {
-        const calendarData: CreateCalendarEventRequest = {
-          title: title.trim(),
-          type: "deadline",
-          date: dueDate,
-          time: calendarTime || undefined,
-          autoCompleteTask,
-        };
-        await calendarApi.create(eventId, calendarData);
-        toast.success(t("checklist.calendarEventAdded"));
-      }
-
       onClose();
     } catch (error) {
-      console.error("Failed to create calendar event:", error);
-      // Task was still added, just calendar event failed
+      console.error("Failed to save task:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -865,54 +858,25 @@ function TaskModal({
               })}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">{t("checklist.dueDate")}</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="input"
-            />
-          </div>
-
-          {/* Add to Calendar option - only for new tasks */}
-          {!isEditing && dueDate && (
-            <div className="space-y-3 p-3 bg-secondary/50 rounded-lg">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={addToCalendar}
-                  onChange={(e) => setAddToCalendar(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                <CalendarDays className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{t("checklist.addToCalendar")}</span>
-              </label>
-
-              {addToCalendar && (
-                <>
-                  <div>
-                    <label className="block text-sm text-muted-foreground mb-1">{t("checklist.calendarTime")}</label>
-                    <TimeInput
-                      value={calendarTime}
-                      onChange={setCalendarTime}
-                    />
-                  </div>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={autoCompleteTask}
-                      onChange={(e) => setAutoCompleteTask(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                    <span className="text-sm text-muted-foreground">
-                      {t("checklist.autoCompleteTask")}
-                    </span>
-                  </label>
-                </>
-              )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">{t("checklist.dueDate")}</label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="input"
+              />
             </div>
-          )}
+            <div>
+              <label className="block text-sm font-medium mb-1.5">{t("checklist.dueTime")}</label>
+              <TimeInput
+                value={dueTime}
+                onChange={setDueTime}
+                placeholder="--:--"
+              />
+            </div>
+          </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-border">
             <button type="button" onClick={onClose} className="btn-outline btn-md">

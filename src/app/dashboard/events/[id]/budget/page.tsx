@@ -4,16 +4,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   Plus,
-  Wallet,
   PieChart,
   Trash2,
   Pencil,
   Check,
-  Target,
-  CreditCard,
 } from "lucide-react";
-import { expenses as expensesApi, vendors as vendorsApi } from "@/lib/api";
-import { Expense, BudgetSummary, ExpenseCategory, ExpenseStatus, UpdateExpenseRequest, Vendor, Country } from "@/lib/types";
+import { events as eventsApi, expenses as expensesApi, vendors as vendorsApi } from "@/lib/api";
+import { Event, Expense, BudgetSummary, ExpenseCategory, UpdateExpenseRequest, Vendor, Country } from "@/lib/types";
 import { vendorTypeLabels, currencyConfigs } from "@/lib/utils";
 import { cn, formatCurrency, expenseCategoryLabels } from "@/lib/utils";
 import { PageLoader, ConfirmDialog, Modal, ModalFooter, ProgressBar, CircularProgress } from "@/components/ui";
@@ -44,6 +41,7 @@ export default function BudgetPage() {
   const { t } = useTranslation();
   const userCountry: Country = user?.country || "kz";
 
+  const [event, setEvent] = useState<Event | null>(null);
   const [expensesList, setExpensesList] = useState<Expense[]>([]);
   const [vendorsList, setVendorsList] = useState<Vendor[]>([]);
   const [summary, setSummary] = useState<BudgetSummary | null>(null);
@@ -60,11 +58,13 @@ export default function BudgetPage() {
 
   async function loadData() {
     try {
-      const [expensesData, summaryData, vendorsData] = await Promise.all([
+      const [eventData, expensesData, summaryData, vendorsData] = await Promise.all([
+        eventsApi.get(eventId),
         expensesApi.list(eventId),
         expensesApi.getBudgetSummary(eventId),
         vendorsApi.list(eventId).catch(() => []),
       ]);
+      setEvent(eventData);
       setExpensesList(expensesData || []);
       setSummary(summaryData || { totalPlanned: 0, totalActual: 0, totalPaid: 0, byCategory: [] });
       setVendorsList(vendorsData || []);
@@ -121,9 +121,22 @@ export default function BudgetPage() {
     title: string;
     plannedAmount: number;
     vendorId?: string;
+    isPaid?: boolean;
   }) => {
     try {
-      const newExpense = await expensesApi.create(eventId, data);
+      // Create expense with paid status if isPaid is true
+      const createData = {
+        category: data.category,
+        title: data.title,
+        plannedAmount: data.plannedAmount,
+        vendorId: data.vendorId,
+        ...(data.isPaid && {
+          status: 'paid' as const,
+          actualAmount: data.plannedAmount,
+          paidAmount: data.plannedAmount,
+        }),
+      };
+      const newExpense = await expensesApi.create(eventId, createData);
       const newList = [...expensesList, newExpense];
       setExpensesList(newList);
       setSummary(recalculateSummary(newList));
@@ -168,18 +181,39 @@ export default function BudgetPage() {
     }
   };
 
-  const filteredExpenses = selectedCategory
+  const handleTogglePaid = async (expense: Expense) => {
+    const isPaid = expense.status === 'paid';
+    const newStatus = isPaid ? 'planned' : 'paid';
+    const amount = Number(expense.plannedAmount) || 0;
+
+    try {
+      const updated = await expensesApi.update(eventId, expense.id, {
+        status: newStatus,
+        paidAmount: newStatus === 'paid' ? amount : 0,
+        actualAmount: newStatus === 'paid' ? amount : 0,
+      });
+      const newList = expensesList.map((e) => (e.id === expense.id ? updated : e));
+      setExpensesList(newList);
+      setSummary(recalculateSummary(newList));
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || t("errors.saveError"));
+    }
+  };
+
+  const filteredExpenses = (selectedCategory
     ? expensesList.filter((e) => e.category === selectedCategory)
-    : expensesList;
+    : expensesList
+  ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   if (isLoading) {
     return <PageLoader />;
   }
 
-  const budgetProgress = summary && summary.totalPlanned > 0
-    ? (summary.totalPaid / summary.totalPlanned) * 100
-    : 0;
-  const remaining = (summary?.totalPlanned || 0) - (summary?.totalPaid || 0);
+  const totalBudget = event?.totalBudget || 0;
+  const totalPaid = summary?.totalPaid || 0;
+  const budgetProgress = totalBudget > 0 ? (totalPaid / totalBudget) * 100 : 0;
+  const remaining = totalBudget - totalPaid;
 
   return (
     <div className="space-y-6">
@@ -199,97 +233,36 @@ export default function BudgetPage() {
 
       {/* Budget Overview */}
       {summary && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-          {/* Main Budget Card */}
-          <div className="lg:col-span-2 card p-4 sm:p-6">
-            <div className="flex items-start justify-between gap-4 mb-4 sm:mb-6">
-              <div className="min-w-0">
-                <h2 className="text-base sm:text-lg font-semibold mb-1">{t("budget.budgetOverview")}</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  {Math.round(budgetProgress)}% {t("budget.used")}
-                </p>
-              </div>
-              <CircularProgress
-                value={summary.totalPaid}
-                max={summary.totalPlanned || 1}
-                size={60}
-                color={budgetProgress > 90 ? "warning" : "success"}
-              />
-            </div>
-
-            <ProgressBar
-              value={summary.totalPaid}
-              max={summary.totalPlanned || 1}
-              color={budgetProgress > 90 ? "warning" : "success"}
-              size="lg"
-              className="mb-4 sm:mb-6"
-            />
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-              <div className="p-3 sm:p-4 rounded-xl bg-blue-50">
-                <div className="flex items-center gap-2 mb-1 sm:mb-2">
-                  <Target className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs sm:text-sm text-blue-600 font-medium">{t("budget.totalPlanned")}</span>
-                </div>
-                <div className="text-lg sm:text-2xl font-bold text-blue-700">
-                  {formatCurrency(summary.totalPlanned, userCountry)}
-                </div>
-              </div>
-              <div className="p-3 sm:p-4 rounded-xl bg-emerald-50">
-                <div className="flex items-center gap-2 mb-1 sm:mb-2">
-                  <CreditCard className="w-4 h-4 text-emerald-600" />
-                  <span className="text-xs sm:text-sm text-emerald-600 font-medium">{t("budget.paid")}</span>
-                </div>
-                <div className="text-lg sm:text-2xl font-bold text-emerald-700">
-                  {formatCurrency(summary.totalPaid, userCountry)}
-                </div>
-              </div>
-              <div className={cn(
-                "p-3 sm:p-4 rounded-xl",
-                remaining >= 0 ? "bg-amber-50" : "bg-red-50"
-              )}>
-                <div className="flex items-center gap-2 mb-1 sm:mb-2">
-                  <Wallet className={cn("w-4 h-4", remaining >= 0 ? "text-amber-600" : "text-red-600")} />
-                  <span className={cn("text-xs sm:text-sm font-medium", remaining >= 0 ? "text-amber-600" : "text-red-600")}>
-                    {remaining >= 0 ? t("budget.remaining") : t("budget.overspent")}
-                  </span>
-                </div>
-                <div className={cn("text-lg sm:text-2xl font-bold", remaining >= 0 ? "text-amber-700" : "text-red-700")}>
-                  {formatCurrency(Math.abs(remaining), userCountry)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="card p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">{t("budget.statistics")}</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("budget.totalExpenses")}</span>
-                <span className="font-semibold">{expensesList.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("budget.categoriesCount")}</span>
-                <span className="font-semibold">{summary.byCategory.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">{t("budget.paidItems")}</span>
-                <span className="font-semibold">
-                  {expensesList.filter(e => e.status === 'paid').length}
+        <div className="card p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-base sm:text-lg font-semibold mb-1">{t("budget.budgetOverview")}</h2>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl sm:text-3xl font-bold text-emerald-600">
+                  {formatCurrency(totalPaid, userCountry)}
+                </span>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-lg sm:text-xl font-semibold text-muted-foreground">
+                  {formatCurrency(totalBudget, userCountry)}
                 </span>
               </div>
-              <div className="border-t border-border pt-4 mt-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{t("budget.averageExpense")}</span>
-                  <span className="font-semibold">
-                    {expensesList.length > 0
-                      ? formatCurrency(Math.round(summary.totalPlanned / expensesList.length), userCountry)
-                      : "—"
-                    }
-                  </span>
+              <p className="text-sm text-muted-foreground mt-1">
+                {expensesList.filter(e => e.status === 'paid').length} {t("budget.of")} {expensesList.length} {t("budget.expensesPaid")}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <CircularProgress
+                value={totalPaid}
+                max={totalBudget || 1}
+                size={70}
+                color={budgetProgress > 100 ? "error" : budgetProgress > 90 ? "warning" : "success"}
+              />
+              {remaining < 0 && (
+                <div className="text-right">
+                  <p className="text-xs text-red-500 font-medium">{t("budget.overspent")}</p>
+                  <p className="text-lg font-bold text-red-600">{formatCurrency(Math.abs(remaining), userCountry)}</p>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -390,6 +363,7 @@ export default function BudgetPage() {
                   country={userCountry}
                   onEdit={() => setEditingExpense(expense)}
                   onDelete={() => setDeleteExpenseId(expense.id)}
+                  onTogglePaid={() => handleTogglePaid(expense)}
                   className={`animate-in stagger-${Math.min(index + 1, 4)}`}
                   t={t}
                 />
@@ -406,6 +380,7 @@ export default function BudgetPage() {
                     country={userCountry}
                     onEdit={() => setEditingExpense(expense)}
                     onDelete={() => setDeleteExpenseId(expense.id)}
+                    onTogglePaid={() => handleTogglePaid(expense)}
                     className={`animate-in stagger-${Math.min(index + 1, 4)}`}
                     t={t}
                   />
@@ -461,6 +436,7 @@ function ExpenseCard({
   country,
   onEdit,
   onDelete,
+  onTogglePaid,
   className,
   t,
 }: {
@@ -468,92 +444,62 @@ function ExpenseCard({
   country: Country;
   onEdit: () => void;
   onDelete: () => void;
+  onTogglePaid: () => void;
   className?: string;
   t: (key: string) => string;
 }) {
   const label = expenseCategoryLabels[expense.category];
-  const colors = categoryColors[expense.category] || categoryColors.other;
-  const plannedAmount = Number(expense.plannedAmount) || 0;
-  const paidAmount = Number(expense.paidAmount) || 0;
-  const paidPercent = plannedAmount > 0 ? Math.round((paidAmount / plannedAmount) * 100) : 0;
-
-  const statusLabels: Record<ExpenseStatus, { text: string; class: string; icon: typeof Check }> = {
-    planned: { text: t("budget.statusShort.planned"), class: "bg-slate-100 text-slate-700", icon: Target },
-    booked: { text: t("budget.statusShort.booked"), class: "bg-blue-100 text-blue-700", icon: CreditCard },
-    paid: { text: t("budget.statusShort.paid"), class: "bg-emerald-100 text-emerald-700", icon: Check },
-  };
-
-  const status = statusLabels[expense.status] || statusLabels.planned;
-  const StatusIcon = status.icon;
+  const amount = Number(expense.plannedAmount) || 0;
+  const isPaid = expense.status === 'paid';
 
   return (
     <div
       className={cn("card p-4 active:scale-[0.99] transition-transform touch-manipulation", className)}
       onClick={onEdit}
     >
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", colors.bg)}>
-            <span className={cn("text-sm font-bold", colors.text)}>
-              {(label?.ru || expense.category).charAt(0)}
-            </span>
-          </div>
-          <div className="min-w-0">
-            <p className="font-semibold truncate">{expense.title}</p>
-            <p className="text-sm text-muted-foreground">{label?.ru || expense.category}</p>
-          </div>
-        </div>
-        <div className="text-right flex-shrink-0">
-          <p className="font-bold text-lg">{formatCurrency(plannedAmount, country)}</p>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium", status.class)}>
-            <StatusIcon className="w-3.5 h-3.5" />
-            {status.text}
-          </span>
-          {paidAmount > 0 && paidAmount < plannedAmount && (
-            <span className="text-xs text-muted-foreground">
-              {paidPercent}% {t("budget.percentPaid")}
-            </span>
+      <div className="flex items-center gap-3">
+        {/* Paid checkbox */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onTogglePaid(); }}
+          className={cn(
+            "w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
+            isPaid
+              ? "bg-emerald-500 border-emerald-500"
+              : "border-border hover:border-emerald-400"
           )}
+        >
+          {isPaid && <Check className="w-3.5 h-3.5 text-white" />}
+        </button>
+
+        {/* Title and category */}
+        <div className="flex-1 min-w-0">
+          <p className={cn("font-semibold truncate", isPaid && "text-muted-foreground line-through")}>{expense.title}</p>
+          <p className="text-sm text-muted-foreground">{label?.ru || expense.category}</p>
         </div>
 
+        {/* Amount */}
+        <div className="text-right flex-shrink-0">
+          <p className={cn("font-bold text-lg", isPaid && "text-emerald-600")}>{formatCurrency(amount, country)}</p>
+        </div>
+
+        {/* Actions */}
         <div className="flex items-center gap-1">
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-            className="p-2.5 text-muted-foreground hover:text-primary active:bg-primary/10 rounded-xl transition-colors"
+            className="p-2 text-muted-foreground hover:text-primary active:bg-primary/10 rounded-xl transition-colors"
             aria-label={t("common.edit")}
           >
             <Pencil className="w-4 h-4" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="p-2.5 text-muted-foreground hover:text-red-500 active:bg-red-50 rounded-xl transition-colors"
+            className="p-2 text-muted-foreground hover:text-red-500 active:bg-red-50 rounded-xl transition-colors"
             aria-label={t("common.delete")}
           >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
-
-      {/* Progress bar */}
-      {plannedAmount > 0 && (
-        <div className="mt-3 pt-3 border-t border-border">
-          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-            <span>{t("budget.paid")}</span>
-            <span>{formatCurrency(paidAmount, country)}</span>
-          </div>
-          <ProgressBar
-            value={paidAmount}
-            max={plannedAmount}
-            size="sm"
-            color={paidPercent >= 100 ? "success" : "primary"}
-          />
-        </div>
-      )}
     </div>
   );
 }
@@ -564,6 +510,7 @@ function ExpenseRow({
   country,
   onEdit,
   onDelete,
+  onTogglePaid,
   className,
   t,
 }: {
@@ -571,26 +518,13 @@ function ExpenseRow({
   country: Country;
   onEdit: () => void;
   onDelete: () => void;
+  onTogglePaid: () => void;
   className?: string;
   t: (key: string) => string;
 }) {
   const label = expenseCategoryLabels[expense.category];
-  const colors = categoryColors[expense.category] || categoryColors.other;
-  const plannedAmount = Number(expense.plannedAmount) || 0;
-  const paidAmount = Number(expense.paidAmount) || 0;
-  const paidPercent =
-    plannedAmount > 0
-      ? Math.round((paidAmount / plannedAmount) * 100)
-      : 0;
-
-  const statusLabels: Record<ExpenseStatus, { text: string; class: string; icon: typeof Check }> = {
-    planned: { text: t("budget.status.planned"), class: "badge-default", icon: Target },
-    booked: { text: t("budget.status.booked"), class: "badge-info", icon: CreditCard },
-    paid: { text: t("budget.status.paid"), class: "badge-success", icon: Check },
-  };
-
-  const status = statusLabels[expense.status] || statusLabels.planned;
-  const StatusIcon = status.icon;
+  const amount = Number(expense.plannedAmount) || 0;
+  const isPaid = expense.status === 'paid';
 
   return (
     <div
@@ -600,41 +534,31 @@ function ExpenseRow({
       )}
       onClick={onEdit}
     >
-      <div className={cn(
-        "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
-        colors.bg
-      )}>
-        <span className={cn("text-sm font-bold", colors.text)}>
-          {(label?.ru || expense.category).charAt(0)}
-        </span>
-      </div>
+      {/* Paid checkbox */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onTogglePaid(); }}
+        className={cn(
+          "w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
+          isPaid
+            ? "bg-emerald-500 border-emerald-500"
+            : "border-border hover:border-emerald-400"
+        )}
+      >
+        {isPaid && <Check className="w-3.5 h-3.5 text-white" />}
+      </button>
+
+      {/* Title and category */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <p className="font-medium truncate">{expense.title}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted-foreground">
-            {label?.ru || expense.category}
-          </span>
-          <span className={cn("inline-flex items-center gap-1", status.class)}>
-            <StatusIcon className="w-3 h-3" />
-            {status.text}
-          </span>
-        </div>
+        <p className={cn("font-medium truncate", isPaid && "text-muted-foreground line-through")}>{expense.title}</p>
+        <p className="text-sm text-muted-foreground">{label?.ru || expense.category}</p>
       </div>
+
+      {/* Amount */}
       <div className="text-right">
-        <p className="font-semibold">{formatCurrency(plannedAmount, country)}</p>
-        {paidAmount > 0 && (
-          <p className="text-sm text-emerald-600">
-            {formatCurrency(paidAmount, country)} {t("budget.percentPaid")}
-          </p>
-        )}
-        {paidAmount === 0 && plannedAmount > 0 && (
-          <p className="text-sm text-muted-foreground">
-            {paidPercent}%
-          </p>
-        )}
+        <p className={cn("font-semibold", isPaid && "text-emerald-600")}>{formatCurrency(amount, country)}</p>
       </div>
+
+      {/* Actions */}
       <div className="flex items-center gap-1">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
@@ -663,7 +587,7 @@ function AddExpenseModal({
   t,
 }: {
   onClose: () => void;
-  onAdd: (data: { category: ExpenseCategory; title: string; plannedAmount: number; vendorId?: string }) => void;
+  onAdd: (data: { category: ExpenseCategory; title: string; plannedAmount: number; vendorId?: string; isPaid?: boolean }) => void;
   vendors: Vendor[];
   country: Country;
   t: (key: string) => string;
@@ -673,6 +597,7 @@ function AddExpenseModal({
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [vendorId, setVendorId] = useState<string>("");
+  const [isPaid, setIsPaid] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -682,6 +607,7 @@ function AddExpenseModal({
       title: title.trim(),
       plannedAmount: parseInt(amount) || 0,
       vendorId: vendorId || undefined,
+      isPaid,
     });
   };
 
@@ -766,6 +692,23 @@ function AddExpenseModal({
             placeholder="500000"
           />
         </div>
+        <div className="pt-2">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <button
+              type="button"
+              onClick={() => setIsPaid(!isPaid)}
+              className={cn(
+                "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                isPaid
+                  ? "bg-emerald-500 border-emerald-500"
+                  : "border-border hover:border-emerald-400"
+              )}
+            >
+              {isPaid && <Check className="w-3.5 h-3.5 text-white" />}
+            </button>
+            <span className="text-sm font-medium">{t("budget.alreadyPaid")}</span>
+          </label>
+        </div>
         <ModalFooter>
           <button type="button" onClick={onClose} className="btn-outline btn-md">
             {t("common.cancel")}
@@ -798,29 +741,21 @@ function EditExpenseModal({
   const [title, setTitle] = useState(expense.title);
   const [category, setCategory] = useState<ExpenseCategory>(expense.category);
   const [vendorId, setVendorId] = useState(expense.vendorId || "");
-  const [plannedAmount, setPlannedAmount] = useState(expense.plannedAmount.toString());
-  const [actualAmount, setActualAmount] = useState(expense.actualAmount.toString());
-  const [paidAmount, setPaidAmount] = useState(expense.paidAmount.toString());
-  const [status, setStatus] = useState<ExpenseStatus>(expense.status);
+  const [amount, setAmount] = useState(expense.plannedAmount.toString());
+  const [isPaid, setIsPaid] = useState(expense.status === 'paid');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const numAmount = parseInt(amount) || 0;
     onSave({
       title: title.trim(),
       category,
       vendorId: vendorId || undefined,
-      plannedAmount: parseInt(plannedAmount) || 0,
-      actualAmount: parseInt(actualAmount) || 0,
-      paidAmount: parseInt(paidAmount) || 0,
-      status,
+      plannedAmount: numAmount,
+      actualAmount: isPaid ? numAmount : 0,
+      paidAmount: isPaid ? numAmount : 0,
+      status: isPaid ? 'paid' : 'planned',
     });
-  };
-
-  const handleMarkPaid = () => {
-    const amount = parseInt(plannedAmount) || 0;
-    setPaidAmount(amount.toString());
-    setActualAmount(amount.toString());
-    setStatus("paid");
   };
 
   const categories: ExpenseCategory[] = [
@@ -829,122 +764,79 @@ function EditExpenseModal({
   ];
 
   return (
-    <Modal isOpen onClose={onClose} title={t("budget.editExpense")} size="md">
+    <Modal isOpen onClose={onClose} title={t("budget.editExpense")} size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1.5">{t("common.name")}</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="input"
-            />
-          </div>
-          <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1.5">{t("budget.category")}</label>
+        <div>
+          <label className="block text-sm font-medium mb-1.5">{t("common.name")}</label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="input"
+            autoFocus
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1.5">{t("budget.category")}</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+            className="input"
+          >
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {expenseCategoryLabels[cat]?.ru || cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {vendors.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium mb-1.5">{t("budget.vendor")}</label>
             <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
+              value={vendorId}
+              onChange={(e) => setVendorId(e.target.value)}
               className="input"
             >
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {expenseCategoryLabels[cat]?.ru || cat}
+              <option value="">{t("budget.notSelected")}</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name} ({vendorTypeLabels[v.category]?.ru || v.category})
                 </option>
               ))}
             </select>
           </div>
-          {vendors.length > 0 && (
-            <div className="col-span-2">
-              <label className="block text-sm font-medium mb-1.5">{t("budget.vendor")}</label>
-              <select
-                value={vendorId}
-                onChange={(e) => setVendorId(e.target.value)}
-                className="input"
-              >
-                <option value="">{t("budget.notSelected")}</option>
-                {vendors.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name} ({vendorTypeLabels[v.category]?.ru || v.category})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+        )}
+
+        <div>
+          <label className="block text-sm font-medium mb-1.5">{t("budget.amount")} ({currencyName.toLowerCase()})</label>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="input"
+            placeholder="500000"
+          />
         </div>
 
-        <div className="border-t border-border pt-4">
-          <h4 className="text-sm font-medium mb-3">{t("budget.amounts")} ({currencyName.toLowerCase()})</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">{t("budget.plannedAmount")}</label>
-              <input
-                type="number"
-                value={plannedAmount}
-                onChange={(e) => setPlannedAmount(e.target.value)}
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">{t("budget.actualAmount")}</label>
-              <input
-                type="number"
-                value={actualAmount}
-                onChange={(e) => setActualAmount(e.target.value)}
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">{t("budget.paid")}</label>
-              <input
-                type="number"
-                value={paidAmount}
-                onChange={(e) => setPaidAmount(e.target.value)}
-                className="input"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-border pt-4">
-          <label className="block text-sm font-medium mb-2">{t("common.status")}</label>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { value: "planned", labelKey: "budget.status.planned", icon: Target },
-              { value: "booked", labelKey: "budget.status.booked", icon: CreditCard },
-              { value: "paid", labelKey: "budget.status.paid", icon: Check },
-            ].map((s) => {
-              const Icon = s.icon;
-              return (
-                <button
-                  key={s.value}
-                  type="button"
-                  onClick={() => setStatus(s.value as ExpenseStatus)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-2 text-sm rounded-lg border transition-all flex-1 min-w-0 justify-center",
-                    status === s.value
-                      ? "bg-primary text-white border-primary"
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span className="truncate">{t(s.labelKey)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="border-t border-border pt-4">
-          <button
-            type="button"
-            onClick={handleMarkPaid}
-            className="btn-outline btn-sm w-full"
-          >
-            <Check className="w-4 h-4" />
-            {t("budget.markFullyPaid")}
-          </button>
+        <div className="pt-2">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <button
+              type="button"
+              onClick={() => setIsPaid(!isPaid)}
+              className={cn(
+                "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                isPaid
+                  ? "bg-emerald-500 border-emerald-500"
+                  : "border-border hover:border-emerald-400"
+              )}
+            >
+              {isPaid && <Check className="w-3.5 h-3.5 text-white" />}
+            </button>
+            <span className="text-sm font-medium">{t("budget.paid")}</span>
+          </label>
         </div>
 
         <ModalFooter>
