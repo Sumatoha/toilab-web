@@ -6,6 +6,7 @@ import { Lock, XCircle, Heart } from "lucide-react";
 import { shares } from "@/lib/api";
 import { InvitationTemplate } from "@/components/invitation/InvitationTemplate";
 import { InvitationTemplate2 } from "@/components/invitation/InvitationTemplate2";
+import { InvitationTemplate3 } from "@/components/invitation/InvitationTemplate3";
 import { RsvpForm, RsvpData } from "@/components/invitation/RsvpForm";
 import { Event, Guest, SharedEventData } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -35,7 +36,7 @@ function InvitationContent() {
   const token = params.token as string;
   const guestSlug = searchParams.get("guest"); // Personal invitation
   const templateParam = searchParams.get("template"); // Template selection
-  const selectedTemplate = templateParam === "2" ? 2 : 1;
+  const selectedTemplate = templateParam === "3" ? 3 : templateParam === "2" ? 2 : 1;
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -277,7 +278,11 @@ function InvitationContent() {
     return null;
   }
 
-  const TemplateComponent = selectedTemplate === 2 ? InvitationTemplate2 : InvitationTemplate;
+  const TemplateComponent = selectedTemplate === 3
+    ? InvitationTemplate3
+    : selectedTemplate === 2
+      ? InvitationTemplate2
+      : InvitationTemplate;
 
   return (
     <>

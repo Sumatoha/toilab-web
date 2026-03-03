@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { InvitationTemplate } from "@/components/invitation/InvitationTemplate";
 import { InvitationTemplate2 } from "@/components/invitation/InvitationTemplate2";
+import { InvitationTemplate3 } from "@/components/invitation/InvitationTemplate3";
 import { events, guests as guestsApi, shares } from "@/lib/api";
 import { Event, Guest, ShareLink } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,7 @@ export default function InvitationPage() {
   const [copiedLinkType, setCopiedLinkType] = useState<string | null>(null);
   const [isCreatingLink, setIsCreatingLink] = useState(false);
   const [activeTab, setActiveTab] = useState<"builtin" | "external">("builtin");
-  const [selectedTemplate, setSelectedTemplate] = useState<1 | 2>(1);
+  const [selectedTemplate, setSelectedTemplate] = useState<1 | 2 | 3>(1);
 
   useEffect(() => {
     loadData();
@@ -242,6 +243,27 @@ export default function InvitationPage() {
                     <div className="text-[#1E1408]/60 text-[8px] mt-1">Яркий</div>
                   </div>
                   {selectedTemplate === 2 && (
+                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  )}
+                </button>
+
+                {/* Template 3 - Editorial/Magazine */}
+                <button
+                  onClick={() => setSelectedTemplate(3)}
+                  className={cn(
+                    "relative overflow-hidden rounded-lg border-2 transition-all",
+                    selectedTemplate === 3
+                      ? "border-primary ring-2 ring-primary/20"
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <div className="w-16 h-20 bg-gradient-to-b from-[#F8F3EC] to-[#D4E0D0] flex flex-col items-center justify-center">
+                    <div className="text-[#B85C38] text-sm font-serif italic">E</div>
+                    <div className="text-[#3A342C]/60 text-[8px] mt-1">Editorial</div>
+                  </div>
+                  {selectedTemplate === 3 && (
                     <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
                       <Check className="w-2.5 h-2.5 text-white" />
                     </div>
@@ -625,10 +647,16 @@ export default function InvitationPage() {
 }
 
 // Full invitation template preview component
-function InvitationPreview({ event, selectedTemplate }: { event: Event; selectedTemplate: 1 | 2 }) {
+function InvitationPreview({ event, selectedTemplate }: { event: Event; selectedTemplate: 1 | 2 | 3 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const TemplateComponent = selectedTemplate === 1 ? InvitationTemplate : InvitationTemplate2;
+  const TemplateComponent = selectedTemplate === 1
+    ? InvitationTemplate
+    : selectedTemplate === 2
+      ? InvitationTemplate2
+      : InvitationTemplate3;
+
+  const templateNames = { 1: "Elegant", 2: "Playful", 3: "Editorial" };
 
   return (
     <div className="card overflow-hidden">
@@ -640,19 +668,21 @@ function InvitationPreview({ event, selectedTemplate }: { event: Event; selected
         <div className="flex items-center gap-3">
           <div className={cn(
             "w-10 h-10 rounded-lg flex items-center justify-center",
-            selectedTemplate === 1
-              ? "bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a]"
-              : "bg-gradient-to-br from-[#FFF0A0] to-[#FFD6E7]"
+            selectedTemplate === 1 && "bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a]",
+            selectedTemplate === 2 && "bg-gradient-to-br from-[#FFF0A0] to-[#FFD6E7]",
+            selectedTemplate === 3 && "bg-gradient-to-br from-[#F8F3EC] to-[#D4E0D0]"
           )}>
             {selectedTemplate === 1 ? (
               <Sparkles className="w-5 h-5 text-[#D4AF37]" />
-            ) : (
+            ) : selectedTemplate === 2 ? (
               <span className="text-[#FF7EB3] text-lg">♡</span>
+            ) : (
+              <span className="text-[#B85C38] text-lg font-serif italic">E</span>
             )}
           </div>
           <div className="text-left">
             <h3 className="font-semibold text-sm sm:text-base">
-              Превью приглашения {selectedTemplate === 1 ? "(Elegant)" : "(Playful)"}
+              Превью приглашения ({templateNames[selectedTemplate]})
             </h3>
             <p className="text-xs text-muted-foreground">
               {event.person1} & {event.person2} — нажмите чтобы {isExpanded ? "свернуть" : "развернуть"}
