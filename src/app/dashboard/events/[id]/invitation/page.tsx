@@ -17,8 +17,10 @@ import {
   Share2,
   ChevronDown,
   ChevronUp,
+  Palette,
 } from "lucide-react";
 import { InvitationTemplate } from "@/components/invitation/InvitationTemplate";
+import { InvitationTemplate2 } from "@/components/invitation/InvitationTemplate2";
 import { events, guests as guestsApi, shares } from "@/lib/api";
 import { Event, Guest, ShareLink } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -41,6 +43,7 @@ export default function InvitationPage() {
   const [copiedLinkType, setCopiedLinkType] = useState<string | null>(null);
   const [isCreatingLink, setIsCreatingLink] = useState(false);
   const [activeTab, setActiveTab] = useState<"builtin" | "external">("builtin");
+  const [selectedTemplate, setSelectedTemplate] = useState<1 | 2>(1);
 
   useEffect(() => {
     loadData();
@@ -98,10 +101,14 @@ export default function InvitationPage() {
     }
   }
 
-  function getInvitationUrl(token: string, guestSlug?: string) {
+  function getInvitationUrl(token: string, guestSlug?: string, template?: number) {
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
     const path = `/share/${token}/invitation`;
-    return guestSlug ? `${baseUrl}${path}?guest=${guestSlug}` : `${baseUrl}${path}`;
+    const params = new URLSearchParams();
+    if (guestSlug) params.set("guest", guestSlug);
+    if (template && template !== 1) params.set("template", String(template));
+    const queryString = params.toString();
+    return queryString ? `${baseUrl}${path}?${queryString}` : `${baseUrl}${path}`;
   }
 
   function copyLink(url: string, type: string) {
@@ -191,8 +198,61 @@ export default function InvitationPage() {
 
       {activeTab === "builtin" && (
         <>
+          {/* Template Selector */}
+          <div className="card p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
+              <Palette className="w-5 h-5 text-primary" />
+              Выберите шаблон
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              {/* Template 1 - Dark Elegant */}
+              <button
+                onClick={() => setSelectedTemplate(1)}
+                className={cn(
+                  "relative overflow-hidden rounded-xl border-2 transition-all group",
+                  selectedTemplate === 1
+                    ? "border-primary ring-2 ring-primary/20"
+                    : "border-border hover:border-primary/50"
+                )}
+              >
+                <div className="aspect-[3/4] bg-gradient-to-b from-[#0a0a0a] to-[#1a1a1a] p-4 flex flex-col items-center justify-center">
+                  <div className="text-[#D4AF37] text-2xl mb-2">✦</div>
+                  <div className="text-white/80 text-xs font-serif">Elegant Dark</div>
+                  <div className="text-[#D4AF37]/60 text-[10px] mt-1">Классика</div>
+                </div>
+                {selectedTemplate === 1 && (
+                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                    <Check className="w-4 h-4 text-white" />
+                  </div>
+                )}
+              </button>
+
+              {/* Template 2 - Colorful Illustrated */}
+              <button
+                onClick={() => setSelectedTemplate(2)}
+                className={cn(
+                  "relative overflow-hidden rounded-xl border-2 transition-all group",
+                  selectedTemplate === 2
+                    ? "border-primary ring-2 ring-primary/20"
+                    : "border-border hover:border-primary/50"
+                )}
+              >
+                <div className="aspect-[3/4] bg-gradient-to-b from-[#FFF0A0] to-[#FFD6E7] p-4 flex flex-col items-center justify-center">
+                  <div className="text-[#1E1408] text-2xl mb-2">♡</div>
+                  <div className="text-[#1E1408]/80 text-xs" style={{fontFamily: "cursive"}}>Playful</div>
+                  <div className="text-[#FF7EB3] text-[10px] mt-1">Яркий</div>
+                </div>
+                {selectedTemplate === 2 && (
+                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                    <Check className="w-4 h-4 text-white" />
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+
           {/* Template Preview */}
-          <InvitationPreview event={event} />
+          <InvitationPreview event={event} selectedTemplate={selectedTemplate} />
 
           {/* Built-in Invitation Template */}
           <div className="card p-4 sm:p-6">
@@ -228,7 +288,7 @@ export default function InvitationPage() {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => copyLink(getInvitationUrl(invitationShare.token), "general")}
+                      onClick={() => copyLink(getInvitationUrl(invitationShare.token, undefined, selectedTemplate), "general")}
                       className={cn(
                         "btn-outline btn-sm",
                         copiedLinkType === "general" && "bg-green-50 border-green-500 text-green-600"
@@ -242,7 +302,7 @@ export default function InvitationPage() {
                       <span className="ml-2">Скопировать</span>
                     </button>
                     <a
-                      href={getInvitationUrl(invitationShare.token)}
+                      href={getInvitationUrl(invitationShare.token, undefined, selectedTemplate)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn-outline btn-sm"
@@ -304,7 +364,7 @@ export default function InvitationPage() {
                   {/* Guest list */}
                   <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {filteredGuests.map((guest) => {
-                      const personalUrl = getInvitationUrl(invitationShare.token, guest.personalSlug);
+                      const personalUrl = getInvitationUrl(invitationShare.token, guest.personalSlug, selectedTemplate);
 
                       return (
                         <div
@@ -396,7 +456,7 @@ export default function InvitationPage() {
       {activeTab === "external" && (
         <>
           {/* External Template Preview */}
-          {event && <InvitationPreview event={event} />}
+          {event && <InvitationPreview event={event} selectedTemplate={selectedTemplate} />}
 
           {/* External URL */}
           <div className="card p-4 sm:p-6">
@@ -565,8 +625,10 @@ export default function InvitationPage() {
 }
 
 // Full invitation template preview component
-function InvitationPreview({ event }: { event: Event }) {
+function InvitationPreview({ event, selectedTemplate }: { event: Event; selectedTemplate: 1 | 2 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const TemplateComponent = selectedTemplate === 1 ? InvitationTemplate : InvitationTemplate2;
 
   return (
     <div className="card overflow-hidden">
@@ -576,11 +638,22 @@ function InvitationPreview({ event }: { event: Event }) {
         className="w-full p-4 flex items-center justify-between hover:bg-secondary/50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-[#D4AF37]" />
+          <div className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center",
+            selectedTemplate === 1
+              ? "bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a]"
+              : "bg-gradient-to-br from-[#FFF0A0] to-[#FFD6E7]"
+          )}>
+            {selectedTemplate === 1 ? (
+              <Sparkles className="w-5 h-5 text-[#D4AF37]" />
+            ) : (
+              <span className="text-[#FF7EB3] text-lg">♡</span>
+            )}
           </div>
           <div className="text-left">
-            <h3 className="font-semibold text-sm sm:text-base">Превью приглашения</h3>
+            <h3 className="font-semibold text-sm sm:text-base">
+              Превью приглашения {selectedTemplate === 1 ? "(Elegant)" : "(Playful)"}
+            </h3>
             <p className="text-xs text-muted-foreground">
               {event.person1} & {event.person2} — нажмите чтобы {isExpanded ? "свернуть" : "развернуть"}
             </p>
@@ -597,7 +670,7 @@ function InvitationPreview({ event }: { event: Event }) {
       {isExpanded && (
         <div className="border-t border-border">
           <div className="max-h-[600px] overflow-y-auto">
-            <InvitationTemplate
+            <TemplateComponent
               person1={event.person1 || ""}
               person2={event.person2 || ""}
               eventDate={event.date || ""}
