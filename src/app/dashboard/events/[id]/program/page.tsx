@@ -653,59 +653,111 @@ function ProgramItemRow({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       className={cn(
-        "flex items-center gap-4 px-4 py-3 hover:bg-secondary/50 transition-colors group cursor-move",
+        "px-3 sm:px-4 py-3 hover:bg-secondary/50 transition-colors group cursor-move",
         isDragging && "opacity-50 bg-secondary/30",
         isDragOver && "border-t-2 border-primary",
         className
       )}
     >
-      <div className="text-muted-foreground cursor-grab active:cursor-grabbing">
-        <GripVertical className="w-4 h-4" />
-      </div>
-      <div className="w-16 text-center">
-        <span className="font-mono text-lg font-semibold text-primary">{item.startTime}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium">{item.title}</p>
-        {item.description && (
-          <p className="text-sm text-muted-foreground truncate">{item.description}</p>
-        )}
-      </div>
-      {item.responsible && (
-        <div className={cn(
-          "flex items-center gap-1.5 text-sm",
-          isKnownVendor ? "text-muted-foreground" : "text-amber-600"
-        )}>
-          <User className="w-3.5 h-3.5" />
-          <span>{item.responsible}</span>
-          {!isKnownVendor && vendors.length > 0 && (
-            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded" title={t("program.vendorNotFound")}>
-              ?
-            </span>
+      {/* Desktop layout */}
+      <div className="hidden sm:flex items-center gap-4">
+        <div className="text-muted-foreground cursor-grab active:cursor-grabbing">
+          <GripVertical className="w-4 h-4" />
+        </div>
+        <div className="w-16 text-center">
+          <span className="font-mono text-lg font-semibold text-primary">{item.startTime}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium">{item.title}</p>
+          {item.description && (
+            <p className="text-sm text-muted-foreground truncate">{item.description}</p>
           )}
         </div>
-      )}
-      {item.duration > 0 && (
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Clock className="w-3.5 h-3.5" />
-          {item.duration} {t("program.minutes")}
+        {item.responsible && (
+          <div className={cn(
+            "flex items-center gap-1.5 text-sm",
+            isKnownVendor ? "text-muted-foreground" : "text-amber-600"
+          )}>
+            <User className="w-3.5 h-3.5" />
+            <span>{item.responsible}</span>
+            {!isKnownVendor && vendors.length > 0 && (
+              <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded" title={t("program.vendorNotFound")}>
+                ?
+              </span>
+            )}
+          </div>
+        )}
+        {item.duration > 0 && (
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Clock className="w-3.5 h-3.5" />
+            {item.duration} {t("program.minutes")}
+          </div>
+        )}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={onEdit}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+            title={t("common.edit")}
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            title={t("common.delete")}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
-      )}
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={onEdit}
-          className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
-          title={t("common.edit")}
-        >
-          <Edit2 className="w-4 h-4" />
-        </button>
-        <button
-          onClick={onDelete}
-          className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-          title={t("common.delete")}
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+      </div>
+
+      {/* Mobile layout */}
+      <div className="sm:hidden">
+        <div className="flex items-start gap-3">
+          <div className="text-muted-foreground cursor-grab active:cursor-grabbing pt-1">
+            <GripVertical className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-base font-semibold text-primary">{item.startTime}</span>
+              {item.duration > 0 && (
+                <span className="text-xs text-muted-foreground">({item.duration} мин)</span>
+              )}
+            </div>
+            <p className="font-medium text-sm">{item.title}</p>
+            {item.description && (
+              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.description}</p>
+            )}
+            {item.responsible && (
+              <div className={cn(
+                "flex items-center gap-1 text-xs mt-1.5",
+                isKnownVendor ? "text-muted-foreground" : "text-amber-600"
+              )}>
+                <User className="w-3 h-3" />
+                <span>{item.responsible}</span>
+                {!isKnownVendor && vendors.length > 0 && (
+                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1 rounded">?</span>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onEdit}
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+              title={t("common.edit")}
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onDelete}
+              className="p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+              title={t("common.delete")}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

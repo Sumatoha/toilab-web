@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
-import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings, Gift, Clock, LayoutGrid, Sparkles, LucideIcon, Menu, X, CalendarDays, Briefcase } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, Users, Wallet, CheckSquare, Mail, Settings, Clock, LayoutGrid, Sparkles, LucideIcon, Menu, X, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/store";
 import { Plan } from "@/lib/types";
@@ -19,26 +19,23 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "", labelKey: "nav.overview", icon: LayoutDashboard },
+  { href: "/program", labelKey: "nav.program", icon: Clock },
+  { href: "/checklist", labelKey: "nav.checklist", icon: CheckSquare },
+  { href: "/budget", labelKey: "nav.budget", icon: Wallet },
+  { href: "/vendors", labelKey: "nav.vendors", icon: Briefcase, feature: "vendors" },
   { href: "/guests", labelKey: "nav.guests", icon: Users, feature: "guests" },
   { href: "/seating", labelKey: "nav.seating", icon: LayoutGrid, feature: "seating" },
-  { href: "/gifts", labelKey: "nav.gifts", icon: Gift, feature: "gifts" },
-  { href: "/program", labelKey: "nav.program", icon: Clock },
-  { href: "/vendors", labelKey: "nav.vendors", icon: Briefcase, feature: "vendors" },
-  { href: "/budget", labelKey: "nav.budget", icon: Wallet },
-  { href: "/checklist", labelKey: "nav.checklist", icon: CheckSquare },
-  { href: "/calendar", labelKey: "nav.calendar", icon: CalendarDays },
   { href: "/invitation", labelKey: "nav.invitation", icon: Mail, feature: "invitation" },
   { href: "/settings", labelKey: "nav.settings", icon: Settings },
 ];
 
-// Plans that can have multiple events (show "All events" link)
-const multiEventPlans: Plan[] = ["pro", "trial"];
+// Only pro plan shows "All events" link (can have multiple events)
+const showAllEventsPlans: Plan[] = ["pro"];
 
 const planFeatures: Record<Plan, string[]> = {
   free: ["budget", "checklist", "program"],
-  single: ["guests", "budget", "checklist", "vendors", "program", "seating", "gifts", "sharing", "invitation"],
-  pro: ["guests", "budget", "checklist", "vendors", "program", "seating", "gifts", "sharing", "invitation"],
-  trial: ["guests", "budget", "checklist", "vendors", "program", "seating", "gifts", "sharing", "invitation"],
+  single: ["guests", "budget", "checklist", "vendors", "program", "seating", "sharing", "invitation"],
+  pro: ["guests", "budget", "checklist", "vendors", "program", "seating", "sharing", "invitation"],
 };
 
 function hasFeature(plan: Plan, feature: string | undefined): boolean {
@@ -90,7 +87,7 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
     return item.href === "" ? pathname === basePath : pathname.startsWith(href);
   });
 
-  const canHaveMultipleEvents = multiEventPlans.includes(userPlan);
+  const showAllEventsLink = showAllEventsPlans.includes(userPlan);
 
   const SidebarContent = () => (
     <>
@@ -176,8 +173,8 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
         </Link>
       )}
 
-      {/* All events link - only for multi-event plans (pro/trial) */}
-      {canHaveMultipleEvents && (
+      {/* All events link - only for studio users */}
+      {showAllEventsLink && (
         <Link
           href="/dashboard"
           onClick={() => setIsOpen(false)}
@@ -193,7 +190,7 @@ export function EventSidebar({ guestCount, taskCount }: EventSidebarProps) {
   return (
     <>
       {/* Mobile header with burger */}
-      <div className="lg:hidden sticky top-14 z-40 bg-background border-b border-border px-4 py-3 flex items-center justify-between">
+      <div className="lg:hidden sticky top-14 z-40 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3 flex items-center justify-between shadow-sm">
         <button
           onClick={() => setIsOpen(true)}
           className="flex items-center gap-2 text-sm font-medium"

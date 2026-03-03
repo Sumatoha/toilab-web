@@ -64,6 +64,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /* Prevent horizontal scroll on mobile */
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  /* Prevent horizontal overflow on all elements */
+  html {
+    overflow-x: hidden;
   }
 }
 
@@ -242,11 +251,19 @@
 
   /* Inputs - Clean and modern */
   .input {
-    @apply flex h-11 w-full rounded-xl border-2 border-input bg-white px-4 py-2 text-sm;
+    @apply flex h-11 w-full rounded-xl border-2 border-input bg-white px-4 py-2;
     @apply transition-all duration-200 ease-out;
     @apply placeholder:text-muted-foreground/60;
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary;
     @apply disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted;
+    /* Use 16px on mobile to prevent iOS auto-zoom, text-sm on desktop */
+    font-size: 16px;
+  }
+
+  @media (min-width: 1024px) {
+    .input {
+      @apply text-sm;
+    }
   }
 
   .input-error {
