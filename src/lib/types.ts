@@ -5,7 +5,7 @@ export type RSVPStatus = "pending" | "accepted" | "declined";
 export type ExpenseStatus = "planned" | "booked" | "paid";
 export type VendorStatus = "contacted" | "booked" | "deposit_paid" | "paid" | "cancelled";
 export type VendorType = "photographer" | "videographer" | "mc" | "dj" | "stylist" | "florist" | "restaurant" | "band" | "decor" | "transport" | "other";
-export type Plan = "free" | "single" | "pro" | "trial";
+export type Plan = "free" | "single" | "pro";
 export type Country = "kz" | "ru" | "kg" | "uz" | "other";
 
 // Country configuration
@@ -100,10 +100,12 @@ export interface Guest {
   email?: string;
   group?: string;
   plusCount: number;
+  plusNames?: string[];
   personalSlug: string;
   rsvpStatus: RSVPStatus;
   rsvpAt?: string;
   rsvpNote?: string;
+  rsvpSource?: string;
   tableNumber?: string;
   tableId?: string;
   notifiedAt?: string;
@@ -211,6 +213,7 @@ export interface ChecklistItem {
   description?: string;
   category: ChecklistCategory;
   dueDate?: string;
+  dueTime?: string; // Time in HH:MM format, e.g. "15:00"
   relativeDays: number;
   isCompleted: boolean;
   isDefault: boolean;
@@ -389,6 +392,7 @@ export interface CreateChecklistItemRequest {
   description?: string;
   category: ChecklistCategory;
   dueDate?: string;
+  dueTime?: string; // Time in HH:MM format, e.g. "15:00"
   relativeDays?: number;
 }
 
@@ -397,6 +401,7 @@ export interface UpdateChecklistItemRequest {
   description?: string;
   category?: ChecklistCategory;
   dueDate?: string;
+  dueTime?: string; // Time in HH:MM format, e.g. "15:00"
   relativeDays?: number;
   order?: number;
 }
@@ -586,6 +591,35 @@ export interface ShareCheckResponse {
   label?: string;
 }
 
+// Public RSVP types (for invitation pages without authentication)
+export interface PublicRsvpRequest {
+  name: string;
+  phone?: string;
+  rsvpStatus: RSVPStatus;
+  plusCount?: number;
+  plusNames?: string[];
+  comment?: string;
+}
+
+export interface PublicRsvpResponse {
+  success: boolean;
+  message: string;
+  guestId?: string;
+}
+
+export interface GuestRsvpRequest {
+  rsvpStatus: RSVPStatus;
+  plusCount?: number;
+  plusNames?: string[];
+  comment?: string;
+}
+
+export interface GuestRsvpResponse {
+  success: boolean;
+  message: string;
+  guest?: Guest;
+}
+
 // Seating
 export type TableShape = "round" | "rect" | "square" | "oval" | "scene";
 
@@ -674,4 +708,59 @@ export interface ActivityLog {
   details?: string;
   metadata?: Record<string, unknown>;
   createdAt: string;
+}
+
+// Payments
+export type PaymentProvider = "cloudpayments" | "kaspi";
+export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
+export type SubscriptionStatus = "active" | "cancelled" | "expired" | "pending";
+
+export interface Payment {
+  id: string;
+  userId: string;
+  plan: Plan;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  provider: PaymentProvider;
+  invoiceId: string;
+  transactionId?: string;
+  completedAt?: string;
+  failedAt?: string;
+  failReason?: string;
+  createdAt: string;
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  plan: Plan;
+  status: SubscriptionStatus;
+  provider: PaymentProvider;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  nextPaymentDate?: string;
+  cancelledAt?: string;
+  createdAt: string;
+}
+
+export interface InitPaymentRequest {
+  plan: Plan;
+  provider: PaymentProvider;
+}
+
+export interface InitPaymentResponse {
+  paymentId: string;
+  invoiceId: string;
+  provider: PaymentProvider;
+  amount: number;
+  currency: string;
+  publicId?: string; // CloudPayments
+  kaspiQRPayUrl?: string; // Kaspi QR
+  kaspiQRToken?: string; // Kaspi QR token for polling
+}
+
+export interface PaymentConfig {
+  cloudPaymentsPublicId?: string;
+  kaspiEnabled: boolean;
 }

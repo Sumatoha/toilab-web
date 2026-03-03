@@ -41,6 +41,10 @@ import type {
   CreateShareLinkRequest,
   SharedEventData,
   ShareCheckResponse,
+  PublicRsvpRequest,
+  PublicRsvpResponse,
+  GuestRsvpRequest,
+  GuestRsvpResponse,
   ExpenseCategoryInfo,
   VendorStatusInfo,
   ChecklistCategory,
@@ -53,6 +57,11 @@ import type {
   ActivityLog,
   Country,
   CountryConfig,
+  Payment,
+  Subscription,
+  InitPaymentRequest,
+  InitPaymentResponse,
+  PaymentConfig,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -201,12 +210,6 @@ export const auth = {
     fetchApi<{ accessToken: string }>("/auth/refresh", {
       method: "POST",
       body: JSON.stringify({ refreshToken }),
-    }),
-
-  activatePromo: (code: string) =>
-    fetchApi<User>("/auth/promo", {
-      method: "POST",
-      body: JSON.stringify({ code }),
     }),
 };
 
@@ -575,6 +578,20 @@ export const shares = {
     const params = pin ? `?pin=${pin}` : "";
     return fetchApi<SharedEventData>(`/share/${token}${params}`);
   },
+
+  // Public RSVP endpoint for invitation pages
+  rsvp: (token: string, data: PublicRsvpRequest) =>
+    fetchApi<PublicRsvpResponse>(`/share/${token}/rsvp`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Personal guest RSVP via slug
+  rsvpBySlug: (token: string, guestSlug: string, data: GuestRsvpRequest) =>
+    fetchApi<GuestRsvpResponse>(`/share/${token}/rsvp/${guestSlug}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 // Seating
@@ -624,6 +641,32 @@ export const seating = {
 export const activity = {
   list: (eventId: string, limit?: number) =>
     fetchApi<ActivityLog[]>(`/events/${eventId}/activity${limit ? `?limit=${limit}` : ""}`),
+};
+
+// Payments
+export const payments = {
+  init: (data: InitPaymentRequest) =>
+    fetchApi<InitPaymentResponse>("/payments/init", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  getStatus: (paymentId: string) =>
+    fetchApi<Payment>(`/payments/${paymentId}/status`),
+
+  getHistory: () =>
+    fetchApi<Payment[]>("/payments/history"),
+
+  getSubscription: () =>
+    fetchApi<Subscription>("/payments/subscription"),
+
+  cancelSubscription: (subscriptionId: string) =>
+    fetchApi<{ success: boolean }>(`/payments/subscription/${subscriptionId}/cancel`, {
+      method: "POST",
+    }),
+
+  getConfig: () =>
+    fetchApi<PaymentConfig>("/payments/config"),
 };
 
 // Config
