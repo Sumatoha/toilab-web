@@ -199,55 +199,55 @@ export default function InvitationPage() {
       {activeTab === "builtin" && (
         <>
           {/* Template Selector */}
-          <div className="card p-4 sm:p-6">
-            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
-              <Palette className="w-5 h-5 text-primary" />
-              Выберите шаблон
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              {/* Template 1 - Dark Elegant */}
-              <button
-                onClick={() => setSelectedTemplate(1)}
-                className={cn(
-                  "relative overflow-hidden rounded-xl border-2 transition-all group",
-                  selectedTemplate === 1
-                    ? "border-primary ring-2 ring-primary/20"
-                    : "border-border hover:border-primary/50"
-                )}
-              >
-                <div className="aspect-[3/4] bg-gradient-to-b from-[#0a0a0a] to-[#1a1a1a] p-4 flex flex-col items-center justify-center">
-                  <div className="text-[#D4AF37] text-2xl mb-2">✦</div>
-                  <div className="text-white/80 text-xs font-serif">Elegant Dark</div>
-                  <div className="text-[#D4AF37]/60 text-[10px] mt-1">Классика</div>
-                </div>
-                {selectedTemplate === 1 && (
-                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                    <Check className="w-4 h-4 text-white" />
+          <div className="card p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Palette className="w-4 h-4" />
+                <span>Шаблон:</span>
+              </div>
+              <div className="flex gap-2">
+                {/* Template 1 - Dark Elegant */}
+                <button
+                  onClick={() => setSelectedTemplate(1)}
+                  className={cn(
+                    "relative overflow-hidden rounded-lg border-2 transition-all",
+                    selectedTemplate === 1
+                      ? "border-primary ring-2 ring-primary/20"
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <div className="w-16 h-20 bg-gradient-to-b from-[#0a0a0a] to-[#1a1a1a] flex flex-col items-center justify-center">
+                    <div className="text-[#D4AF37] text-sm">✦</div>
+                    <div className="text-white/60 text-[8px] mt-1">Классика</div>
                   </div>
-                )}
-              </button>
+                  {selectedTemplate === 1 && (
+                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  )}
+                </button>
 
-              {/* Template 2 - Colorful Illustrated */}
-              <button
-                onClick={() => setSelectedTemplate(2)}
-                className={cn(
-                  "relative overflow-hidden rounded-xl border-2 transition-all group",
-                  selectedTemplate === 2
-                    ? "border-primary ring-2 ring-primary/20"
-                    : "border-border hover:border-primary/50"
-                )}
-              >
-                <div className="aspect-[3/4] bg-gradient-to-b from-[#FFF0A0] to-[#FFD6E7] p-4 flex flex-col items-center justify-center">
-                  <div className="text-[#1E1408] text-2xl mb-2">♡</div>
-                  <div className="text-[#1E1408]/80 text-xs" style={{fontFamily: "cursive"}}>Playful</div>
-                  <div className="text-[#FF7EB3] text-[10px] mt-1">Яркий</div>
-                </div>
-                {selectedTemplate === 2 && (
-                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                    <Check className="w-4 h-4 text-white" />
+                {/* Template 2 - Colorful Illustrated */}
+                <button
+                  onClick={() => setSelectedTemplate(2)}
+                  className={cn(
+                    "relative overflow-hidden rounded-lg border-2 transition-all",
+                    selectedTemplate === 2
+                      ? "border-primary ring-2 ring-primary/20"
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <div className="w-16 h-20 bg-gradient-to-b from-[#FFF0A0] to-[#FFD6E7] flex flex-col items-center justify-center">
+                    <div className="text-[#FF7EB3] text-sm">♡</div>
+                    <div className="text-[#1E1408]/60 text-[8px] mt-1">Яркий</div>
                   </div>
-                )}
-              </button>
+                  {selectedTemplate === 2 && (
+                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
