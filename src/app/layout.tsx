@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Jost } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
@@ -15,18 +15,19 @@ const jost = Jost({
   weight: ["100", "200", "300", "400"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: {
     default: "Toilab",
     template: "%s | Toilab",
   },
   description: "Планируйте мероприятия легко",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
 };
 
 export default function RootLayout({

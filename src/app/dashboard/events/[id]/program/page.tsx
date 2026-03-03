@@ -277,14 +277,14 @@ export default function ProgramPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-h1">{t("program.title")}</h1>
           <p className="text-caption mt-1">
             {t("program.description")}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {items.length > 0 && (
             <>
               <button
@@ -293,11 +293,11 @@ export default function ProgramPage() {
                 className="btn-outline btn-sm"
               >
                 <Download className="w-4 h-4" />
-                {isGeneratingPdf ? "..." : t("common.download")}
+                <span className="hidden sm:inline">{isGeneratingPdf ? "..." : t("common.download")}</span>
               </button>
               <button
                 onClick={() => window.print()}
-                className="btn-outline btn-sm"
+                className="btn-outline btn-sm hidden sm:flex"
               >
                 <Printer className="w-4 h-4" />
                 {t("program.print")}
@@ -309,7 +309,7 @@ export default function ProgramPage() {
             className="btn-outline btn-sm"
           >
             <Sparkles className="w-4 h-4" />
-            {t("program.template")}
+            <span className="hidden sm:inline">{t("program.template")}</span>
           </button>
           <button
             onClick={() => setShowAddModal(true)}
